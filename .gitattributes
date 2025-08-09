@@ -1,0 +1,4 @@
+backend/* filter=lfs diff=lfs merge=lfs -text
+FrontEnd/* filter=lfs diff=lfs merge=lfs -text
+backend/alembic.ini !text !filter !merge !diff
+FrontEnd/quasar.config.ts !text !filter !merge !diff
