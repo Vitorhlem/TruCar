@@ -1,0 +1,2 @@
+backend/alembic.ini !text !filter !merge !diff
+FrontEnd/quasar.config.ts !text !filter !merge !diff
