@@ -1,0 +1,29 @@
+/*
+ * Arquivo Central de Estilo - Clarity UI para TruCar (Tema Vívido)
+ *
+ * Instruções:
+ * 1. Garanta que a fonte 'Inter' está importada no seu index.html ou App.vue.
+ * (Adicione no <head>: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">)
+ * 2. Modifique as variáveis de cor abaixo para alterar o tema de toda a aplicação.
+*/
+
+// 1. Tipografia
+$typography-font-family: 'Inter', sans-serif;
+
+// 2. Paleta de Cores (Vívida)
+$primary   : #3B82F6; // Azul vibrante e moderno
+$secondary : #1E3A8A; // Azul escuro para contraste
+$accent    : #10B981; // Verde esmeralda energético
+
+$dark      : #111827; // Cinza quase preto para textos
+$positive  : #22C55E; // Verde sucesso
+$negative  : #EF4444; // Vermelho erro
+$info      : #3B82F6; // Usando o primário para informação
+$warning   : #F59E0B; // Laranja/Âmbar para avisos
+
+// 3. Cores da Interface
+$body-bg   : #F9FAFB; // Fundo principal das páginas (cinza muito claro)
+$surface   : #FFFFFF; // Fundo dos cards (branco puro)
+
+// 4. Bordas
+$generic-border-radius: 12px; // Bordas mais arredondadas para todos os componentes

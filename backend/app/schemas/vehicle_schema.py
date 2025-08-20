@@ -1,47 +1,48 @@
+# backend/app/schemas/vehicle_schema.py
+
 from pydantic import BaseModel, constr
 from typing import Optional
+from datetime import date
 
 from app.models.vehicle_model import VehicleStatus
 
-# constr(strip_whitespace=True, to_upper=True, min_length=7, max_length=8)
-# Validador para garantir que a placa seja sempre armazenada em maiúsculas,
-# sem espaços extras e com um tamanho razoável.
 LicensePlateStr = constr(strip_whitespace=True, to_upper=True, min_length=7, max_length=8)
 
-# --- Schemas Base ---
-
+# Schema com campos que todos os veículos têm
 class VehicleBase(BaseModel):
-    """Schema base para veículos, com os campos principais."""
     brand: str
     model: str
-    license_plate: LicensePlateStr
     year: int
-
-# --- Schemas para Operações Específicas ---
-
-class VehicleCreate(VehicleBase):
-    """Schema usado para criar um novo veículo. O status será 'available' por padrão."""
     photo_url: Optional[str] = None
+    current_km: Optional[int] = 0
+    current_engine_hours: Optional[float] = 0
+    next_maintenance_date: Optional[date] = None
+    next_maintenance_km: Optional[int] = None
+    maintenance_notes: Optional[str] = None
 
+# Schema para a CRIAÇÃO de um veículo. Aqui flexibilizamos a regra.
+class VehicleCreate(VehicleBase):
+    license_plate: Optional[LicensePlateStr] = None # TORNOU-SE OPCIONAL
+    identifier: Optional[str] = None              # Adicionado para agronegócio, também opcional
+
+# Schema para a ATUALIZAÇÃO
 class VehicleUpdate(BaseModel):
-    """Schema usado para atualizar um veículo. Todos os campos são opcionais."""
     brand: Optional[str] = None
     model: Optional[str] = None
     year: Optional[int] = None
     photo_url: Optional[str] = None
     status: Optional[VehicleStatus] = None
+    current_km: Optional[int] = None
+    current_engine_hours: Optional[float] = None
+    next_maintenance_date: Optional[date] = None
+    next_maintenance_km: Optional[int] = None
+    maintenance_notes: Optional[str] = None
 
-
-# --- Schema para Resposta da API ---
-
+# Schema de resposta PÚBLICA (o que a API retorna)
 class VehiclePublic(VehicleBase):
-    """
-    Schema público do veículo, retornado pela API.
-    """
     id: int
     status: VehicleStatus
-    photo_url: Optional[str] = None
+    license_plate: Optional[LicensePlateStr] = None
+    identifier: Optional[str] = None
     
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = { "from_attributes": True }

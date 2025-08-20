@@ -4,15 +4,16 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import ValidationError
-from fastapi.concurrency import run_in_threadpool # <-- 1. IMPORTE A FERRAMENTA
+from fastapi.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.user_model import User, UserRole
-from app.crud import crud_user
+from app import crud # <-- A IMPORTAÇÃO QUE FALTAVA
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/token"
+    tokenUrl=f"{settings.API_V1_STR}/login/token",
+    auto_error=True
 )
 
 async def get_db() -> Generator[AsyncSession, Any, None]:
@@ -28,7 +29,6 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        # --- 2. EXECUTE A DECODIFICAÇÃO EM UMA THREAD SEPARADA ---
         payload = await run_in_threadpool(
             jwt.decode, token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
@@ -38,7 +38,7 @@ async def get_current_user(
     except (JWTError, ValidationError):
         raise credentials_exception
     
-    user = await crud_user.get_user(db, user_id=int(user_id))
+    user = await crud.user.get_user_with_organization(db, user_id=int(user_id))
     if user is None:
         raise credentials_exception
     return user
@@ -47,7 +47,7 @@ async def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuário inativo")
+        raise HTTPException(status_code=400, detail="Utilizador inativo")
     return current_user
 
 async def get_current_active_manager(
@@ -55,6 +55,6 @@ async def get_current_active_manager(
 ) -> User:
     if current_user.role != UserRole.MANAGER:
         raise HTTPException(
-            status_code=403, detail="O usuário não tem privilégios suficientes"
+            status_code=403, detail="O utilizador não tem privilégios suficientes"
         )
     return current_user

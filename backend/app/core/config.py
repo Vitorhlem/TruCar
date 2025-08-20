@@ -4,8 +4,14 @@ from typing import Optional
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8', extra="ignore")
 
-    PROJECT_NAME: str = "Frota Ágil"
+    PROJECT_NAME: str = "TruCar"
     API_V1_STR: str = "/api/v1"
+
+    SMTP_SERVER: str
+    SMTP_PORT: int
+    SMTP_USER: str
+    SMTP_PASSWORD: str
+    EMAILS_FROM_EMAIL: str
 
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
