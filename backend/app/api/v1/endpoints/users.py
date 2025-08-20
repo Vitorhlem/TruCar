@@ -3,10 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from typing import List
 
-from app import crud
+from app import crud, models
 from app.api import deps
-from app.models.user_model import User
-from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic
+from app.models import User
+from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic, UserStats
 
 router = APIRouter()
 
@@ -15,31 +15,36 @@ async def read_users(
     db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(deps.get_current_active_manager),
-) -> any:
-    users = await crud.user.get_users(db, skip=skip, limit=limit)
-    return users
+    current_user: models.user_model.User = Depends(deps.get_current_active_manager),
+):
+     users = await crud.user.get_users(db, organization_id=current_user.organization_id, skip=skip, limit=limit)
+     return users
 
 @router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 async def create_user(
     *,
     db: AsyncSession = Depends(deps.get_db),
     user_in: UserCreate,
-    current_user: User = Depends(deps.get_current_active_manager),
-) -> any:
+    current_user: models.user_model.User = Depends(deps.get_current_active_manager),
+):
+    """Cria um novo utilizador DENTRO da organização do gestor logado."""
     user = await crud.user.get_user_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="O e-mail fornecido já está cadastrado no sistema.",
+            detail="O e-mail fornecido já está registado no sistema.",
         )
-    new_user = await crud.user.create_user(db=db, user_in=user_in)
+    # Passa o organization_id do gestor logado para a função de criação
+    new_user = await crud.user.create_user(
+        db=db, user_in=user_in, organization_id=current_user.organization_id
+    )
     return new_user
+
 
 @router.get("/me", response_model=UserPublic)
 async def read_users_me(
-    current_user: User = Depends(deps.get_current_active_user),
-) -> any:
+    current_user: models.user_model.User = Depends(deps.get_current_active_user),
+):
     return current_user
 
 @router.put("/{user_id}", response_model=UserPublic)
@@ -48,8 +53,8 @@ async def update_user_by_id(
     db: AsyncSession = Depends(deps.get_db),
     user_id: int,
     user_in: UserUpdate,
-    current_user: User = Depends(deps.get_current_active_manager),
-) -> any:
+    current_user: models.user_model.User = Depends(deps.get_current_active_manager),
+):
     user = await crud.user.get_user(db, user_id=user_id)
     if not user:
         raise HTTPException(
@@ -64,8 +69,8 @@ async def delete_user_by_id(
     *,
     db: AsyncSession = Depends(deps.get_db),
     user_id: int,
-    current_user: User = Depends(deps.get_current_active_manager),
-) -> any:
+    current_user: models.user_model.User = Depends(deps.get_current_active_manager),
+):
     if user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -82,3 +87,15 @@ async def delete_user_by_id(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não é possível excluir um usuário que já possui viagens registradas.",
         )
+
+@router.get("/{user_id}/stats", response_model=UserStats)
+async def read_user_stats(
+    user_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_manager),
+):
+    """
+    Retorna as estatísticas de um usuário específico. Acessível apenas para gestores.
+    """
+    stats = await crud.user.get_user_stats(db, user_id=user_id)
+    return stats

@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Boolean, Enum
+from sqlalchemy import Column, Integer, String, Boolean, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -28,7 +28,10 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.DRIVER)
     is_active = Column(Boolean(), default=True)
+    avatar_url = Column(String(512), nullable=True)
 
     # Relacionamento: Um usuário (motorista) pode ter várias viagens (journeys).
     # O 'back_populates' cria o link reverso no modelo Journey.
     journeys = relationship("Journey", back_populates="driver")
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    organization = relationship("Organization")
