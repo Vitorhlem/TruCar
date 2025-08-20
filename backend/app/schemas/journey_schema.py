@@ -1,13 +1,21 @@
+# backend/app/schemas/journey_schema.py
+
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, date
+from datetime import datetime
+import enum
 
-from app.models.journey_model import JourneyType
-from app.models.maintenance_request_model import MaintenanceStatus, MaintenanceCategory
+# Importa outros schemas que são necessários
 from .user_schema import UserPublic
 from .vehicle_schema import VehiclePublic
 
-# --- Schemas Base ---
+# ESTE FICHEIRO DEFINE o Enum JourneyType.
+class JourneyType(str, enum.Enum):
+    SPECIFIC_DESTINATION = 'specific_destination'
+    FREE_ROAM = 'free_roam'
+
+# --- SCHEMAS DE VIAGEM (herdam de BaseModel) ---
+
 class JourneyBase(BaseModel):
     trip_type: JourneyType
     destination_address: Optional[str] = None
@@ -15,18 +23,13 @@ class JourneyBase(BaseModel):
 
 class JourneyCreate(JourneyBase):
     vehicle_id: int
-    start_mileage: int
-    start_mileage: Optional[int] = None # Torna-se opcional
-    start_engine_hours: Optional[float] = None # Novo campo opcional
+    start_mileage: Optional[int] = None
+    start_engine_hours: Optional[float] = None
 
 class JourneyUpdate(BaseModel):
-    end_mileage: int
-     
-    end_mileage: Optional[int] = None # Torna-se opcional
-    end_engine_hours: Optional[float] = None # Novo campo opcional
+    end_mileage: Optional[int] = None
+    end_engine_hours: Optional[float] = None
 
-# --- Schema Público (usado em respostas da API) ---
-# Definido ANTES de ser usado por outros schemas
 class JourneyPublic(JourneyBase):
     id: int
     is_active: bool
@@ -34,50 +37,13 @@ class JourneyPublic(JourneyBase):
     end_time: Optional[datetime] = None
     start_mileage: int
     end_mileage: Optional[int] = None
+    start_engine_hours: Optional[float] = None
+    end_engine_hours: Optional[float] = None
     driver: UserPublic
     vehicle: VehiclePublic
     
     model_config = { "from_attributes": True }
 
-# --- Schema da Resposta de Finalização ---
 class EndJourneyResponse(BaseModel):
     journey: JourneyPublic
     vehicle: VehiclePublic
-
-# --- Schemas de Manutenção ---
-class MaintenanceRequestBase(BaseModel):
-    problem_description: str
-    vehicle_id: int
-    category: MaintenanceCategory
-
-class MaintenanceRequestCreate(MaintenanceRequestBase):
-    pass
-
-class MaintenanceRequestUpdate(BaseModel):
-    status: MaintenanceStatus
-    manager_notes: Optional[str] = None
-
-class MaintenanceCommentBase(BaseModel):
-    comment_text: str
-    file_url: Optional[str] = None
-
-class MaintenanceCommentCreate(MaintenanceCommentBase):
-    pass
-
-class MaintenanceCommentPublic(MaintenanceCommentBase):
-    id: int
-    created_at: datetime
-    user: UserPublic
-    model_config = { "from_attributes": True }
-
-class MaintenanceRequestPublic(MaintenanceRequestBase):
-    id: int
-    status: MaintenanceStatus
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    reporter: UserPublic
-    approver: Optional[UserPublic] = None
-    vehicle: VehiclePublic
-    manager_notes: Optional[str] = None
-    comments: List[MaintenanceCommentPublic] = []
-    model_config = { "from_attributes": True }
