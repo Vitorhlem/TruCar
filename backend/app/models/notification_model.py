@@ -11,13 +11,13 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False) # Para qual usuário é o alerta
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False) # Para qual usuário é o alerta
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Relacionamento opcional para vincular a notificação a um veículo
-    related_vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
+    related_vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=True)
 
     user = relationship("User")
     vehicle = relationship("Vehicle")

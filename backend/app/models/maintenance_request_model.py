@@ -39,11 +39,11 @@ class MaintenanceRequest(Base):
     status = Column(Enum(MaintenanceStatus), nullable=False, default=MaintenanceStatus.PENDING)
     category = Column(Enum(MaintenanceCategory), nullable=False)
     
-    reported_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False)
+    reported_by_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
     
     manager_notes = Column(Text, nullable=True)
-    approved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approved_by_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)

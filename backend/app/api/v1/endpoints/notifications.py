@@ -9,13 +9,18 @@ from app.schemas.notification_schema import NotificationPublic
 
 router = APIRouter()
 
+
+
 @router.get("/unread-count", response_model=int)
-async def get_unread_count(
+async def read_unread_notification_count(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
-) -> any:
-    """Retorna a contagem de notificações não lidas do usuário logado."""
-    count = await crud.notification.get_unread_notifications_count(db, user_id=current_user.id)
+):
+    count = await crud.notification.get_unread_notifications_count(
+        db,
+        user_id=current_user.id,
+        organization_id=current_user.organization_id # Passa o org_id
+    )
     return count
 
 @router.get("/", response_model=List[NotificationPublic])

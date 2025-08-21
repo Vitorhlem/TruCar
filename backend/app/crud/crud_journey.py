@@ -1,72 +1,76 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from sqlalchemy import func
 from typing import List, Optional, Tuple
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
+from fastapi import HTTPException
 
 from app.models.journey_model import Journey
 from app.models.vehicle_model import Vehicle, VehicleStatus
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate
 
-async def create_journey(db: AsyncSession, *, journey_in: JourneyCreate, driver_id: int, organization_id: int) -> Optional[Journey]:
-    vehicle_to_update = await db.get(Vehicle, journey_in.vehicle_id)
+# Exceções customizadas para uma melhor arquitetura
+class VehicleNotAvailableError(Exception):
+    pass
 
-    if journey_in.start_engine_hours is not None:
-        vehicle_to_update.custom_data = {"engine_hours": journey_in.start_engine_hours}
-    
-    vehicle_to_update.status = VehicleStatus.IN_USE
-    db_journey = Journey(**journey_in.model_dump(), driver_id=driver_id, is_active=True, organization_id=organization_id, start_time=datetime.utcnow() 
-)
-    
+async def create_journey(
+    db: AsyncSession, *, journey_in: JourneyCreate, driver_id: int, organization_id: int
+) -> Journey:
+    """Cria uma nova operação e atualiza o status do veículo para 'Em uso'."""
+    if not journey_in.vehicle_id:
+        raise ValueError("O ID do veículo é obrigatório.")
+        
+    vehicle = await db.get(Vehicle, journey_in.vehicle_id)
+    if not vehicle or vehicle.organization_id != organization_id:
+        raise ValueError("Maquinário não encontrado.")
+        
+    if vehicle.status != VehicleStatus.AVAILABLE:
+        raise VehicleNotAvailableError(f"O maquinário {vehicle.brand} {vehicle.model} não está disponível.")
 
-    if not vehicle_to_update or vehicle_to_update.status != VehicleStatus.AVAILABLE or vehicle_to_update.organization_id != organization_id:
-        return None
-    
-    vehicle_to_update.status = VehicleStatus.IN_USE
-    db_journey = Journey(**journey_in.model_dump(), driver_id=driver_id, is_active=True, organization_id=organization_id)
+    db_journey = Journey(
+        **journey_in.model_dump(exclude_unset=True),
+        driver_id=driver_id,
+        organization_id=organization_id,
+        is_active=True,
+        start_time=datetime.utcnow()
+    )
     db.add(db_journey)
-    db.add(vehicle_to_update)
+    
+    vehicle.status = VehicleStatus.IN_USE
+    db.add(vehicle)
+
     await db.commit()
-    await db.refresh(db_journey)
-    reloaded_journey = await get_journey(db, journey_id=db_journey.id, organization_id=organization_id)
-    return reloaded_journey
+    await db.refresh(db_journey, ['vehicle', 'driver'])
+    return db_journey
 
-# --- FUNÇÃO CORRIGIDA ---
-async def end_journey(db: AsyncSession, *, journey_to_update: Journey, journey_in: JourneyUpdate) -> Optional[Tuple[Journey, Vehicle]]:
-    vehicle_to_update = await db.get(Vehicle, journey_to_update.vehicle_id)
-    if journey_in.end_engine_hours is not None:
-        journey_to_update.end_engine_hours = journey_in.end_engine_hours
-        vehicle_to_update.custom_data = {"engine_hours": journey_in.end_engine_hours}
-    else:
-        journey_to_update.end_mileage = journey_in.end_mileage
-        vehicle_to_update.current_km = journey_in.end_mileage
-
-    journey_to_update.end_time = func.now()
-    journey_to_update.is_active = False
-    vehicle_to_update.status = VehicleStatus.AVAILABLE
-
-    if not vehicle_to_update:
-        return None
+async def end_journey(
+    db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
+) -> Tuple[Journey, Vehicle]:
+    """Finaliza uma operação, atualiza o status E o odómetro/horímetro do veículo."""
+    update_data = journey_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_journey, field, value)
     
-    journey_to_update.end_mileage = journey_in.end_mileage
-    journey_to_update.end_time = func.now()
-    journey_to_update.is_active = False
+    db_journey.end_time = datetime.utcnow()
+    db_journey.is_active = False
+    db.add(db_journey)
 
-    vehicle_to_update.status = VehicleStatus.AVAILABLE
-    vehicle_to_update.current_km = journey_in.end_mileage
-    
-    db.add(journey_to_update)
-    db.add(vehicle_to_update)
-    
+    vehicle = db_journey.vehicle
+    if vehicle:
+        vehicle.status = VehicleStatus.AVAILABLE
+        # A LÓGICA CRUCIAL CORRIGIDA: movida para dentro do 'if vehicle:'
+        if journey_in.end_engine_hours is not None:
+            vehicle.current_engine_hours = journey_in.end_engine_hours
+        elif journey_in.end_mileage is not None:
+            vehicle.current_km = journey_in.end_mileage
+        
+        db.add(vehicle)
+
     await db.commit()
-    await db.refresh(journey_to_update)
-    await db.refresh(vehicle_to_update)
+    await db.refresh(db_journey, ['vehicle', 'driver'])
     
-    return journey_to_update, vehicle_to_update
+    return db_journey, vehicle
 
-# ... (O resto do arquivo continua o mesmo)
 async def get_journey(db: AsyncSession, *, journey_id: int, organization_id: int) -> Optional[Journey]:
     stmt = (
         select(Journey).where(Journey.id == journey_id, Journey.organization_id == organization_id)
@@ -85,34 +89,39 @@ async def get_all_journeys(db: AsyncSession, *, organization_id: int, skip: int 
         stmt = stmt.where(Journey.start_time >= date_from)
     if date_to:
         stmt = stmt.where(Journey.start_time < date_to + timedelta(days=1))
-    stmt = (
+    
+    final_stmt = (
         stmt.order_by(Journey.start_time.desc())
         .options(selectinload(Journey.driver), selectinload(Journey.vehicle))
         .offset(skip).limit(limit)
     )
-    result = await db.execute(stmt)
+    result = await db.execute(final_stmt)
     return result.scalars().all()
 
-async def get_active_journeys(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100) -> List[Journey]:
+async def get_active_journeys(db: AsyncSession, *, organization_id: int) -> list[Journey]:
     stmt = (
-        select(Journey).where(Journey.is_active == True, Journey.organization_id == organization_id)
-        .options(selectinload(Journey.driver), selectinload(Journey.vehicle))
-        .offset(skip).limit(limit)
+        select(Journey)
+        .where(Journey.organization_id == organization_id, Journey.is_active == True)
+        .options(selectinload(Journey.vehicle), selectinload(Journey.driver))
     )
     result = await db.execute(stmt)
     return result.scalars().all()
 
-async def get_active_journey_by_driver(db: AsyncSession, *, driver_id: int, organization_id: int) -> Optional[Journey]:
-    stmt = (
-        select(Journey).where(Journey.driver_id == driver_id, Journey.is_active == True, Journey.organization_id == organization_id)
-        .options(selectinload(Journey.vehicle))
+async def get_active_journey_by_driver(db: AsyncSession, *, driver_id: int, organization_id: int) -> Journey | None:
+    stmt = select(Journey).where(
+        Journey.driver_id == driver_id,
+        Journey.organization_id == organization_id,
+        Journey.is_active == True
     )
     result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
-async def delete_journey(db: AsyncSession, *, journey_id: int, organization_id: int) -> Journey | None:
-    journey_to_delete = await get_journey(db, journey_id=journey_id, organization_id=organization_id)
-    if journey_to_delete:
-        await db.delete(journey_to_delete)
-        await db.commit()
+async def delete_journey(db: AsyncSession, *, journey_to_delete: Journey) -> Journey:
+    vehicle = journey_to_delete.vehicle
+    if journey_to_delete.is_active and vehicle:
+        vehicle.status = VehicleStatus.AVAILABLE
+        db.add(vehicle)
+
+    await db.delete(journey_to_delete)
+    await db.commit()
     return journey_to_delete
