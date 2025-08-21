@@ -22,7 +22,7 @@ class Journey(Base):
     start_mileage = Column(Integer, nullable=False)
     end_mileage = Column(Integer, nullable=True)
     is_active = Column(Boolean, default=True, index=True)
-    trip_type = Column(Enum(JourneyType, native_enum=False), nullable=False) # Usa o Enum importado
+    trip_type = Column(String(50), nullable=False)
     destination_address = Column(String, nullable=True)
     trip_description = Column(String, nullable=True)
     start_engine_hours = Column(Float, nullable=True)

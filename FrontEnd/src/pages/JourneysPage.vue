@@ -121,13 +121,16 @@ watch(() => startForm.value.vehicle_id, (newVehicleId) => {
   }
 });
 
-function openStartDialog() {
-  startForm.value = {
+async function openStartDialog() {
+    await vehicleStore.fetchAllVehicles();
+
+   startForm.value = {
     vehicle_id: null,
     start_mileage: 0,
     trip_type: JourneyType.FREE_ROAM,
     trip_description: '',
   };
+
   isStartDialogOpen.value = true;
 }
 

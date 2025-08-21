@@ -15,9 +15,11 @@ class Vehicle(Base):
     model = Column(String(50), nullable=False)
     license_plate = Column(String(20), unique=True, nullable=True)
     identifier = Column(String(50), nullable=True)
+    status = Column(Enum(VehicleStatus, native_enum=False), nullable=False, default=VehicleStatus.AVAILABLE)
+
     year = Column(Integer, nullable=False)
     photo_url = Column(String(512), nullable=True)
-    status = Column(Enum(VehicleStatus, native_enum=False), nullable=False, default=VehicleStatus.AVAILABLE)
+    status = Column(String(50), nullable=False, default=VehicleStatus.AVAILABLE.value)
     current_km = Column(Integer, nullable=False, default=0)
     current_engine_hours = Column(Float, nullable=True, default=0)
     next_maintenance_date = Column(Date, nullable=True)
