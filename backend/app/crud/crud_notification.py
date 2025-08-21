@@ -15,10 +15,7 @@ async def get_notifications_for_user(db: AsyncSession, *, user_id: int, organiza
         select(Notification)
         .where(Notification.user_id == user_id, Notification.organization_id == organization_id)
         .order_by(Notification.created_at.desc())
-        .options(
-            selectinload(Notification.user),
-            selectinload(Notification.vehicle)
-        )
+        .options(selectinload(Notification.vehicle))
     )
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -35,13 +32,13 @@ async def get_unread_notifications_count(db: AsyncSession, *, user_id: int, orga
 
 async def mark_notification_as_read(db: AsyncSession, *, notification_id: int, user_id: int, organization_id: int) -> Notification | None:
     """Marca uma notificação como lida, garantindo que pertence ao utilizador e à organização correta."""
-    notification = await db.scalar(
-        select(Notification).where(
-            Notification.id == notification_id,
-            Notification.user_id == user_id,
-            Notification.organization_id == organization_id
-        )
+    stmt = select(Notification).where(
+        Notification.id == notification_id,
+        Notification.user_id == user_id,
+        Notification.organization_id == organization_id
     )
+    notification = await db.scalar(stmt)
+    
     if notification:
         notification.is_read = True
         db.add(notification)
@@ -51,6 +48,7 @@ async def mark_notification_as_read(db: AsyncSession, *, notification_id: int, u
 
 async def create_alert_for_all_managers(db: AsyncSession, *, message: str, organization_id: int, vehicle_id: int | None = None):
     """Cria uma notificação para todos os gestores de uma organização específica."""
+    # Previne a criação de alertas duplicados e não lidos para o mesmo veículo
     if vehicle_id:
         existing_alert_stmt = select(Notification).where(
             Notification.related_vehicle_id == vehicle_id,
@@ -59,7 +57,7 @@ async def create_alert_for_all_managers(db: AsyncSession, *, message: str, organ
             Notification.organization_id == organization_id
         )
         if await db.scalar(existing_alert_stmt):
-            return
+            return # Alerta já existe, não faz nada
 
     manager_stmt = select(User).where(
         User.role == UserRole.MANAGER,
@@ -78,49 +76,22 @@ async def create_alert_for_all_managers(db: AsyncSession, *, message: str, organ
         db.add(new_notification)
     await db.commit()
 
-async def run_system_checks_and_generate_alerts(db: AsyncSession):
+async def run_system_checks_for_organization(db: AsyncSession, *, organization_id: int):
     """
-    Verifica as regras de negócio para TODAS as organizações e gera alertas.
+    Verifica as regras de negócio para UMA organização específica e gera alertas.
     """
-    print("Iniciando verificação de alertas do sistema para todas as organizações...")
+    print(f"A verificar alertas para a Organização ID: {organization_id}")
     
-    orgs = (await db.execute(select(Organization))).scalars().all()
-    for org in orgs:
-        print(f"A verificar alertas para a Organização: {org.name} (ID: {org.id})")
-        
-        # 1. Alerta: Veículos com manutenção por KM próxima
-        km_threshold = 1000
-        subquery = (
-            select(Journey.vehicle_id, func.max(Journey.end_mileage).label("current_km"))
-            .where(Journey.organization_id == org.id)
-            .group_by(Journey.vehicle_id).subquery()
-        )
-        km_alert_stmt = (
-            select(Vehicle, subquery.c.current_km)
-            .join(subquery, Vehicle.id == subquery.c.vehicle_id)
-            .where(
-                Vehicle.organization_id == org.id,
-                Vehicle.next_maintenance_km != None,
-                subquery.c.current_km != None,
-                (Vehicle.next_maintenance_km - subquery.c.current_km) <= km_threshold,
-                (Vehicle.next_maintenance_km - subquery.c.current_km) > 0
-            )
-        )
-        vehicles_for_km_alert = (await db.execute(km_alert_stmt)).all()
-        for vehicle, current_km in vehicles_for_km_alert:
-            km_remaining = vehicle.next_maintenance_km - current_km
-            message = f"Manutenção por KM pendente para {vehicle.brand} {vehicle.model} (Placa: {vehicle.license_plate}). Faltam {km_remaining} KM."
-            await create_alert_for_all_managers(db, message=message, organization_id=org.id, vehicle_id=vehicle.id)
+    # 1. Alerta: Veículos com manutenção por Data próxima
+    date_threshold = datetime.utcnow().date() + timedelta(days=14)
+    vehicles_due_date_stmt = select(Vehicle).where(
+        Vehicle.organization_id == organization_id,
+        Vehicle.next_maintenance_date != None,
+        Vehicle.next_maintenance_date <= date_threshold
+    )
+    for vehicle in (await db.execute(vehicles_due_date_stmt)).scalars().all():
+        message = f"Manutenção agendada para {vehicle.brand} {vehicle.model} em {vehicle.next_maintenance_date.strftime('%d/%m/%Y')}."
+        await create_alert_for_all_managers(db, message=message, organization_id=organization_id, vehicle_id=vehicle.id)
 
-        # 2. Alerta: Veículos com manutenção por Data próxima
-        date_threshold = datetime.utcnow().date() + timedelta(days=14)
-        vehicles_due_date_stmt = select(Vehicle).where(
-            Vehicle.organization_id == org.id,
-            Vehicle.next_maintenance_date != None,
-            Vehicle.next_maintenance_date <= date_threshold
-        )
-        for vehicle in (await db.execute(vehicles_due_date_stmt)).scalars().all():
-            message = f"Manutenção agendada para {vehicle.brand} {vehicle.model} (Placa: {vehicle.license_plate}) em {vehicle.next_maintenance_date.strftime('%d/%m/%Y')}."
-            await create_alert_for_all_managers(db, message=message, organization_id=org.id, vehicle_id=vehicle.id)
-
-    print("Verificação de alertas do sistema concluída.")
+    # Adicione aqui outras verificações, como a de KM
+    print(f"Verificação de alertas concluída para a Organização ID: {organization_id}")
