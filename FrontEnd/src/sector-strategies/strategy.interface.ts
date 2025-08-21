@@ -13,4 +13,8 @@ export interface ISectorStrategy {
   newButtonLabel: string;
   journeyPageTitle: string;
   journeyHistoryTitle: string;
+    journeyStartSuccessMessage: string;
+      journeyEndSuccessMessage: string;
+
+
 }

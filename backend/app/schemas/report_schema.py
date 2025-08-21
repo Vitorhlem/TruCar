@@ -11,10 +11,12 @@ class KPI(BaseModel):
     maintenance_vehicles: int
     total_fuel_cost_current_month: float
     open_maintenance_requests: int
+    km_last_30_days: float # Este campo será usado para KM ou Horas
+
 
 class KmPerDay(BaseModel):
     date: str
-    total_km: int
+    total_km: float
 
 class TopVehicle(BaseModel):
     vehicle_info: str

@@ -15,4 +15,8 @@ export const ServicesStrategy: ISectorStrategy = {
   newButtonLabel: 'Novo Veículo',
   journeyPageTitle: 'Registro de Viagens',
   journeyHistoryTitle: 'Histórico de Viagens',
+    journeyStartSuccessMessage: 'Operação iniciada com sucesso!',
+      journeyEndSuccessMessage: 'Operação finalizada com sucesso!',
+
+
 };

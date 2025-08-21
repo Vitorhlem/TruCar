@@ -14,4 +14,6 @@ export const ConstructionStrategy: ISectorStrategy = {
   newButtonLabel: 'Novo Equipamento',
   journeyPageTitle: 'Registro de Tarefas',
   journeyHistoryTitle: 'Histórico de Tarefas',
+ journeyStartSuccessMessage: 'Tarefa iniciada com sucesso!',
+  journeyEndSuccessMessage: 'Tarefa finalizada com sucesso!',
 };

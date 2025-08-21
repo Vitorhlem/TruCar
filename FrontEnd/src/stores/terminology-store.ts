@@ -37,6 +37,9 @@ export const useTerminologyStore = defineStore('terminology', () => {
   const newButtonLabel = computed(() => activeStrategy.value.newButtonLabel);
   const journeyPageTitle = computed(() => activeStrategy.value.journeyPageTitle);
   const journeyHistoryTitle = computed(() => activeStrategy.value.journeyHistoryTitle);
+  const journeyStartSuccessMessage = computed(() => activeStrategy.value.journeyStartSuccessMessage);
+const journeyEndSuccessMessage = computed(() => activeStrategy.value.journeyEndSuccessMessage);
+
 
   return {
     vehicleNoun,
@@ -45,6 +48,8 @@ export const useTerminologyStore = defineStore('terminology', () => {
     journeyNounPlural,
     distanceUnit,
     plateOrIdentifierLabel,
+    journeyStartSuccessMessage,
+      journeyEndSuccessMessage,
     startJourneyButtonLabel,
     vehiclePageTitle,
     addVehicleButtonLabel,
