@@ -1,5 +1,3 @@
-# backend/app/core/auth.py
-
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -11,7 +9,6 @@ from app.core.config import settings
 from app.models.user_model import User
 from app import crud
 
-# Configuração para o hash de senhas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALGORITHM = settings.ALGORITHM
@@ -43,7 +40,7 @@ async def authenticate_user(
     """
     Autentica um utilizador. Retorna o objeto User se for bem-sucedido, senão None.
     """
-    # Busca o utilizador pelo email, garantindo que a organização venha junto
+    # Esta chamada agora corresponde à função de CRUD corrigida
     user = await crud.user.get_user_by_email(db, email=email, load_organization=True)
     if not user:
         return None

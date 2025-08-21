@@ -2,7 +2,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import List, Optional
 
 from app.core.security import get_password_hash, verify_password
 from app.models.user_model import User, UserRole
@@ -18,22 +18,24 @@ async def get_user_by_email(
 ) -> User | None:
     """
     Busca um utilizador pelo seu email.
-    
-    Se load_organization for True, carrega o relacionamento com a organização
-    de forma otimizada (eager loading).
+    Se load_organization for True, carrega o relacionamento com a organização.
     """
     query = select(User).where(User.email == email)
     
-    # Esta é a lógica de otimização
+    # Lógica de otimização que estava em falta
     if load_organization:
         query = query.options(selectinload(User.organization))
         
     result = await db.execute(query)
     return result.scalars().first()
 
-async def get_user(db: AsyncSession, *, user_id: int) -> User | None:
-    result = await db.execute(select(User).filter(User.id == user_id))
-    return result.scalar_one_or_none()
+async def get_user(
+    db: AsyncSession, *, user_id: int, organization_id: int
+) -> User | None:
+    """Busca um utilizador pelo ID, garantindo que ele pertence à organização correta."""
+    stmt = select(User).where(User.id == user_id, User.organization_id == organization_id)
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 async def get_user_with_organization(db: AsyncSession, *, user_id: int) -> User | None:
     """Busca um utilizador e a sua organização associada."""
@@ -41,11 +43,33 @@ async def get_user_with_organization(db: AsyncSession, *, user_id: int) -> User 
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
-async def get_users(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100) -> List[User]:
+async def get_users(
+    db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100
+) -> List[User]:
     """Retorna uma lista de utilizadores de uma organização específica."""
     stmt = select(User).where(User.organization_id == organization_id).order_by(User.id).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
+
+async def create_user(
+    db: AsyncSession, *, user_in: UserCreate, organization_id: int
+) -> User:
+    """Cria um novo utilizador associado a uma organização."""
+    hashed_password = get_password_hash(user_in.password)
+    db_user = User(
+        full_name=user_in.full_name,
+        email=user_in.email,
+        hashed_password=hashed_password,
+        role=user_in.role,
+        organization_id=organization_id
+    )
+    db.add(db_user)
+    await db.commit()
+    
+    # A CORREÇÃO: Dizemos ao refresh para carregar também a relação 'organization'
+    await db.refresh(db_user, ["organization"])
+    
+    return db_user
 
 async def get_users_by_role(db: AsyncSession, *, organization_id: int, role: UserRole) -> List[User]:
     """Busca todos os utilizadores com uma função específica dentro de uma organização."""
@@ -72,10 +96,13 @@ async def create_user(db: AsyncSession, *, user_in: UserCreate, organization_id:
     await db.refresh(db_user)
     return db_user
 
-async def update_user(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -> User:
+async def update_user(
+    db: AsyncSession, *, db_user: User, user_in: UserUpdate
+) -> User:
+    """Atualiza os dados de um utilizador."""
     update_data = user_in.model_dump(exclude_unset=True)
     if "password" in update_data and update_data["password"]:
-        hashed_password = await run_in_threadpool(get_password_hash, update_data["password"])
+        hashed_password = get_password_hash(update_data["password"])
         update_data["hashed_password"] = hashed_password
         del update_data["password"]
     
@@ -88,6 +115,7 @@ async def update_user(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -
     return db_user
 
 async def delete_user(db: AsyncSession, *, db_user: User) -> User:
+    """Deleta um utilizador."""
     await db.delete(db_user)
     await db.commit()
     return db_user
@@ -103,12 +131,11 @@ async def authenticate(db: AsyncSession, *, email: str, password: str) -> User |
         
     return user
 
-async def get_user_stats(db: AsyncSession, *, user_id: int, organization_id: int):
+async def get_user_stats(db: AsyncSession, *, user_id: int, organization_id: int) -> dict | None:
     """Calcula as estatísticas de um utilizador, garantindo que pertence à organização."""
-    # Garante que estamos a calcular estatísticas apenas para um utilizador da organização correta
-    user = await get_user(db, user_id=user_id)
-    if not user or user.organization_id != organization_id:
-        return None # Ou lançar um erro de permissão
+    user = await get_user(db, user_id=user_id, organization_id=organization_id)
+    if not user:
+        return None 
 
     # Total de Viagens e KM
     total_stats_stmt = select(

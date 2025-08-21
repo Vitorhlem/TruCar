@@ -43,11 +43,17 @@ async def get_driver_leaderboard(db: AsyncSession, *, organization_id: int) -> d
     return {"leaderboard": leaderboard}
 
 
-async def get_driver_activity_data(db: AsyncSession, *, driver_id: int, organization_id: int, date_from: date, date_to: date) -> dict:
-    """Agrega os dados de atividade de um motorista para um relatório em PDF, dentro de uma organização."""
-    driver = await crud.user.get_user(db, user_id=driver_id)
-    if not driver or driver.organization_id != organization_id:
-        return {}
+async def get_driver_activity_data(
+    db: AsyncSession, *, driver_id: int, organization_id: int, date_from: date, date_to: date
+) -> dict:
+    """
+    Agrega os dados de atividade de um motorista, garantindo que ele pertence à organização.
+    """
+    # Validação de Segurança: Busca o motorista garantindo que ele pertence à organização correta.
+    driver = await crud.user.get_user(db, user_id=driver_id, organization_id=organization_id)
+    if not driver:
+        # Lança um erro que o endpoint irá capturar, em vez de retornar um dicionário vazio.
+        raise ValueError("Motorista não encontrado nesta organização.")
 
     end_date = date_to + timedelta(days=1)
 

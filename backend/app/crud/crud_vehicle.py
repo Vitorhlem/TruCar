@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from app.models.vehicle_model import Vehicle
 from app.schemas.vehicle_schema import VehicleCreate, VehicleUpdate
@@ -29,56 +29,33 @@ async def create_vehicle(
 
 # ADICIONE ESTA FUNÇÃO COMPLETA
 async def get_multi_by_org(
-    db: AsyncSession,
-    *,
-    organization_id: int,
-    skip: int = 0,
-    limit: int = 100,
-    search: str | None = None
-) -> tuple[list[Vehicle], int]:
-    """
-    Retorna uma lista paginada de veículos para uma organização e a contagem total.
-    """
-    # Query para buscar os veículos
-    stmt = (
-        select(Vehicle)
-        .where(Vehicle.organization_id == organization_id)
-    )
+    db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100, search: str | None = None
+) -> Tuple[List[Vehicle], int]:
+    """Retorna uma lista paginada de veículos para uma organização e a contagem total."""
     
-    # Query para contar o total de veículos (para a paginação)
-    count_stmt = (
-        select(func.count())
-        .select_from(Vehicle)
-        .where(Vehicle.organization_id == organization_id)
-    )
+    # Base da query com o filtro de organização
+    base_query = select(Vehicle).where(Vehicle.organization_id == organization_id)
+    count_query = select(func.count()).select_from(Vehicle).where(Vehicle.organization_id == organization_id)
 
     # Aplica o filtro de busca se ele existir
     if search:
         search_term = f"%{search}%"
-        stmt = stmt.where(
-            or_(
-                Vehicle.brand.ilike(search_term),
-                Vehicle.model.ilike(search_term),
-                Vehicle.license_plate.ilike(search_term),
-                Vehicle.identifier.ilike(search_term)
-            )
+        search_filter = or_(
+            Vehicle.brand.ilike(search_term),
+            Vehicle.model.ilike(search_term),
+            Vehicle.license_plate.ilike(search_term),
+            Vehicle.identifier.ilike(search_term)
         )
-        count_stmt = count_stmt.where(
-            or_(
-                Vehicle.brand.ilike(search_term),
-                Vehicle.model.ilike(search_term),
-                Vehicle.license_plate.ilike(search_term),
-                Vehicle.identifier.ilike(search_term)
-            )
-        )
+        base_query = base_query.where(search_filter)
+        count_query = count_query.where(search_filter)
 
     # Executa a contagem total
-    total_count_result = await db.execute(count_stmt)
+    total_count_result = await db.execute(count_query)
     total = total_count_result.scalar_one()
 
-    # Aplica a paginação e executa a busca dos veículos
-    stmt = stmt.offset(skip).limit(limit).order_by(Vehicle.id)
-    vehicles_result = await db.execute(stmt)
+    # Aplica a paginação e ordenação na query principal
+    final_query = base_query.offset(skip).limit(limit).order_by(Vehicle.id)
+    vehicles_result = await db.execute(final_query)
     vehicles = vehicles_result.scalars().all()
     
     return vehicles, total
@@ -101,13 +78,8 @@ async def get_all_vehicles_by_org(
 async def get_vehicle(
     db: AsyncSession, *, vehicle_id: int, organization_id: int
 ) -> Vehicle | None:
-    """
-    Busca um veículo específico pelo ID, garantindo que ele pertença à organização correta.
-    """
-    stmt = select(Vehicle).where(
-        Vehicle.id == vehicle_id, 
-        Vehicle.organization_id == organization_id
-    )
+    """Busca um veículo específico pelo ID, garantindo que ele pertença à organização correta."""
+    stmt = select(Vehicle).where(Vehicle.id == vehicle_id, Vehicle.organization_id == organization_id)
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -116,6 +88,7 @@ async def get_vehicle_by_license_plate(db: AsyncSession, *, license_plate: str, 
     stmt = select(Vehicle).where(Vehicle.license_plate == license_plate, Vehicle.organization_id == organization_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
 
 async def get_all_vehicles(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 10, search: str | None = None) -> List[Vehicle]:
     """Retorna uma lista de veículos de uma organização, com paginação e busca."""

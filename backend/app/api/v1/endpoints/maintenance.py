@@ -82,19 +82,17 @@ async def create_maintenance_request(
     *,
     db: AsyncSession = Depends(deps.get_db),
     request_in: MaintenanceRequestCreate,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """Cria uma nova solicitação de manutenção e dispara a notificação por e-mail."""
-    new_request = await crud.maintenance.create_request(db=db, request_in=request_in, reporter_id=current_user.id)
-    
-    # Busca os gestores AQUI, no contexto async do endpoint
-    managers = await crud.user.get_users_by_role(db, role=UserRole.MANAGER)
-    manager_emails = [manager.email for manager in managers]
-    
-    # Passa a lista de e-mails e os dados para a tarefa em segundo plano
-    background_tasks.add_task(send_new_request_email_background, manager_emails, new_request)
-    
+    """Cria uma nova solicitação de manutenção."""
+    # Validação de segurança: garante que o veículo pertence à organização do usuário
+    vehicle = await crud.vehicle.get_vehicle(db, vehicle_id=request_in.vehicle_id, organization_id=current_user.organization_id)
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Veículo não encontrado nesta organização.")
+
+    new_request = await crud.maintenance.create_request(
+        db=db, request_in=request_in, reporter_id=current_user.id, organization_id=current_user.organization_id
+    )
     return new_request
 
 @router.delete("/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -104,8 +102,14 @@ async def delete_maintenance_request(
     request_id: int,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Deleta uma solicitação de manutenção. Acessível apenas para gestores."""
-    await crud.maintenance.delete_request(db=db, request_id=request_id)
+    """Deleta uma solicitação de manutenção (apenas para gestores)."""
+    request_to_delete = await crud.maintenance.get_request(
+        db=db, request_id=request_id, organization_id=current_user.organization_id
+    )
+    if not request_to_delete:
+        raise HTTPException(status_code=404, detail="Solicitação não encontrada.")
+        
+    await crud.maintenance.delete_request(db=db, request_to_delete=request_to_delete)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.post("/", response_model=MaintenanceRequestPublic, status_code=status.HTTP_201_CREATED)
@@ -122,41 +126,50 @@ async def create_maintenance_request(
 async def read_maintenance_requests(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
-    search: str | None = None, # Novo parâmetro de busca
+    search: str | None = None,
 ):
-    """
-    Retorna as solicitações de manutenção com filtro de busca.
-    """
+    """Retorna as solicitações de manutenção. Gestores veem tudo, motoristas veem apenas o que reportaram."""
     if current_user.role == UserRole.MANAGER:
         return await crud.maintenance.get_all_requests(db=db, organization_id=current_user.organization_id, search=search)
     else:
         return await crud.maintenance.get_requests_by_driver(db=db, driver_id=current_user.id, organization_id=current_user.organization_id, search=search)
 
 @router.put("/{request_id}", response_model=MaintenanceRequestPublic)
-async def update_request(
+async def update_request_status(
     *,
     db: AsyncSession = Depends(deps.get_db),
     request_id: int,
     update_data: MaintenanceRequestUpdate,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """Atualiza o status de uma solicitação."""
-    request = await crud.maintenance.get_request(db=db, request_id=request_id)
+    """Atualiza o status de uma solicitação (apenas para gestores)."""
+    request = await crud.maintenance.get_request(
+        db=db, request_id=request_id, organization_id=current_user.organization_id
+    )
     if not request:
         raise HTTPException(status_code=404, detail="Solicitação não encontrada.")
-    return await crud.maintenance.update_request_status(db=db, db_obj=request, update_data=update_data, manager_id=current_user.id)
+    
+    return await crud.maintenance.update_request_status(
+        db=db, db_obj=request, update_data=update_data, manager_id=current_user.id
+    )
+
 
 @router.get("/{request_id}/comments", response_model=List[MaintenanceCommentPublic])
-async def read_comments(
+async def read_comments_for_request(
     request_id: int,
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Retorna os comentários de uma solicitação de manutenção."""
-    return await crud.maintenance_comment.get_comments_for_request(db=db, request_id=request_id)
+    comments = await crud.maintenance_comment.get_comments_for_request(
+        db=db, request_id=request_id, organization_id=current_user.organization_id
+    )
+    # A função CRUD já valida o acesso, então aqui só retornamos
+    return comments
 
-@router.post("/{request_id}/comments", response_model=MaintenanceCommentPublic)
-async def create_comment(
+
+@router.post("/{request_id}/comments", response_model=MaintenanceCommentPublic, status_code=status.HTTP_201_CREATED)
+async def create_comment_for_request(
     request_id: int,
     *,
     db: AsyncSession = Depends(deps.get_db),
@@ -164,7 +177,13 @@ async def create_comment(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Adiciona um novo comentário a uma solicitação."""
-    return await crud.maintenance_comment.create_comment(db=db, comment_in=comment_in, request_id=request_id, user_id=current_user.id)
+    try:
+        return await crud.maintenance_comment.create_comment(
+            db=db, comment_in=comment_in, request_id=request_id,
+            user_id=current_user.id, organization_id=current_user.organization_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.post("/upload-file", response_model=dict)
 async def upload_attachment_file(
