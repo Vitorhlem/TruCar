@@ -24,19 +24,9 @@ async def create_vehicle(
     vehicle_in: VehicleCreate,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """Cria um novo veículo/maquinário com validação de setor."""
+    """Cria um novo veículo/maquinário para a organização do gestor logado."""
     
-    # Adiciona a lógica de negócio aqui
-    sector = current_user.organization.sector
-    
-    # 1. Validação do campo obrigatório por setor
-    if sector != 'agronegocio' and not vehicle_in.license_plate:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="A placa é obrigatória para este setor."
-        )
-
-    # 2. Validação de duplicados
+    # Validação de duplicados (opcional, mas recomendado)
     if vehicle_in.license_plate:
         existing_vehicle = await crud.vehicle.get_vehicle_by_license_plate(db, license_plate=vehicle_in.license_plate)
         if existing_vehicle:
@@ -45,7 +35,7 @@ async def create_vehicle(
                 detail=f"Um veículo com a placa {vehicle_in.license_plate} já está cadastrado."
             )
             
-    # O resto da lógica continua igual
+    # A LÓGICA CRUCIAL: Passa a organization_id do utilizador atual para a função de CRUD
     vehicle = await crud.vehicle.create_vehicle(
         db=db, vehicle_in=vehicle_in, organization_id=current_user.organization_id
     )

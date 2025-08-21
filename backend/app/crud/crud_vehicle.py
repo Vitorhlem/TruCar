@@ -6,14 +6,26 @@ from app.models.vehicle_model import Vehicle
 from app.schemas.vehicle_schema import VehicleCreate, VehicleUpdate
 from app.models.location_history_model import LocationHistory
 
-async def create_vehicle(db: AsyncSession, *, vehicle_in: VehicleCreate, organization_id: int) -> Vehicle:
-    """Cria um novo veículo, associando-o a uma organização."""
-    db_vehicle = Vehicle(**vehicle_in.model_dump(), organization_id=organization_id)
+# Em backend/app/crud/crud_vehicle.py
+from app.models.vehicle_model import Vehicle, VehicleStatus
+from app.schemas.vehicle_schema import VehicleCreate
+
+async def create_vehicle(
+    db: AsyncSession, *, vehicle_in: VehicleCreate, organization_id: int
+) -> Vehicle:
+    """
+    Cria um novo veículo, garantindo que a organization_id seja definida.
+    """
+    # Cria um dicionário a partir do schema Pydantic
+    vehicle_data = vehicle_in.model_dump()
+    
+    # Adiciona a organization_id ao dicionário de dados
+    db_vehicle = Vehicle(**vehicle_data, organization_id=organization_id)
+    
     db.add(db_vehicle)
     await db.commit()
     await db.refresh(db_vehicle)
     return db_vehicle
-
 
 # ADICIONE ESTA FUNÇÃO COMPLETA
 async def get_multi_by_org(

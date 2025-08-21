@@ -29,8 +29,8 @@ class Journey(Base):
     end_engine_hours = Column(Float, nullable=True)
 
     # Relacionamentos
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False)
-    driver_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
+    driver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
 
     vehicle = relationship("Vehicle", back_populates="journeys")

@@ -9,13 +9,12 @@ from app.models.vehicle_model import Vehicle, VehicleStatus
 from app.models.journey_model import Journey
 from app.models.fuel_log_model import FuelLog
 from app.models.maintenance_request_model import MaintenanceRequest, MaintenanceStatus
-# Adicione a importação do schema para garantir a correspondência do tipo de retorno
+from app.models.organization_model import Sector
 from app.schemas.report_schema import DashboardSummary
 
 
 async def get_driver_leaderboard(db: AsyncSession, *, organization_id: int) -> dict:
     """Calcula e retorna o ranking de performance dos motoristas de uma organização."""
-    # ... (seu código original, sem alterações)
     fleet_km_stmt = select(func.sum(Journey.end_mileage - Journey.start_mileage)).where(Journey.is_active == False, Journey.organization_id == organization_id)
     fleet_liters_stmt = select(func.sum(FuelLog.liters)).where(FuelLog.organization_id == organization_id)
     total_fleet_km = (await db.execute(fleet_km_stmt)).scalar_one() or 0.0
@@ -46,7 +45,6 @@ async def get_driver_leaderboard(db: AsyncSession, *, organization_id: int) -> d
 
 async def get_driver_activity_data(db: AsyncSession, *, driver_id: int, organization_id: int, date_from: date, date_to: date) -> dict:
     """Agrega os dados de atividade de um motorista para um relatório em PDF, dentro de uma organização."""
-    # ... (seu código original, sem alterações)
     driver = await crud.user.get_user(db, user_id=driver_id)
     if not driver or driver.organization_id != organization_id:
         return {}
@@ -78,44 +76,70 @@ async def get_driver_activity_data(db: AsyncSession, *, driver_id: int, organiza
         "journeys": journeys, "fuel_logs": fuel_logs,
     }
 
-# --- FUNÇÃO CORRIGIDA ---
+
 async def get_dashboard_summary(
     db: AsyncSession, *, current_user: User, start_date: datetime
 ) -> DashboardSummary:
     """
-    Calcula os dados agregados para o dashboard, filtrando pela organização do utilizador.
+    Busca e agrega todos os dados para o Dashboard, filtrados pela organização do utilizador.
     """
-    organization_id = current_user.organization_id
+    org_id = current_user.organization_id
+    sector_str = current_user.organization.sector
 
-    # Total de Veículos
-    total_vehicles_query = select(func.count(Vehicle.id)).where(Vehicle.organization_id == organization_id)
-    total_vehicles = (await db.execute(total_vehicles_query)).scalar_one_or_none() or 0
+    # --- 1. CÁLCULO DOS KPIs ---
+    kpi_stmt = select(Vehicle.status, func.count(Vehicle.id)).where(Vehicle.organization_id == org_id).group_by(Vehicle.status)
+    kpi_result = await db.execute(kpi_stmt)
+    status_counts = {status.value: count for status, count in kpi_result.all()}
 
-    # Veículos Disponíveis
-    available_vehicles_query = select(func.count(Vehicle.id)).where(
-        Vehicle.organization_id == organization_id,
-        Vehicle.status == VehicleStatus.AVAILABLE
+    # --- 2. CÁLCULO DINÂMICO DE DISTÂNCIA (KM) / DURAÇÃO (HORAS) ---
+    if sector_str == Sector.AGRONEGOCIO.value:
+        # Define a coluna de cálculo para Horas de Motor
+        distance_col = func.sum(Journey.end_engine_hours - Journey.start_engine_hours).label("total_distance")
+        filter_col = Journey.end_engine_hours.is_not(None)
+    else:
+        # Define a coluna de cálculo para KM
+        distance_col = func.sum(Journey.end_mileage - Journey.start_mileage).label("total_distance")
+        filter_col = Journey.end_mileage.is_not(None)
+
+    # Query para o gráfico de linha (dados por dia)
+    distance_per_day_stmt = (
+        select(func.date(Journey.start_time).label("date"), distance_col)
+        .where(
+            Journey.organization_id == org_id,
+            Journey.is_active == False,
+            Journey.start_time >= start_date,
+            filter_col
+        )
+        .group_by(func.date(Journey.start_time))
+        .order_by(func.date(Journey.start_time))
     )
-    available_vehicles = (await db.execute(available_vehicles_query)).scalar_one_or_none() or 0
+    distance_result = await db.execute(distance_per_day_stmt)
+    km_per_day_last_30_days = [{"date": row.date.isoformat(), "total_km": row.total_distance or 0} for row in distance_result.all()]
     
-    # Total de Viagens nos últimos 30 dias
-    total_journeys_query = select(func.count(Journey.id)).where(
-        Journey.organization_id == organization_id,
-        Journey.start_time >= start_date
-    )
-    total_journeys = (await db.execute(total_journeys_query)).scalar_one_or_none() or 0
+    # O total para o KPI é a soma dos valores diários do gráfico
+    total_distance_or_duration = sum(item['total_km'] for item in km_per_day_last_30_days)
 
-    # KM Total Rodado nos últimos 30 dias - CORRIGIDO
-    total_km_query = select(func.sum(Journey.end_mileage - Journey.start_mileage)).where(
-        Journey.organization_id == organization_id,
-        Journey.start_time >= start_date,
-        Journey.end_mileage.is_not(None) # Garante que só viagens finalizadas são contadas
-    )
-    total_km = (await db.execute(total_km_query)).scalar_one_or_none() or 0.0
+    # --- 3. MONTAGEM DO OBJETO DE KPIs ---
+    kpis_data = {
+        "total_vehicles": sum(status_counts.values()),
+        "available_vehicles": status_counts.get(VehicleStatus.AVAILABLE.value, 0),
+        "in_use_vehicles": status_counts.get(VehicleStatus.IN_USE.value, 0),
+        "maintenance_vehicles": status_counts.get(VehicleStatus.MAINTENANCE.value, 0),
+        "km_last_30_days": float(total_distance_or_duration),
+        "total_fuel_cost_current_month": 0, # Placeholder
+        "open_maintenance_requests": 0,    # Placeholder
+    }
+    
+    # --- 4. BUSCA DE VIAGENS ATIVAS ---
+    active_journeys = await crud.journey.get_active_journeys(db, organization_id=org_id)
 
+    # --- 5. MONTAGEM E RETORNO DO OBJETO FINAL ---
+    # Retorna o objeto Pydantic, que garante a estrutura correta
     return DashboardSummary(
-        total_vehicles=total_vehicles,
-        available_vehicles=available_vehicles,
-        journeys_last_30_days=total_journeys,
-        km_last_30_days=float(total_km), # Garante que o tipo é float
+        kpis=kpis_data,
+        km_per_day_last_30_days=km_per_day_last_30_days, # Agora retorna os dados reais
+        top_5_vehicles_by_km=[],
+        fuel_cost_last_6_months=[],
+        upcoming_maintenances=[],
+        active_journeys=active_journeys
     )
