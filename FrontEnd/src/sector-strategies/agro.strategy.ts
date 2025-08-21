@@ -14,4 +14,6 @@ export const AgroStrategy: ISectorStrategy = {
   newButtonLabel: 'Novo Maquinário',
   journeyPageTitle: 'Registro de Operações',
   journeyHistoryTitle: 'Histórico de Operações',
+  journeyStartSuccessMessage: 'Operação iniciada com sucesso!',
+  journeyEndSuccessMessage: 'Operação finalizada com sucesso!',
 };

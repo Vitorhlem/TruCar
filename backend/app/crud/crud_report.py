@@ -97,13 +97,11 @@ async def get_dashboard_summary(
     kpi_result = await db.execute(kpi_stmt)
     status_counts = {status.value: count for status, count in kpi_result.all()}
 
-    # --- 2. CÁLCULO DINÂMICO DE DISTÂNCIA (KM) / DURAÇÃO (HORAS) ---
+     # --- 2. CÁLCULO DINÂMICO DE DISTÂNCIA (KM) / DURAÇÃO (HORAS) ---
     if sector_str == Sector.AGRONEGOCIO.value:
-        # Define a coluna de cálculo para Horas de Motor
         distance_col = func.sum(Journey.end_engine_hours - Journey.start_engine_hours).label("total_distance")
         filter_col = Journey.end_engine_hours.is_not(None)
     else:
-        # Define a coluna de cálculo para KM
         distance_col = func.sum(Journey.end_mileage - Journey.start_mileage).label("total_distance")
         filter_col = Journey.end_mileage.is_not(None)
 
@@ -120,7 +118,11 @@ async def get_dashboard_summary(
         .order_by(func.date(Journey.start_time))
     )
     distance_result = await db.execute(distance_per_day_stmt)
-    km_per_day_last_30_days = [{"date": row.date.isoformat(), "total_km": row.total_distance or 0} for row in distance_result.all()]
+    km_per_day_data = [KmPerDay(date=row.date.isoformat(), total_km=float(row.total_distance or 0)) for row in distance_result.all()]
+    
+    # O total para o KPI é a soma dos valores diários do gráfico
+    total_distance_or_duration = sum(item.total_km for item in km_per_day_data)
+
     
     # O total para o KPI é a soma dos valores diários do gráfico
     total_distance_or_duration = sum(item['total_km'] for item in km_per_day_last_30_days)
@@ -131,7 +133,7 @@ async def get_dashboard_summary(
         "available_vehicles": status_counts.get(VehicleStatus.AVAILABLE.value, 0),
         "in_use_vehicles": status_counts.get(VehicleStatus.IN_USE.value, 0),
         "maintenance_vehicles": status_counts.get(VehicleStatus.MAINTENANCE.value, 0),
-        "km_last_30_days": float(total_distance_or_duration),
+        "km_last_30_days=float(total_distance_or_duration)
         "total_fuel_cost_current_month": 0, # Placeholder
         "open_maintenance_requests": 0,    # Placeholder
     }

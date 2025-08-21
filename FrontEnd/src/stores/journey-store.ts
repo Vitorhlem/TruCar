@@ -2,10 +2,11 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
-import { isAxiosError } from 'axios';
 import type { Journey, JourneyCreate, JourneyUpdate } from 'src/models/journey-models';
 import { type Vehicle } from 'src/models/vehicle-models'; // <-- ADICIONE ESTE IMPORT
 import { useAuthStore } from './auth-store';
+import { useDashboardStore } from './dashboard-store';
+
 
 export const useJourneyStore = defineStore('journey', () => {
   const journeys = ref<Journey[]>([]);
@@ -42,20 +43,15 @@ export const useJourneyStore = defineStore('journey', () => {
     }
   }
 
-  async function startJourney(journeyData: JourneyCreate) {
+ async function startJourney(journeyData: JourneyCreate) {
     isLoading.value = true;
     try {
       const response = await api.post<Journey>('/journeys/start', journeyData);
       journeys.value.unshift(response.data);
-      Notify.create({ type: 'positive', message: 'Viagem iniciada com sucesso!' });
-    } catch (error: unknown) {
-      console.error('Falha ao iniciar viagem:', error);
-      let message = 'Erro ao iniciar viagem.';
-      if (isAxiosError(error) && error.response?.data?.detail) {
-        message = error.response.data.detail as string;
-      }
-      Notify.create({ type: 'negative', message });
-      throw error;
+      // ATUALIZAÇÃO EM TEMPO REAL
+      const dashboardStore = useDashboardStore();
+      await dashboardStore.fetchSummary();
+      // NÃO HÁ NOTIFICAÇÃO AQUI
     } finally {
       isLoading.value = false;
     }
@@ -72,16 +68,10 @@ export const useJourneyStore = defineStore('journey', () => {
       if (index !== -1) {
         journeys.value[index] = response.data.journey;
       }
-      Notify.create({ type: 'positive', message: 'Viagem finalizada com sucesso!' });
-      return response.data.vehicle; // Retorna o veículo atualizado
-    } catch (error: unknown) {
-      console.error('Falha ao finalizar viagem:', error);
-      let message = 'Erro ao finalizar viagem.';
-      if (isAxiosError(error) && error.response?.data?.detail) {
-        message = error.response.data.detail as string;
-      }
-      Notify.create({ type: 'negative', message });
-      throw error;
+      // ATUALIZAÇÃO EM TEMPO REAL
+      const dashboardStore = useDashboardStore();
+      await dashboardStore.fetchSummary();
+      return response.data.vehicle;
     } finally {
       isLoading.value = false;
     }

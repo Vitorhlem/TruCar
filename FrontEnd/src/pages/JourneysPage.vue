@@ -73,17 +73,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
+import { useQuasar, type QTableColumn } from 'quasar';
+// A LINHA QUE FALTAVA: Importamos a ferramenta para verificar o tipo do erro
+import { isAxiosError } from 'axios';
+
 import { useJourneyStore } from 'stores/journey-store';
 import { useVehicleStore } from 'stores/vehicle-store';
-import { useUserStore } from 'stores/user-store';
 import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
-import { type QTableColumn } from 'quasar';
 import { JourneyType, type Journey, type JourneyCreate, type JourneyUpdate } from 'src/models/journey-models';
 
+const $q = useQuasar();
 const journeyStore = useJourneyStore();
 const vehicleStore = useVehicleStore();
-const userStore = useUserStore();
 const authStore = useAuthStore();
 const terminologyStore = useTerminologyStore();
 
@@ -122,15 +124,13 @@ watch(() => startForm.value.vehicle_id, (newVehicleId) => {
 });
 
 async function openStartDialog() {
-    await vehicleStore.fetchAllVehicles();
-
-   startForm.value = {
+  await vehicleStore.fetchAllVehicles();
+  startForm.value = {
     vehicle_id: null,
     start_mileage: 0,
     trip_type: JourneyType.FREE_ROAM,
     trip_description: '',
   };
-
   isStartDialogOpen.value = true;
 }
 
@@ -150,8 +150,21 @@ async function handleStartJourney() {
   isSubmitting.value = true;
   try {
     await journeyStore.startJourney(startForm.value as JourneyCreate);
+    $q.notify({
+      type: 'positive',
+      message: terminologyStore.journeyStartSuccessMessage,
+    });
     isStartDialogOpen.value = false;
-  } finally { isSubmitting.value = false; }
+  } catch (error: unknown) { // 'error' é do tipo unknown
+    let message = 'Erro desconhecido.';
+    // Agora o isAxiosError é reconhecido e o TypeScript sabe que 'error' é um AxiosError dentro do 'if'
+    if (isAxiosError(error) && error.response?.data?.detail) {
+      message = error.response.data.detail;
+    }
+    $q.notify({ type: 'negative', message });
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 async function handleEndJourney() {
@@ -159,16 +172,27 @@ async function handleEndJourney() {
   isSubmitting.value = true;
   try {
     const updatedVehicle = await journeyStore.endJourney(editingJourney.value.id, endForm.value);
-    if (updatedVehicle) { vehicleStore.updateSingleVehicleInList(updatedVehicle); }
+    $q.notify({
+      type: 'positive',
+      message: terminologyStore.journeyEndSuccessMessage,
+    });
+    if (updatedVehicle) {
+      await vehicleStore.fetchAllVehicles();
+    }
     isEndDialogOpen.value = false;
-  } finally { isSubmitting.value = false; editingJourney.value = null; }
+  } catch (error: unknown) {
+    let message = 'Erro desconhecido.';
+    if (isAxiosError(error) && error.response?.data?.detail) {
+      message = error.response.data.detail;
+    }
+    $q.notify({ type: 'negative', message });
+  } finally {
+    isSubmitting.value = false;
+    editingJourney.value = null;
+  }
 }
 
 onMounted(async () => {
   await journeyStore.fetchAllJourneys();
-  await vehicleStore.fetchAllVehicles();
-  if (authStore.isManager) {
-    await userStore.fetchAllUsers();
-  }
 });
 </script>
