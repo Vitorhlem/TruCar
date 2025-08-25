@@ -1,8 +1,6 @@
 from logging.config import fileConfig
-# Adicione esta linha no topo do ficheiro alembic/env.py
 from app.db.base_class import Base
-# Certifique-se também que no seu app/db/base.py, todos os seus modelos
-# (User, Organization, Vehicle, etc.) estão a ser importados.
+import app.models
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
@@ -21,7 +19,6 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-# Altere a linha para isto:
 target_metadata = Base.metadata
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

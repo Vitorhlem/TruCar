@@ -12,6 +12,7 @@ from app.models.maintenance_request_model import MaintenanceRequest, Maintenance
 from app.models.organization_model import Sector
 from app.schemas.report_schema import DashboardSummary, KPI, KmPerDay
 
+
 async def get_driver_leaderboard(db: AsyncSession, *, organization_id: int) -> dict:
     """Calcula e retorna o ranking de performance dos motoristas de uma organização."""
     fleet_km_stmt = select(func.sum(Journey.end_mileage - Journey.start_mileage)).where(Journey.is_active == False, Journey.organization_id == organization_id)
@@ -82,16 +83,19 @@ async def get_dashboard_summary(
     db: AsyncSession, *, current_user: User, start_date: datetime
 ) -> DashboardSummary:
     """
-    Busca e agrega todos os dados para o Dashboard, incluindo os dados dos gráficos.
+    Busca e agrega todos os dados para o Dashboard, incluindo todos os KPIs e dados de gráficos.
     """
     org_id = current_user.organization_id
     sector_str = current_user.organization.sector
 
-    # --- KPIs ---
+    # --- 1. CÁLCULO DOS KPIs ---
+    
+    # Contagem de Veículos por Status
     kpi_stmt = select(Vehicle.status, func.count(Vehicle.id)).where(Vehicle.organization_id == org_id).group_by(Vehicle.status)
     kpi_result = await db.execute(kpi_stmt)
-    status_counts = {status.value: count for status, count in kpi_result.all()}
+    status_counts = {status: count for status, count in kpi_result.all()}
 
+    # Custo de Combustível no Mês Atual
     fuel_cost_stmt = select(func.sum(FuelLog.total_cost)).where(
         FuelLog.organization_id == org_id,
         extract('month', FuelLog.timestamp) == datetime.utcnow().month,
@@ -99,13 +103,18 @@ async def get_dashboard_summary(
     )
     total_fuel_cost = (await db.execute(fuel_cost_stmt)).scalar_one_or_none() or 0.0
 
+    # Contagem de Manutenções Abertas
     open_requests_stmt = select(func.count(MaintenanceRequest.id)).where(
         MaintenanceRequest.organization_id == org_id,
-        MaintenanceRequest.status.in_([MaintenanceStatus.PENDING, MaintenanceStatus.APPROVED, MaintenanceStatus.IN_PROGRESS])
+        MaintenanceRequest.status.in_([
+            MaintenanceStatus.PENDING.value,
+            MaintenanceStatus.APPROVED.value,
+            MaintenanceStatus.IN_PROGRESS.value
+        ])
     )
     open_maintenance_requests = (await db.execute(open_requests_stmt)).scalar_one_or_none() or 0
     
-    # --- LÓGICA DE CÁLCULO DINÂMICO PARA GRÁFICO E KPI ---
+    # --- 2. CÁLCULO DINÂMICO DE DISTÂNCIA / DURAÇÃO ---
     if sector_str == Sector.AGRONEGOCIO.value:
         distance_col = func.sum(Journey.end_engine_hours - Journey.start_engine_hours).label("total_distance")
         filter_col = Journey.end_engine_hours.is_not(None)
@@ -113,7 +122,7 @@ async def get_dashboard_summary(
         distance_col = func.sum(Journey.end_mileage - Journey.start_mileage).label("total_distance")
         filter_col = Journey.end_mileage.is_not(None)
 
-    distance_stmt = (
+    distance_per_day_stmt = (
         select(func.date(Journey.start_time).label("date"), distance_col)
         .where(
             Journey.organization_id == org_id,
@@ -124,10 +133,11 @@ async def get_dashboard_summary(
         .group_by(func.date(Journey.start_time))
         .order_by(func.date(Journey.start_time))
     )
-    distance_result = await db.execute(distance_stmt)
-    km_per_day_last_30_days = [KmPerDay(date=row.date.isoformat(), total_km=float(row.total_distance or 0)) for row in distance_result.all()]
-    total_distance_or_duration = sum(item.total_km for item in km_per_day_last_30_days)
+    distance_result = await db.execute(distance_per_day_stmt)
+    km_per_day_data = [KmPerDay(date=row.date.isoformat(), total_km=float(row.total_distance or 0)) for row in distance_result.all()]
+    total_distance_or_duration = sum(item.total_km for item in km_per_day_data)
 
+    # --- 3. MONTAGEM DO OBJETO DE KPIs COMPLETO ---
     kpis_data = KPI(
         total_vehicles=sum(status_counts.values()),
         available_vehicles=status_counts.get(VehicleStatus.AVAILABLE.value, 0),
@@ -138,14 +148,15 @@ async def get_dashboard_summary(
         km_last_30_days=float(total_distance_or_duration)
     )
     
+    # --- 4. BUSCA DE OPERAÇÕES ATIVAS ---
     active_journeys = await crud.journey.get_active_journeys(db, organization_id=org_id)
 
-    # CORRIGIDO: Retorna o objeto Pydantic com os dados do gráfico preenchidos
+    # --- 5. RETORNO FINAL ---
     return DashboardSummary(
         kpis=kpis_data,
-        km_per_day_last_30_days=km_per_day_last_30_days,
-        top_5_vehicles_by_km=[],
-        fuel_cost_last_6_months=[],
-        upcoming_maintenances=[],
+        km_per_day_last_30_days=km_per_day_data,
+        top_5_vehicles_by_km=[], # Placeholder
+        fuel_cost_last_6_months=[], # Placeholder
+        upcoming_maintenances=[], # Placeholder
         active_journeys=active_journeys,
     )

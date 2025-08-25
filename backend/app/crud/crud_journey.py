@@ -9,7 +9,6 @@ from app.models.journey_model import Journey
 from app.models.vehicle_model import Vehicle, VehicleStatus
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate
 
-# Exceções customizadas para uma melhor arquitetura
 class VehicleNotAvailableError(Exception):
     pass
 
@@ -27,8 +26,13 @@ async def create_journey(
     if vehicle.status != VehicleStatus.AVAILABLE:
         raise VehicleNotAvailableError(f"O maquinário {vehicle.brand} {vehicle.model} não está disponível.")
 
+    journey_data = journey_in.model_dump(exclude_unset=True)
+    if journey_in.start_engine_hours is None and journey_in.start_mileage is None:
+         journey_data['start_mileage'] = vehicle.current_km
+         journey_data['start_engine_hours'] = vehicle.current_engine_hours
+
     db_journey = Journey(
-        **journey_in.model_dump(exclude_unset=True),
+        **journey_data,
         driver_id=driver_id,
         organization_id=organization_id,
         is_active=True,
@@ -58,7 +62,36 @@ async def end_journey(
     vehicle = db_journey.vehicle
     if vehicle:
         vehicle.status = VehicleStatus.AVAILABLE
-        # A LÓGICA CRUCIAL CORRIGIDA: movida para dentro do 'if vehicle:'
+        # A LÓGICA CRUCIAL CORRIGIDA:
+        if journey_in.end_engine_hours is not None:
+            vehicle.current_engine_hours = journey_in.end_engine_hours
+        elif journey_in.end_mileage is not None:
+            vehicle.current_km = journey_in.end_mileage
+        
+        db.add(vehicle)
+
+    await db.commit()
+    await db.refresh(db_journey, ['vehicle', 'driver'])
+    
+    return db_journey, vehicle
+
+
+async def end_journey(
+    db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
+) -> Tuple[Journey, Vehicle]:
+    """Finaliza uma operação, atualiza o status E o odómetro/horímetro do veículo."""
+    update_data = journey_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_journey, field, value)
+    
+    db_journey.end_time = datetime.utcnow()
+    db_journey.is_active = False
+    db.add(db_journey)
+
+    vehicle = db_journey.vehicle
+    if vehicle:
+        vehicle.status = VehicleStatus.AVAILABLE
+        # A LÓGICA CRUCIAL CORRIGIDA:
         if journey_in.end_engine_hours is not None:
             vehicle.current_engine_hours = journey_in.end_engine_hours
         elif journey_in.end_mileage is not None:

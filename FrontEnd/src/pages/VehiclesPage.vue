@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <div v-if="vehicleStore.isLoading" class="row q-col-gutter-md">
+    <div v-if="vehicleStore.isLoading && !isFormDialogOpen" class="row q-col-gutter-md">
       <div v-for="n in 8" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card flat bordered><q-skeleton height="180px" square /></q-card>
       </div>
@@ -39,7 +39,7 @@
              <q-badge :color="getStatusColor(vehicle.status)" text-color="white">{{ vehicle.status }}</q-badge>
              <div class="text-caption text-weight-medium text-grey-8">{{ vehicle.current_km ?? vehicle.current_engine_hours ?? 0 }} {{ terminologyStore.distanceUnit }}</div>
             <div v-if="authStore.isManager">
-              <q-btn @click="openEditDialog(vehicle)" flat round dense icon="edit" :title="terminologyStore.editButtonLabel" />
+              <q-btn @click="openEditDialog(vehicle.id)" flat round dense icon="edit" :title="terminologyStore.editButtonLabel" />
               <q-btn @click="promptToDelete(vehicle)" flat round dense icon="delete" color="negative" title="Excluir" />
             </div>
           </q-card-actions>
@@ -69,6 +69,7 @@
           <div class="text-h6">{{ isEditing ? terminologyStore.editButtonLabel : terminologyStore.newButtonLabel }}</div>
         </q-card-section>
         <q-form @submit.prevent="onFormSubmit">
+          <q-inner-loading :showing="isSubmitting" label="Aguarde..." />
           <q-card-section class="q-gutter-y-md">
             <q-input outlined v-model="formData.brand" label="Marca *" :rules="[val => !!val || 'Campo obrigatório']" />
             <q-input outlined v-model="formData.model" label="Modelo *" :rules="[val => !!val || 'Campo obrigatório']" />
@@ -79,8 +80,8 @@
               :rules="[val => !!val || 'Campo obrigatório']"
             />
             <q-input outlined v-model.number="formData.year" type="number" label="Ano *" :rules="[val => val > 1980 || 'Ano inválido']" />
-            <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Iniciais" step="0.1" />
-            <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" />
+            <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" />
+            <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Atual" />
             <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" />
             <q-input outlined v-model="formData.photo_url" label="URL da Foto" />
             <q-separator class="q-my-lg" />
@@ -127,7 +128,6 @@ const isEditing = computed(() => editingVehicleId.value !== null);
 const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
 
-// CORRIGIDO: Função de reset mais completa
 function resetForm() {
   editingVehicleId.value = null;
   formData.value = {
@@ -143,15 +143,42 @@ function openCreateDialog() {
   isFormDialogOpen.value = true;
 }
 
-function openEditDialog(vehicle: Vehicle) {
-  editingVehicleId.value = vehicle.id;
-  formData.value = {
-    ...vehicle,
-    next_maintenance_date: vehicle.next_maintenance_date
-      ? vehicle.next_maintenance_date.split('-').reverse().join('/')
-      : null,
-  };
-  isFormDialogOpen.value = true;
+// --- FUNÇÃO COM LÓGICA DE DEPURAÇÃO ---
+async function openEditDialog(vehicleId: number) {
+  console.log(`--- [PASSO 1] Iniciando Edição para o Veículo ID: ${vehicleId} ---`);
+  isSubmitting.value = true;
+  try {
+    const freshVehicleData = await vehicleStore.fetchVehicleById(vehicleId);
+    
+    // Usamos JSON.stringify para garantir que vemos o valor puro, sem 'proxies' do Vue
+    console.log('--- [PASSO 2] Dados FRESCOS recebidos da API:', JSON.stringify(freshVehicleData, null, 2));
+
+    if (freshVehicleData) {
+      editingVehicleId.value = freshVehicleData.id;
+      const dataToSetInForm = {
+        ...freshVehicleData,
+        next_maintenance_date: freshVehicleData.next_maintenance_date
+          ? freshVehicleData.next_maintenance_date.split('-').reverse().join('/')
+          : null,
+      };
+      
+      console.log('--- [PASSO 3] Objeto que será colocado no formulário (formData):', JSON.stringify(dataToSetInForm, null, 2));
+      
+      formData.value = dataToSetInForm;
+      
+      // Pequeno delay para garantir que o Vue processe a atualização do 'formData'
+      setTimeout(() => {
+        console.log('--- [PASSO 4] Valor final em formData.value.current_engine_hours:', formData.value.current_engine_hours);
+      }, 0);
+
+      isFormDialogOpen.value = true;
+    } else {
+      console.error('--- [ERRO] Não foram recebidos dados frescos da API.');
+      $q.notify({ type: 'negative', message: 'Não foi possível carregar os dados atualizados do item.' });
+    }
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 async function onFormSubmit() {
@@ -212,13 +239,12 @@ function getVehicleIcon(vehicle: Vehicle): string {
 }
 
 function getStatusColor(status: VehicleStatus): string {
-  // Adicionamos o tipo Record<VehicleStatus, string> para o TypeScript entender a estrutura
-  const colorMap: Record<VehicleStatus, string> = {
+  const colorMap: Record<string, string> = {
     [VehicleStatus.AVAILABLE]: 'positive',
-    [VehicleStatus.IN_USE]: 'orange-8', // Corrigido o erro de digitação
+    [VehicleStatus.IN_USE]: 'orange-8',
     [VehicleStatus.MAINTENANCE]: 'negative'
   };
-  return colorMap[status] || 'grey'; // Adicionamos um fallback para segurança
+  return colorMap[status] || 'grey';
 }
 
 function promptToDelete(vehicle: Vehicle) {

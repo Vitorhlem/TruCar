@@ -15,7 +15,11 @@ interface FetchParams {
 interface PaginatedVehiclesResponse {
   total: number;
   items: Vehicle[];
+
+
 }
+
+
 
 export const useVehicleStore = defineStore('vehicle', () => {
   // ESTA LINHA É A MAIS IMPORTANTE DE TODAS
@@ -29,17 +33,10 @@ export const useVehicleStore = defineStore('vehicle', () => {
     vehicles.value.filter(v => v.status === VehicleStatus.AVAILABLE)
   );
 
-  async function fetchAllVehicles(params: FetchParams = {}) {
+    async function fetchAllVehicles(params: FetchParams = {}) {
     isLoading.value = true;
     try {
-      const response = await api.get<PaginatedVehiclesResponse>('/vehicles/', {
-        params: {
-          skip: ((params.page || 1) - 1) * (params.rowsPerPage || 8),
-          limit: params.rowsPerPage || 8,
-          search: params.search || '',
-        },
-      });
-      // CORRIGIDO: A store agora espera a resposta paginada
+      const response = await api.get<PaginatedVehiclesResponse>('/vehicles/', { params });
       vehicles.value = response.data.items;
       totalItems.value = response.data.total;
     } catch (error) {
@@ -50,14 +47,32 @@ export const useVehicleStore = defineStore('vehicle', () => {
     }
   }
 
-  function updateSingleVehicleInList(updatedVehicle: Vehicle) {
+function updateSingleVehicleInList(updatedVehicle: Vehicle) {
     const index = vehicles.value.findIndex(v => v.id === updatedVehicle.id);
     if (index !== -1) {
       vehicles.value[index] = updatedVehicle;
+    } else {
+      vehicles.value.push(updatedVehicle);
     }
   }
 
   // --- FUNÇÕES DE CRUD IMPLEMENTADAS ---
+
+async function fetchVehicleById(id: number): Promise<Vehicle | null> {
+    isLoading.value = true;
+    try {
+      const response = await api.get<Vehicle>(`/vehicles/${id}`);
+      // Atualiza o item na nossa lista local também, para manter a consistência
+      updateSingleVehicleInList(response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Falha ao buscar detalhes do veículo:', error);
+      Notify.create({ type: 'negative', message: 'Falha ao buscar detalhes do item.' });
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
   async function addNewVehicle(vehicleData: VehicleCreate) {
     try {
@@ -100,6 +115,7 @@ export const useVehicleStore = defineStore('vehicle', () => {
     totalItems,
     availableVehicles,
     fetchAllVehicles,
+    fetchVehicleById,
     updateSingleVehicleInList,
     addNewVehicle,
     updateVehicle,

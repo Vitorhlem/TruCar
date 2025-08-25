@@ -16,7 +16,6 @@ class Vehicle(Base):
     license_plate = Column(String(20), unique=True, nullable=True)
     identifier = Column(String(50), nullable=True)
     status = Column(Enum(VehicleStatus, native_enum=False), nullable=False, default=VehicleStatus.AVAILABLE)
-
     year = Column(Integer, nullable=False)
     photo_url = Column(String(512), nullable=True)
     status = Column(String(50), nullable=False, default=VehicleStatus.AVAILABLE.value)
