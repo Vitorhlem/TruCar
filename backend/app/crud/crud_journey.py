@@ -3,12 +3,13 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Tuple
 from datetime import datetime, date, timedelta
+from fastapi import HTTPException
 
 from app.models.journey_model import Journey
 from app.models.vehicle_model import Vehicle, VehicleStatus
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate
 
-# Exceções customizadas para uma arquitetura mais limpa
+# Exceções customizadas para uma melhor arquitetura
 class VehicleNotAvailableError(Exception):
     pass
 
@@ -21,10 +22,10 @@ async def create_journey(
         
     vehicle = await db.get(Vehicle, journey_in.vehicle_id)
     if not vehicle or vehicle.organization_id != organization_id:
-        raise ValueError("Veículo não encontrado ou não pertence à organização.")
+        raise ValueError("Maquinário não encontrado.")
         
     if vehicle.status != VehicleStatus.AVAILABLE:
-        raise VehicleNotAvailableError(f"O veículo {vehicle.brand} {vehicle.model} não está disponível.")
+        raise VehicleNotAvailableError(f"O maquinário {vehicle.brand} {vehicle.model} não está disponível.")
 
     db_journey = Journey(
         **journey_in.model_dump(exclude_unset=True),
@@ -45,7 +46,7 @@ async def create_journey(
 async def end_journey(
     db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
 ) -> Tuple[Journey, Vehicle]:
-    """Finaliza uma operação, atualiza o status e o odómetro/horímetro do veículo."""
+    """Finaliza uma operação, atualiza o status E o odómetro/horímetro do veículo."""
     update_data = journey_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_journey, field, value)
@@ -57,11 +58,13 @@ async def end_journey(
     vehicle = db_journey.vehicle
     if vehicle:
         vehicle.status = VehicleStatus.AVAILABLE
+        # A LÓGICA CRUCIAL CORRIGIDA: movida para dentro do 'if vehicle:'
         if journey_in.end_engine_hours is not None:
             vehicle.current_engine_hours = journey_in.end_engine_hours
         elif journey_in.end_mileage is not None:
             vehicle.current_km = journey_in.end_mileage
         
+        # Garante que o objeto veículo modificado seja salvo
         db.add(vehicle)
 
     await db.commit()
@@ -70,7 +73,6 @@ async def end_journey(
     return db_journey, vehicle
 
 async def get_journey(db: AsyncSession, *, journey_id: int, organization_id: int) -> Optional[Journey]:
-    """Busca uma viagem específica, garantindo que pertence à organização correta."""
     stmt = (
         select(Journey).where(Journey.id == journey_id, Journey.organization_id == organization_id)
         .options(selectinload(Journey.driver), selectinload(Journey.vehicle))
@@ -79,7 +81,6 @@ async def get_journey(db: AsyncSession, *, journey_id: int, organization_id: int
     return result.scalar_one_or_none()
 
 async def get_all_journeys(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100, driver_id: int | None = None, vehicle_id: int | None = None, date_from: date | None = None, date_to: date | None = None) -> List[Journey]:
-    """Busca todas as viagens de uma organização, com filtros."""
     stmt = select(Journey).where(Journey.organization_id == organization_id)
     if driver_id:
         stmt = stmt.where(Journey.driver_id == driver_id)
@@ -99,7 +100,6 @@ async def get_all_journeys(db: AsyncSession, *, organization_id: int, skip: int 
     return result.scalars().all()
 
 async def get_active_journeys(db: AsyncSession, *, organization_id: int) -> list[Journey]:
-    """Busca todas as operações ativas de uma organização."""
     stmt = (
         select(Journey)
         .where(Journey.organization_id == organization_id, Journey.is_active == True)
@@ -109,7 +109,6 @@ async def get_active_journeys(db: AsyncSession, *, organization_id: int) -> list
     return result.scalars().all()
 
 async def get_active_journey_by_driver(db: AsyncSession, *, driver_id: int, organization_id: int) -> Journey | None:
-    """Busca uma operação ativa para um motorista específico numa organização."""
     stmt = select(Journey).where(
         Journey.driver_id == driver_id,
         Journey.organization_id == organization_id,
@@ -119,7 +118,6 @@ async def get_active_journey_by_driver(db: AsyncSession, *, driver_id: int, orga
     return result.scalars().first()
 
 async def delete_journey(db: AsyncSession, *, journey_to_delete: Journey) -> Journey:
-    """Exclui uma viagem e, se ela estiver ativa, atualiza o status do veículo."""
     vehicle = journey_to_delete.vehicle
     if journey_to_delete.is_active and vehicle:
         vehicle.status = VehicleStatus.AVAILABLE
