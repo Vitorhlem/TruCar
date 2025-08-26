@@ -13,22 +13,10 @@ from app.models.maintenance_request_model import MaintenanceRequest
 from app.schemas.user_schema import UserCreate, UserUpdate
 
 
-async def get_user_by_email(
-    db: AsyncSession, *, email: str, load_organization: bool = False
-) -> User | None:
-    """
-    Busca um utilizador pelo seu email.
-    Se load_organization for True, carrega o relacionamento com a organização.
-    """
-    stmt = select(User).where(User.email == email)
-    
-    # Lógica de otimização que estava em falta
-    if load_organization:
-        stmt = stmt.options(selectinload(User.organization))
-        
+async def get_user_by_email(db: AsyncSession, *, email: str) -> User | None:
+    stmt = select(User).where(User.email == email).options(selectinload(User.organization))
     result = await db.execute(stmt)
     return result.scalars().first()
-
 
 async def get_user(db: AsyncSession, *, user_id: int, organization_id: int) -> User | None:
     stmt = select(User).where(User.id == user_id, User.organization_id == organization_id).options(selectinload(User.organization))
@@ -57,21 +45,25 @@ async def get_users(
     return result.scalars().all()
 
 async def create_user(
-    db: AsyncSession, *, user_in: UserCreate, organization_id: int, role: UserRole
+    db: AsyncSession, *, user_in: UserCreate, organization_id: int
 ) -> User:
-    """Cria um novo utilizador associado a uma organização."""
+    """Cria um novo utilizador e retorna com a organização carregada."""
     hashed_password = get_password_hash(user_in.password)
     db_user = User(
         full_name=user_in.full_name,
         email=user_in.email,
         hashed_password=hashed_password,
-        role=user_in.role, # A role vem diretamente do schema
+        role=user_in.role,
         organization_id=organization_id
     )
     db.add(db_user)
     await db.commit()
+    
+    # A CORREÇÃO CRÍTICA: Força o carregamento da relação 'organization'
     await db.refresh(db_user, ["organization"])
+    
     return db_user
+
 
 async def update_user(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -> User:
     update_data = user_in.model_dump(exclude_unset=True)

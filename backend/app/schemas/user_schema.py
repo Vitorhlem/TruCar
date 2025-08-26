@@ -14,25 +14,20 @@ class UserBase(BaseModel):
     full_name: str
     is_active: bool = True
     avatar_url: Optional[str] = None
-    # A 'role' é uma propriedade base de um utilizador
     role: UserRole
 
 class UserCreate(UserBase):
     password: str
 
 class UserUpdate(BaseModel):
-    email: Optional[str] = None
     full_name: Optional[str] = None
     password: Optional[str] = None
-    role: Optional[UserRole] = None
     is_active: Optional[bool] = None
-    avatar_url: Optional[str] = None
+    role: Optional[UserRole] = None
 
 class UserPublic(UserBase):
     id: int
-    # Garante que a resposta inclua os dados da organização
     organization: OrganizationPublic
-    
     model_config = { "from_attributes": True }
 
 # --- SCHEMA PARA REGISTO DE NOVO UTILIZADOR/EMPRESA ---
