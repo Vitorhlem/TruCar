@@ -30,10 +30,9 @@ async def create_user(
     current_user: User = Depends(deps.get_current_active_manager),
 ):
     """Cria um novo utilizador DENTRO da organização do gestor logado."""
-    user = await crud.user.get_user_by_email(
-        db, email=user_in.email, organization_id=current_user.organization_id
-    )
-    if user:
+    # Procura por email apenas dentro da organização do gestor
+    user = await crud.user.get_user_by_email(db, email=user_in.email)
+    if user and user.organization_id == current_user.organization_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="O e-mail fornecido já está registado nesta organização.",
@@ -43,6 +42,8 @@ async def create_user(
         db=db, user_in=user_in, organization_id=current_user.organization_id
     )
     return new_user
+
+
 
 @router.get("/me", response_model=UserPublic)
 async def read_user_me(

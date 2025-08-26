@@ -1,6 +1,6 @@
 # backend/app/schemas/user_schema.py
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr # <-- CORREÇÃO AQUI
 from typing import Optional, List
 
 from app.models.organization_model import Sector 
@@ -10,14 +10,15 @@ from .organization_schema import OrganizationPublic
 # --- SCHEMAS BASE DE UTILIZADOR ---
 
 class UserBase(BaseModel):
-    email: str
+    email: EmailStr
     full_name: str
     is_active: bool = True
     avatar_url: Optional[str] = None
+    # A 'role' é uma propriedade base de um utilizador
+    role: UserRole
 
 class UserCreate(UserBase):
     password: str
-    role: UserRole
 
 class UserUpdate(BaseModel):
     email: Optional[str] = None
@@ -29,8 +30,9 @@ class UserUpdate(BaseModel):
 
 class UserPublic(UserBase):
     id: int
-    role: UserRole
+    # Garante que a resposta inclua os dados da organização
     organization: OrganizationPublic
+    
     model_config = { "from_attributes": True }
 
 # --- SCHEMA PARA REGISTO DE NOVO UTILIZADOR/EMPRESA ---

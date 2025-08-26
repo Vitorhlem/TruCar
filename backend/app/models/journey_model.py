@@ -21,10 +21,14 @@ class Journey(Base):
     end_time = Column(DateTime, nullable=True)
     start_mileage = Column(Integer, nullable=False)
     end_mileage = Column(Integer, nullable=True)
-    is_active = Column(Boolean, default=True, index=True)
+    is_active = Column(Boolean, default=True)
     trip_type = Column(String(50), nullable=False)
+    
+    # --- AS DUAS LINHAS QUE ESTAVAM EM FALTA ---
     destination_address = Column(String, nullable=True)
     trip_description = Column(String, nullable=True)
+    # --- FIM DAS LINHAS EM FALTA ---
+
     start_engine_hours = Column(Float, nullable=True)
     end_engine_hours = Column(Float, nullable=True)
 
