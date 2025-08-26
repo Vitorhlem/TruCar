@@ -28,14 +28,11 @@ async def create_journey(
 
     journey_data = journey_in.model_dump(exclude_unset=True)
     
-    # --- A CORREÇÃO CRUCIAL ESTÁ AQUI ---
-    # Se for uma operação de agronegócio (onde as horas vêm), mas a quilometragem não,
-    # definimos a quilometragem inicial como 0 para satisfazer a regra do banco de dados.
-    if 'start_engine_hours' in journey_data and 'start_mileage' not in journey_data:
-        journey_data['start_mileage'] = 0
-    # Garante que, se não for agro, o valor do KM atual seja usado se nenhum for enviado
-    elif 'start_mileage' not in journey_data:
-        journey_data['start_mileage'] = vehicle.current_km
+    # Lógica explícita para garantir que o valor inicial correto seja usado
+    if journey_in.start_engine_hours is not None:
+        journey_data['start_mileage'] = vehicle.current_km # Usa o KM atual como base
+    else:
+        journey_data['start_mileage'] = journey_in.start_mileage or vehicle.current_km
 
     db_journey = Journey(
         **journey_data,
@@ -52,11 +49,10 @@ async def create_journey(
     await db.commit()
     await db.refresh(db_journey, ['vehicle', 'driver'])
     return db_journey
-
 async def end_journey(
     db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
 ) -> Tuple[Journey, Vehicle]:
-    """Finaliza uma operação, atualiza o status e o odómetro/horímetro do veículo."""
+    """Finaliza uma operação, atualiza o status E o odómetro/horímetro do veículo."""
     update_data = journey_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_journey, field, value)
@@ -79,6 +75,7 @@ async def end_journey(
     await db.refresh(db_journey, ['vehicle', 'driver'])
     
     return db_journey, vehicle
+
 
 async def get_journey(db: AsyncSession, *, journey_id: int, organization_id: int) -> Optional[Journey]:
     """Busca uma viagem específica, garantindo que pertence à organização correta."""
@@ -103,7 +100,7 @@ async def get_all_journeys(db: AsyncSession, *, organization_id: int, skip: int 
     
     final_stmt = (
         stmt.order_by(Journey.start_time.desc())
-        .options(selectinload(Journey.driver), selectinload(Journey.vehicle))
+        .options(selectinload(Journey.driver).selectinload(User.organization), selectinload(Journey.vehicle)) # <-- Eager loading
         .offset(skip).limit(limit)
     )
     result = await db.execute(final_stmt)
