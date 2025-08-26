@@ -1,4 +1,3 @@
-// src/models/journey-models.ts
 import type { User } from './auth-models';
 import type { Vehicle } from './vehicle-models';
 
@@ -7,6 +6,7 @@ export enum JourneyType {
   FREE_ROAM = 'free_roam',
 }
 
+// A interface principal para uma Viagem/Operação
 export interface Journey {
   id: number;
   start_time: string;
@@ -17,20 +17,32 @@ export interface Journey {
   trip_type: JourneyType;
   destination_address?: string | null;
   trip_description?: string | null;
+  
+  // OS CAMPOS QUE ESTAVAM EM FALTA:
+  start_engine_hours: number | null;
+  end_engine_hours: number | null;
+
+  // Relações
   vehicle: Vehicle;
   driver: User;
   organization_id: number;
 }
 
+// A interface para o formulário de CRIAÇÃO
 export interface JourneyCreate {
-  // CORRIGIDO: Permite null para o reset do formulário
   vehicle_id: number | null;
-  start_mileage: number;
   trip_type: JourneyType;
   destination_address?: string;
   trip_description?: string;
+  
+  // OS CAMPOS QUE ESTAVAM EM FALTA:
+  start_mileage?: number;
+  start_engine_hours?: number;
 }
 
+// A interface para o formulário de ATUALIZAÇÃO (Finalização)
 export interface JourneyUpdate {
-  end_mileage: number;
+  // OS CAMPOS QUE ESTAVAM EM FALTA:
+  end_mileage?: number;
+  end_engine_hours?: number;
 }

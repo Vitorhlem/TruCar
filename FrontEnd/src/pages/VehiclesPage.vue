@@ -79,7 +79,7 @@
               :rules="[val => !!val || 'Campo obrigatório']"
             />
             <q-input outlined v-model.number="formData.year" type="number" label="Ano *" :rules="[val => val > 1980 || 'Ano inválido']" />
-            <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Iniciais" step="0.1" />
+            <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" />
             <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" />
             <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" />
             <q-input outlined v-model="formData.photo_url" label="URL da Foto" />
