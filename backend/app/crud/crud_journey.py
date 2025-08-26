@@ -21,13 +21,24 @@ async def create_journey(
         
     vehicle = await db.get(Vehicle, journey_in.vehicle_id)
     if not vehicle or vehicle.organization_id != organization_id:
-        raise ValueError("Veículo não encontrado ou não pertence à organização.")
+        raise ValueError("Maquinário não encontrado.")
         
     if vehicle.status != VehicleStatus.AVAILABLE:
-        raise VehicleNotAvailableError(f"O veículo {vehicle.brand} {vehicle.model} não está disponível.")
+        raise VehicleNotAvailableError(f"O maquinário {vehicle.brand} {vehicle.model} não está disponível.")
+
+    journey_data = journey_in.model_dump(exclude_unset=True)
+    
+    # --- A CORREÇÃO CRUCIAL ESTÁ AQUI ---
+    # Se for uma operação de agronegócio (onde as horas vêm), mas a quilometragem não,
+    # definimos a quilometragem inicial como 0 para satisfazer a regra do banco de dados.
+    if 'start_engine_hours' in journey_data and 'start_mileage' not in journey_data:
+        journey_data['start_mileage'] = 0
+    # Garante que, se não for agro, o valor do KM atual seja usado se nenhum for enviado
+    elif 'start_mileage' not in journey_data:
+        journey_data['start_mileage'] = vehicle.current_km
 
     db_journey = Journey(
-        **journey_in.model_dump(exclude_unset=True),
+        **journey_data,
         driver_id=driver_id,
         organization_id=organization_id,
         is_active=True,

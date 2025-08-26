@@ -29,22 +29,22 @@ export const useVehicleStore = defineStore('vehicle', () => {
     vehicles.value.filter(v => v.status === VehicleStatus.AVAILABLE)
   );
 
-  async function fetchAllVehicles(params: FetchParams = {}) {
+   async function fetchAllVehicles(params: FetchParams = {}) {
     isLoading.value = true;
     try {
-      const response = await api.get<PaginatedVehiclesResponse>('/vehicles/', {
-        params: {
-          skip: ((params.page || 1) - 1) * (params.rowsPerPage || 8),
-          limit: params.rowsPerPage || 8,
-          search: params.search || '',
-        },
-      });
-      // CORRIGIDO: A store agora espera a resposta paginada
+      // Usamos um limite alto para garantir que todos os veículos sejam carregados para os seletores
+      const queryParams = {
+        skip: params.page ? (params.page - 1) * (params.rowsPerPage || 100) : 0,
+        limit: params.rowsPerPage || 100,
+        search: params.search || '',
+      };
+
+      const response = await api.get<PaginatedVehiclesResponse>('/vehicles/', { params: queryParams });
       vehicles.value = response.data.items;
       totalItems.value = response.data.total;
     } catch (error) {
-      Notify.create({ type: 'negative', message: 'Falha ao buscar veículos.' });
       console.error('Falha ao buscar veículos:', error);
+      Notify.create({ type: 'negative', message: 'Falha ao buscar veículos.' });
     } finally {
       isLoading.value = false;
     }
