@@ -41,4 +41,5 @@ class MaintenanceRequestPublic(MaintenanceRequestBase):
     vehicle: VehiclePublic
     manager_notes: Optional[str] = None
     comments: List[MaintenanceCommentPublic] = []
+    
     model_config = { "from_attributes": True }

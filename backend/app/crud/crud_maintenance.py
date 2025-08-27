@@ -17,20 +17,26 @@ async def create_request(
     if not vehicle or vehicle.organization_id != organization_id:
         raise ValueError("Veículo não encontrado nesta organização.")
 
-    db_obj = MaintenanceRequest(**request_in.model_dump(), reported_by_id=reporter_id, organization_id=organization_id)
+    db_obj = MaintenanceRequest(
+        **request_in.model_dump(),
+        reported_by_id=reporter_id,
+        organization_id=organization_id
+    )
     db.add(db_obj)
     await db.commit()
-    await db.refresh(db_obj, ["reporter", "vehicle"])
+    # Carrega todas as relações necessárias para a resposta Public
+    await db.refresh(db_obj, ["reporter", "vehicle", "comments", "approver"])
     return db_obj
 
 async def get_request(
     db: AsyncSession, *, request_id: int, organization_id: int
 ) -> MaintenanceRequest | None:
-    """Busca uma solicitação de manutenção específica de uma organização."""
+    """Busca uma solicitação de manutenção específica, carregando todas as relações."""
     stmt = select(MaintenanceRequest).where(
         MaintenanceRequest.id == request_id,
         MaintenanceRequest.organization_id == organization_id
     ).options(
+        # CORREÇÃO: Garante o carregamento de todas as relações aninhadas
         selectinload(MaintenanceRequest.reporter),
         selectinload(MaintenanceRequest.approver),
         selectinload(MaintenanceRequest.vehicle),
@@ -40,9 +46,9 @@ async def get_request(
     return result.scalar_one_or_none()
 
 async def get_all_requests(
-    db: AsyncSession, *, organization_id: int, search: str | None = None
+    db: AsyncSession, *, organization_id: int, search: str | None = None, skip: int = 0, limit: int = 100
 ) -> List[MaintenanceRequest]:
-    """Busca todas as solicitações de uma organização, com filtro de busca."""
+    """Busca todas as solicitações de uma organização, com filtro, paginação e carregando as relações."""
     stmt = select(MaintenanceRequest).where(MaintenanceRequest.organization_id == organization_id)
     
     if search:
@@ -55,7 +61,8 @@ async def get_all_requests(
             )
         )
     
-    stmt = stmt.order_by(MaintenanceRequest.created_at.desc()).options(
+    stmt = stmt.order_by(MaintenanceRequest.created_at.desc()).offset(skip).limit(limit).options(
+        # CORREÇÃO: Garante o carregamento das relações necessárias para a lista
         selectinload(MaintenanceRequest.reporter),
         selectinload(MaintenanceRequest.vehicle)
     )
@@ -84,20 +91,15 @@ async def get_requests_by_driver(
 async def update_request_status(
     db: AsyncSession, *, db_obj: MaintenanceRequest, update_data: MaintenanceRequestUpdate, manager_id: int
 ) -> MaintenanceRequest:
-    """Atualiza o status e as notas de uma solicitação."""
+    """Atualiza o status de uma solicitação e retorna o objeto completo."""
     db_obj.status = update_data.status
     db_obj.manager_notes = update_data.manager_notes
     db_obj.approver_id = manager_id
     db.add(db_obj)
     await db.commit()
-    await db.refresh(db_obj)
+    await db.refresh(db_obj, ["reporter", "vehicle", "comments", "approver"])
     return db_obj
 
-async def delete_request(db: AsyncSession, *, request_to_delete: MaintenanceRequest) -> MaintenanceRequest:
-    """Deleta uma solicitação de manutenção."""
-    await db.delete(request_to_delete)
-    await db.commit()
-    return request_to_delete
 
 # --- CRUD para Comentários de Manutenção ---
 
