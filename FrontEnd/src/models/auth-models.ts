@@ -1,13 +1,11 @@
-// Em FrontEnd/src/models/auth-models.ts
-
-// A interface para o objeto Organization
+// Define a estrutura para o objeto Organization que vem dentro do User
 export interface Organization {
   id: number;
   name: string;
   sector: 'agronegocio' | 'construcao_civil' | 'servicos';
 }
 
-// A interface para o objeto User
+// Define a estrutura para o objeto User
 export interface User {
   id: number;
   email: string;
@@ -15,19 +13,14 @@ export interface User {
   is_active: boolean;
   role: 'manager' | 'driver';
   avatar_url: string | null;
-  organization: Organization; // A organização vem aninhada
+  organization: Organization;
 }
 
-// A interface para o objeto Token
-export interface Token {
+// A interface CORRIGIDA para a RESPOSTA COMPLETA do login
+export interface TokenData {
   access_token: string;
   token_type: string;
-}
-
-// A interface para a RESPOSTA COMPLETA do login, que contém o user e o token
-export interface TokenData {
   user: User;
-  token: Token;
 }
 
 // A interface para o FORMULÁRIO de login
