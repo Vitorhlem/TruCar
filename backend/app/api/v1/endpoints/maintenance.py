@@ -85,15 +85,13 @@ async def create_maintenance_request(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """Cria uma nova solicitação de manutenção."""
-    # Validação de segurança: garante que o veículo pertence à organização do usuário
-    vehicle = await crud.vehicle.get_vehicle(db, vehicle_id=request_in.vehicle_id, organization_id=current_user.organization_id)
-    if not vehicle:
-        raise HTTPException(status_code=404, detail="Veículo não encontrado nesta organização.")
-
-    new_request = await crud.maintenance.create_request(
-        db=db, request_in=request_in, reporter_id=current_user.id, organization_id=current_user.organization_id
-    )
-    return new_request
+    try:
+        new_request = await crud.maintenance.create_request(
+            db=db, request_in=request_in, reporter_id=current_user.id, organization_id=current_user.organization_id
+        )
+        return new_request
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.delete("/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_maintenance_request(
@@ -112,15 +110,6 @@ async def delete_maintenance_request(
     await crud.maintenance.delete_request(db=db, request_to_delete=request_to_delete)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-@router.post("/", response_model=MaintenanceRequestPublic, status_code=status.HTTP_201_CREATED)
-async def create_maintenance_request(
-    *,
-    db: AsyncSession = Depends(deps.get_db),
-    request_in: MaintenanceRequestCreate,
-    current_user: User = Depends(deps.get_current_active_user)
-):
-    """Cria uma nova solicitação de manutenção."""
-    return await crud.maintenance.create_request(db=db, request_in=request_in, reporter_id=current_user.id)
 
 @router.get("/", response_model=List[MaintenanceRequestPublic])
 async def read_maintenance_requests(

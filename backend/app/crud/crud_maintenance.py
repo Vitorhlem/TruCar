@@ -3,7 +3,7 @@ from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from typing import List
 
-from app.models.maintenance_request_model import MaintenanceRequest, MaintenanceComment
+from app.models.maintenance_model import MaintenanceRequest, MaintenanceComment
 from app.models.vehicle_model import Vehicle
 from app.schemas.maintenance_schema import MaintenanceRequestCreate, MaintenanceRequestUpdate, MaintenanceCommentCreate
 
@@ -12,15 +12,14 @@ from app.schemas.maintenance_schema import MaintenanceRequestCreate, Maintenance
 async def create_request(
     db: AsyncSession, *, request_in: MaintenanceRequestCreate, reporter_id: int, organization_id: int
 ) -> MaintenanceRequest:
-    """Cria uma nova solicitação de manutenção, associando-a a uma organização."""
-    db_obj = MaintenanceRequest(
-        **request_in.model_dump(),
-        reported_by_id=reporter_id,
-        organization_id=organization_id
-    )
+    """Cria uma nova solicitação de manutenção, garantindo que o veículo pertence à organização."""
+    vehicle = await db.get(Vehicle, request_in.vehicle_id)
+    if not vehicle or vehicle.organization_id != organization_id:
+        raise ValueError("Veículo não encontrado nesta organização.")
+
+    db_obj = MaintenanceRequest(**request_in.model_dump(), reported_by_id=reporter_id, organization_id=organization_id)
     db.add(db_obj)
     await db.commit()
-    # Otimização: Usamos refresh com as relações em vez de fazer uma nova query
     await db.refresh(db_obj, ["reporter", "vehicle"])
     return db_obj
 

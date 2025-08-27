@@ -8,7 +8,7 @@ from app.models.user_model import User, UserRole
 from app.models.vehicle_model import Vehicle, VehicleStatus
 from app.models.journey_model import Journey
 from app.models.fuel_log_model import FuelLog
-from app.models.maintenance_request_model import MaintenanceRequest, MaintenanceStatus
+from app.models.maintenance_model import MaintenanceRequest, MaintenanceStatus
 from app.models.organization_model import Sector
 # CORREÇÃO: Importamos TODAS as classes necessárias do schema
 from app.schemas.report_schema import DashboardSummary, KPI, KmPerDay

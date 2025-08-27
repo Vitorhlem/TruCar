@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from typing import List
 
-from app.models.maintenance_request_model import MaintenanceComment
+from app.models.maintenance_model import MaintenanceComment
 from app.schemas.maintenance_schema import MaintenanceCommentCreate
 
 async def create_comment(
