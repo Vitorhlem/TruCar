@@ -16,7 +16,7 @@ router = APIRouter()
 @router.get("/dashboard-summary", response_model=DashboardSummary)
 async def get_dashboard_summary_data(
     db: AsyncSession = Depends(deps.get_db),
-    current_user: User = Depends(deps.get_current_active_manager),
+    current_user: User = Depends(deps.get_current_active_user),
 ):
     """Retorna os dados agregados para o dashboard do gestor."""
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
@@ -30,7 +30,7 @@ async def generate_report_pdf(
     *,
     db: AsyncSession = Depends(deps.get_db),
     report_request: ReportRequest,
-    current_user: User = Depends(deps.get_current_active_manager),
+    current_user: User = Depends(deps.get_current_active_user),
 ):
     """
     Endpoint central para gerar relatórios em PDF de forma segura.
