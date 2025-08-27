@@ -6,7 +6,7 @@ from typing import Any
 from app import crud
 from app.api import deps
 from app.core import auth
-from app.schemas.token_schema import TokenData
+from app.schemas.token_schema import TokenData, Token
 from app.schemas.user_schema import UserRegister, UserPublic, UserCreate
 from app.schemas.organization_schema import OrganizationCreate
 from app.models.user_model import UserRole, User
@@ -19,14 +19,21 @@ async def register_new_user(
     db: AsyncSession = Depends(deps.get_db),
     user_in: UserRegister
 ) -> Any:
-    # ... (sua função de registo, que já está correta)
+    """Regista uma nova organização e o seu primeiro utilizador (gestor)."""
     org = await crud.organization.get_organization_by_name(db, name=user_in.organization_name)
     if org:
-        raise HTTPException(status_code=400, detail="Uma organização com este nome já está registada.")
+        raise HTTPException(
+            status_code=400,
+            detail="Uma organização com este nome já está registada.",
+        )
     user = await crud.user.get_user_by_email(db, email=user_in.email)
     if user:
-        raise HTTPException(status_code=400, detail="Um utilizador com este email já está registado.")
+        raise HTTPException(
+            status_code=400,
+            detail="Um utilizador com este email já está registado.",
+        )
 
+    # "Traduzimos" os dados de registo para os schemas corretos
     org_to_create = OrganizationCreate(name=user_in.organization_name, sector=user_in.sector)
     new_org = await crud.organization.create_organization(db, obj_in=org_to_create)
     
@@ -34,12 +41,13 @@ async def register_new_user(
         full_name=user_in.full_name,
         email=user_in.email,
         password=user_in.password,
-        role=UserRole.MANAGER
     )
     
+    # A CORREÇÃO CRUCIAL: Passamos a 'role' de MANAGER explicitamente.
     new_user = await crud.user.create_user(
-        db, user_in=user_to_create, organization_id=new_org.id
+        db, user_in=user_to_create, organization_id=new_org.id, role=UserRole.MANAGER
     )
+    
     return new_user
 
 
@@ -54,7 +62,7 @@ async def login_for_access_token(
     )
     if not user:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos",
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -63,7 +71,6 @@ async def login_for_access_token(
     
     access_token = auth.create_access_token(data={"sub": str(user.id)})
 
-    # Retorna o dicionário que corresponde exatamente ao schema TokenData
     return {
         "access_token": access_token,
         "token_type": "bearer",

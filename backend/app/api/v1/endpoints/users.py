@@ -37,7 +37,7 @@ async def create_user(
             detail="O e-mail fornecido já está registado no sistema.",
         )
     
-    # A role é definida aqui, no endpoint. Gestores criam motoristas por padrão.
+    # CORREÇÃO: A role é definida aqui, no endpoint. Gestores criam motoristas por padrão.
     new_user = await crud.user.create_user(
         db=db, user_in=user_in, 
         organization_id=current_user.organization_id,
