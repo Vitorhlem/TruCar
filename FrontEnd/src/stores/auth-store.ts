@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
-// O import de 'Notify' foi removido
 import type { LoginForm, TokenData, User } from 'src/models/auth-models';
 
 function getInitialUser(): User | null {
@@ -32,7 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await api.post<TokenData>('/login/token', params);
       
-      // A lógica de desempacotar agora corresponde ao TokenData e funciona
+      // A CORREÇÃO CRUCIAL: Desempacota a resposta plana
       const { access_token, user: userData } = response.data;
 
       accessToken.value = access_token;
@@ -42,11 +41,12 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(userData));
 
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      return true;
+      return true; // Retorna true em caso de sucesso
     } catch (error) {
       console.error('Falha no login:', error);
-      logout(); // Limpa quaisquer dados antigos em caso de falha
-      return false;
+      // Limpa quaisquer dados antigos em caso de falha
+      logout();
+      return false; // Retorna false em caso de falha
     }
   }
 
@@ -58,7 +58,6 @@ export const useAuthStore = defineStore('auth', () => {
     delete api.defaults.headers.common['Authorization'];
   }
 
-  // Função para inicializar o estado do Axios ao carregar a aplicação
   function init() {
     const token = accessToken.value;
     if (token) {
