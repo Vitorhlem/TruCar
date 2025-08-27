@@ -27,6 +27,8 @@ class Vehicle(Base):
     maintenance_notes = Column(Text, nullable=True)
 
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    maintenance_requests = relationship("MaintenanceRequest", back_populates="vehicle", cascade="all, delete-orphan")
+
     organization = relationship("Organization", back_populates="vehicles")
 
     journeys = relationship("Journey", back_populates="vehicle", cascade="all, delete-orphan")

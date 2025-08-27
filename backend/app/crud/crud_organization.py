@@ -20,4 +20,4 @@ async def create_organization(db: AsyncSession, *, obj_in: OrganizationCreate) -
     db.add(db_org)
     await db.commit()
     await db.refresh(db_org)
-    return db_org
+    return db_org   

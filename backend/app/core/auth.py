@@ -30,7 +30,7 @@ async def authenticate_user(
     db: AsyncSession, *, email: str, password: str
 ) -> User | None:
     """Autentica um utilizador, carregando a sua organização."""
-    # Esta chamada agora corresponde à função de CRUD corrigida
+    # A CORREÇÃO CRUCIAL: Passamos load_organization=True
     user = await crud.user.get_user_by_email(db, email=email, load_organization=True)
     if not user:
         return None
