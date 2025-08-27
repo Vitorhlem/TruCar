@@ -6,18 +6,14 @@ import type { MaintenanceRequest, MaintenanceRequestCreate, MaintenanceRequestUp
 
 export const useMaintenanceStore = defineStore('maintenance', () => {
   const requests = ref<MaintenanceRequest[]>([]);
-  const comments = ref<MaintenanceComment[]>([]);
+  const comments = ref<MaintenanceComment[]>([]); // Pode ser útil para um chamado específico
   const isLoading = ref(false);
 
-
-    async function fetchRequests(search: string | null = null) {
+  async function fetchRequests(search: string | null = null) {
     isLoading.value = true;
     try {
-      const params = new URLSearchParams();
-      if (search) {
-        params.append('search', search);
-      }
-      const response = await api.get<MaintenanceRequest[]>('/maintenance/', { params });
+      const params = search ? { search } : {};
+      const response = await api.get<MaintenanceRequest[]>('/maintenance', { params });
       requests.value = response.data;
     } catch {
       Notify.create({ type: 'negative', message: 'Falha ao carregar solicitações.' });
@@ -29,9 +25,9 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
   async function createRequest(payload: MaintenanceRequestCreate) {
     isLoading.value = true;
     try {
-      const response = await api.post<MaintenanceRequest>('/maintenance/', payload);
-      requests.value.unshift(response.data);
+      await api.post<MaintenanceRequest>('/maintenance/', payload);
       Notify.create({ type: 'positive', message: 'Solicitação enviada com sucesso!' });
+      await fetchRequests(); // Recarrega a lista para mostrar o novo item
     } catch (error) {
       Notify.create({ type: 'negative', message: 'Erro ao enviar solicitação.' });
       throw error;
@@ -43,12 +39,10 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
   async function updateRequest(requestId: number, payload: MaintenanceRequestUpdate) {
     isLoading.value = true;
     try {
-      const response = await api.put<MaintenanceRequest>(`/maintenance/${requestId}`, payload);
-      const index = requests.value.findIndex(r => r.id === requestId);
-      if (index !== -1) {
-        requests.value[index] = response.data;
-      }
+      await api.put<MaintenanceRequest>(`/maintenance/${requestId}`, payload);
       Notify.create({ type: 'positive', message: 'Status da solicitação atualizado!' });
+      // Busca a versão completa para ter todos os dados atualizados
+      await fetchRequestById(requestId);
     } catch (error) {
       Notify.create({ type: 'negative', message: 'Erro ao atualizar solicitação.' });
       throw error;
@@ -57,20 +51,23 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
     }
   }
 
-  async function fetchComments(requestId: number) {
+  async function fetchRequestById(requestId: number) {
     try {
-      const response = await api.get<MaintenanceComment[]>(`/maintenance/${requestId}/comments`);
-      comments.value = response.data;
+        const response = await api.get<MaintenanceRequest>(`/maintenance/${requestId}`);
+        const index = requests.value.findIndex(r => r.id === requestId);
+        if (index !== -1) {
+            requests.value[index] = response.data;
+        }
     } catch (error) {
-      console.error('Falha ao buscar comentários', error);
-      comments.value = []; // Limpa em caso de erro
+        console.error('Falha ao buscar detalhes do chamado:', error);
     }
   }
 
-    async function addComment(requestId: number, payload: MaintenanceCommentCreate) {
+  async function addComment(requestId: number, payload: MaintenanceCommentCreate) {
     try {
-      const response = await api.post<MaintenanceComment>(`/maintenance/${requestId}/comments`, payload);
-      comments.value.push(response.data); // Adiciona o novo comentário à lista local
+      await api.post<MaintenanceComment>(`/maintenance/${requestId}/comments`, payload);
+      // Após adicionar um comentário, busca o chamado completo para atualizar a lista de comentários
+      await fetchRequestById(requestId);
     } catch (error) {
       Notify.create({ type: 'negative', message: 'Erro ao enviar comentário.' });
       throw error;
@@ -81,9 +78,7 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await api.post<{ file_url: string }>('/maintenance/upload-file', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post<{ file_url: string }>('/maintenance/upload-file', formData);
       return response.data.file_url;
     } catch {
       Notify.create({ type: 'negative', message: 'Falha no upload do anexo.' });
@@ -91,18 +86,15 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
     }
   }
 
-  
-
-  
   return {
     requests,
     comments,
     isLoading,
     fetchRequests,
+    fetchRequestById,
     createRequest,
     updateRequest,
     uploadAttachment,
     addComment,
-    fetchComments,
   };
 });

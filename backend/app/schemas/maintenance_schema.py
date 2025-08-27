@@ -1,16 +1,28 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
-from app.models.maintenance_request_model import MaintenanceStatus
+from app.models.maintenance_model import MaintenanceStatus, MaintenanceCategory
 from .user_schema import UserPublic
 from .vehicle_schema import VehiclePublic
 
-# --- Schemas da Solicitação de Manutenção ---
+class MaintenanceCommentBase(BaseModel):
+    comment_text: str
+    file_url: Optional[str] = None
+
+class MaintenanceCommentCreate(MaintenanceCommentBase):
+    pass
+
+class MaintenanceCommentPublic(MaintenanceCommentBase):
+    id: int
+    created_at: datetime
+    user: UserPublic
+    model_config = { "from_attributes": True }
+
 class MaintenanceRequestBase(BaseModel):
     problem_description: str
     vehicle_id: int
-    category: str # Adicionamos categoria aqui
+    category: MaintenanceCategory
 
 class MaintenanceRequestCreate(MaintenanceRequestBase):
     pass
@@ -24,21 +36,9 @@ class MaintenanceRequestPublic(MaintenanceRequestBase):
     status: MaintenanceStatus
     created_at: datetime
     updated_at: Optional[datetime] = None
-    reporter: UserPublic
+    reporter: Optional[UserPublic] = None
     approver: Optional[UserPublic] = None
     vehicle: VehiclePublic
     manager_notes: Optional[str] = None
-    model_config = { "from_attributes": True }
-
-# --- NOVOS SCHEMAS PARA OS COMENTÁRIOS (CHAT) ---
-class MaintenanceCommentBase(BaseModel):
-    comment_text: str
-
-class MaintenanceCommentCreate(MaintenanceCommentBase):
-    pass
-
-class MaintenanceCommentPublic(MaintenanceCommentBase):
-    id: int
-    created_at: datetime
-    user: UserPublic
+    comments: List[MaintenanceCommentPublic] = []
     model_config = { "from_attributes": True }

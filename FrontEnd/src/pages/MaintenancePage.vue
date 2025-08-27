@@ -1,5 +1,3 @@
-
-
 <template>
   <q-page padding>
     <div class="flex items-center justify-between q-mb-md">
@@ -14,18 +12,18 @@
     </div>
 
      <q-card flat bordered class="q-mb-md">
-      <q-card-section>
-        <q-input
-          outlined
-          dense
-          debounce="300"
-          v-model="searchTerm"
-          placeholder="Buscar por veículo, solicitante, problema..."
-        >
-          <template v-slot:append><q-icon name="search" /></template>
-        </q-input>
-      </q-card-section>
-    </q-card>
+       <q-card-section>
+         <q-input
+           outlined
+           dense
+           debounce="300"
+           v-model="searchTerm"
+           :placeholder="`Buscar por ${terminologyStore.vehicleNoun.toLowerCase()}, solicitante, problema...`"
+         >
+           <template v-slot:append><q-icon name="search" /></template>
+         </q-input>
+       </q-card-section>
+     </q-card>
 
     <q-tabs v-model="tab" dense class="text-grey" active-color="primary" indicator-color="primary" align="justify" narrow-indicator>
       <q-tab name="open" label="Chamados Abertos" />
@@ -40,7 +38,7 @@
         </div>
         <div v-else-if="openRequests.length > 0" class="row q-col-gutter-md">
           <div v-for="req in openRequests" :key="req.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-            <MaintenanceRequestCard :request="req" @click="openDetailsDialog(req)" />
+            <MaintenanceRequestCard :request="req" :vehicle-noun="terminologyStore.vehicleNoun" @click="openDetailsDialog(req)" />
           </div>
         </div>
         <div v-else class="text-center q-pa-xl text-grey-7">
@@ -57,7 +55,7 @@
         <q-list v-else bordered separator>
           <q-item v-for="req in closedRequests" :key="req.id" clickable v-ripple @click="openDetailsDialog(req)">
             <q-item-section>
-              <q-item-label>{{ req.vehicle.brand }} {{ req.vehicle.model }}</q-item-label>
+              <q-item-label>{{ req.vehicle.brand }} {{ req.vehicle.model }} ({{ req.vehicle.license_plate || req.vehicle.identifier }})</q-item-label>
               <q-item-label caption>{{ req.problem_description }}</q-item-label>
             </q-item-section>
             <q-item-section side top>
@@ -68,20 +66,31 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <CreateRequestDialog v-model="isCreateDialogOpen" />
-    <ManagerActionDialog v-model="isDetailsDialogOpen" :request="selectedRequest" />
+    <CreateRequestDialog
+      v-model="isCreateDialogOpen"
+      :vehicle-noun="terminologyStore.vehicleNoun"
+      :plate-or-identifier-label="terminologyStore.plateOrIdentifierLabel"
+    />
+    <ManagerActionDialog
+      v-model="isDetailsDialogOpen"
+      :request="selectedRequest"
+      :vehicle-noun="terminologyStore.vehicleNoun"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import { useMaintenanceStore } from 'stores/maintenance-store';
+import { useTerminologyStore } from 'stores/terminology-store';
 import { MaintenanceStatus, type MaintenanceRequest } from 'src/models/maintenance-models';
 import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue';
 import ManagerActionDialog from 'components/maintenance/ManagerActionDialog.vue';
 import MaintenanceRequestCard from 'components/maintenance/MaintenanceRequestCard.vue';
 
 const maintenanceStore = useMaintenanceStore();
+const terminologyStore = useTerminologyStore();
+
 const searchTerm = ref('');
 const tab = ref('open');
 const isCreateDialogOpen = ref(false);
@@ -99,7 +108,7 @@ function openDetailsDialog(request: MaintenanceRequest) {
   isDetailsDialogOpen.value = true;
 }
 
-function getStatusColor(status: MaintenanceStatus) {
+function getStatusColor(status: MaintenanceStatus): string {
   const colorMap: Record<MaintenanceStatus, string> = {
     [MaintenanceStatus.PENDING]: 'orange',
     [MaintenanceStatus.APPROVED]: 'primary',
@@ -107,7 +116,7 @@ function getStatusColor(status: MaintenanceStatus) {
     [MaintenanceStatus.IN_PROGRESS]: 'info',
     [MaintenanceStatus.COMPLETED]: 'positive',
   };
-  return colorMap[status];
+  return colorMap[status] || 'grey';
 }
 
 watch(searchTerm, (newValue) => {

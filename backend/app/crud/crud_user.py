@@ -9,7 +9,7 @@ from app.models.user_model import User, UserRole
 from app.models.journey_model import Journey
 from app.models.vehicle_model import Vehicle
 from app.models.fuel_log_model import FuelLog
-from app.models.maintenance_request_model import MaintenanceRequest
+from app.models.maintenance_model import MaintenanceRequest
 from app.schemas.user_schema import UserCreate, UserUpdate
 
 
