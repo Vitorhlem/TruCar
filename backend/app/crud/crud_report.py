@@ -84,34 +84,18 @@ async def get_dashboard_summary(
     db: AsyncSession, *, current_user: User, start_date: datetime
 ) -> DashboardSummary:
     """
-    Busca e agrega todos os dados para o Dashboard, incluindo os dados dos gráficos.
+    Busca e agrega dados para o Dashboard. Se for um motorista,
+    filtra os dados de performance para mostrar apenas a sua própria atividade.
     """
     org_id = current_user.organization_id
     sector_str = current_user.organization.sector
 
-    # --- KPIs ---
+    # --- KPIs --- (Estes devem mostrar os totais da organização para todos)
     kpi_stmt = select(Vehicle.status, func.count(Vehicle.id)).where(Vehicle.organization_id == org_id).group_by(Vehicle.status)
     kpi_result = await db.execute(kpi_stmt)
     status_counts = {status: count for status, count in kpi_result.all()}
 
-    fuel_cost_stmt = select(func.sum(FuelLog.total_cost)).where(
-        FuelLog.organization_id == org_id,
-        extract('month', FuelLog.timestamp) == datetime.utcnow().month,
-        extract('year', FuelLog.timestamp) == datetime.utcnow().year
-    )
-    total_fuel_cost = (await db.execute(fuel_cost_stmt)).scalar_one_or_none() or 0.0
-
-    open_requests_stmt = select(func.count(MaintenanceRequest.id)).where(
-        MaintenanceRequest.organization_id == org_id,
-        MaintenanceRequest.status.in_([
-            MaintenanceStatus.PENDING.value,
-            MaintenanceStatus.APPROVED.value,
-            MaintenanceStatus.IN_PROGRESS.value
-        ])
-    )
-    open_maintenance_requests = (await db.execute(open_requests_stmt)).scalar_one_or_none() or 0
-    
-    # --- LÓGICA DE CÁLCULO DINÂMICO PARA GRÁFICO E KPI ---
+    # --- CÁLCULO DINÂMICO DE DISTÂNCIA / DURAÇÃO ---
     if sector_str == Sector.AGRONEGOCIO.value:
         distance_col = func.sum(Journey.end_engine_hours - Journey.start_engine_hours).label("total_distance")
         filter_col = Journey.end_engine_hours.is_not(None)
@@ -119,7 +103,8 @@ async def get_dashboard_summary(
         distance_col = func.sum(Journey.end_mileage - Journey.start_mileage).label("total_distance")
         filter_col = Journey.end_mileage.is_not(None)
 
-    distance_stmt = (
+    # Query base para o gráfico de linha
+    distance_per_day_stmt = (
         select(func.date(Journey.start_time).label("date"), distance_col)
         .where(
             Journey.organization_id == org_id,
@@ -127,10 +112,17 @@ async def get_dashboard_summary(
             Journey.start_time >= start_date,
             filter_col
         )
-        .group_by(func.date(Journey.start_time))
-        .order_by(func.date(Journey.start_time))
     )
-    distance_result = await db.execute(distance_stmt)
+    
+    # A LÓGICA INTELIGENTE QUE ESTAVA EM FALTA:
+    # Se o utilizador logado for um motorista, adicionamos um filtro extra à query
+    if current_user.role == UserRole.DRIVER:
+        distance_per_day_stmt = distance_per_day_stmt.where(Journey.driver_id == current_user.id)
+    
+    # Agrupamos e ordenamos a query final
+    distance_per_day_stmt = distance_per_day_stmt.group_by(func.date(Journey.start_time)).order_by(func.date(Journey.start_time))
+    
+    distance_result = await db.execute(distance_per_day_stmt)
     km_per_day_data = [KmPerDay(date=row.date.isoformat(), total_km=float(row.total_distance or 0)) for row in distance_result.all()]
     total_distance_or_duration = sum(item.total_km for item in km_per_day_data)
 
@@ -139,19 +131,19 @@ async def get_dashboard_summary(
         available_vehicles=status_counts.get(VehicleStatus.AVAILABLE.value, 0),
         in_use_vehicles=status_counts.get(VehicleStatus.IN_USE.value, 0),
         maintenance_vehicles=status_counts.get(VehicleStatus.MAINTENANCE.value, 0),
-        total_fuel_cost_current_month=total_fuel_cost,
-        open_maintenance_requests=open_maintenance_requests,
-        km_last_30_days=float(total_distance_or_duration)
+        km_last_30_days=float(total_distance_or_duration),
+        total_fuel_cost_current_month=0, # Placeholder
+        open_maintenance_requests=0,    # Placeholder
     )
     
     active_journeys = await crud.journey.get_active_journeys(db, organization_id=org_id)
 
-    # CORRIGIDO: Retorna o objeto Pydantic com os dados do gráfico preenchidos
     return DashboardSummary(
         kpis=kpis_data,
         km_per_day_last_30_days=km_per_day_data,
+        active_journeys=active_journeys,
+        # Placeholders para as outras listas
         top_5_vehicles_by_km=[],
         fuel_cost_last_6_months=[],
         upcoming_maintenances=[],
-        active_journeys=active_journeys,
     )

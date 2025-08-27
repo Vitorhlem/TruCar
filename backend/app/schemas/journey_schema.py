@@ -1,20 +1,16 @@
-# backend/app/schemas/journey_schema.py
-
+from __future__ import annotations
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import enum
 
-# Importa outros schemas que são necessários
+# Importa outros schemas que são usados nas respostas
 from .user_schema import UserPublic
 from .vehicle_schema import VehiclePublic
 
-# ESTE FICHEIRO DEFINE o Enum JourneyType.
 class JourneyType(str, enum.Enum):
     SPECIFIC_DESTINATION = 'specific_destination'
     FREE_ROAM = 'free_roam'
-
-# --- SCHEMAS DE VIAGEM (herdam de BaseModel) ---
 
 class JourneyBase(BaseModel):
     trip_type: JourneyType
@@ -35,7 +31,7 @@ class JourneyPublic(JourneyBase):
     is_active: bool
     start_time: datetime
     end_time: Optional[datetime] = None
-    start_mileage: int
+    start_mileage: int | None
     end_mileage: Optional[int] = None
     start_engine_hours: Optional[float] = None
     end_engine_hours: Optional[float] = None

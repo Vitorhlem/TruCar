@@ -6,7 +6,10 @@ from datetime import datetime, date, timedelta
 
 from app.models.journey_model import Journey
 from app.models.vehicle_model import Vehicle, VehicleStatus
+# A LINHA QUE FALTAVA PARA O EAGER LOADING:
+from app.models.user_model import User
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate
+
 
 # Exceções customizadas para uma arquitetura mais limpa
 class VehicleNotAvailableError(Exception):

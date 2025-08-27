@@ -14,13 +14,14 @@ class UserBase(BaseModel):
     full_name: str
     is_active: bool = True
     avatar_url: Optional[str] = None
-    role: UserRole
 
 class UserCreate(UserBase):
     password: str
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
     password: Optional[str] = None
     is_active: Optional[bool] = None
     role: Optional[UserRole] = None
@@ -28,6 +29,8 @@ class UserUpdate(BaseModel):
 class UserPublic(UserBase):
     id: int
     organization: OrganizationPublic
+    role: UserRole # A role aparece na resposta
+
     model_config = { "from_attributes": True }
 
 # --- SCHEMA PARA REGISTO DE NOVO UTILIZADOR/EMPRESA ---

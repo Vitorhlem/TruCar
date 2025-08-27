@@ -4,7 +4,7 @@ from typing import List
 
 from app import crud
 from app.api import deps
-from app.models.user_model import User
+from app.models.user_model import User, UserRole
 from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic, UserStats
 
 router = APIRouter()
@@ -29,18 +29,19 @@ async def create_user(
     user_in: UserCreate,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Cria um novo utilizador DENTRO da organização do gestor logado."""
+    """Cria um novo utilizador (motorista) DENTRO da organização do gestor logado."""
     user = await crud.user.get_user_by_email(db, email=user_in.email)
-    # A verificação de e-mail duplicado deve ser global para evitar conflitos de login
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="O e-mail fornecido já está registado no sistema.",
         )
     
+    # A role é definida aqui, no endpoint. Gestores criam motoristas por padrão.
     new_user = await crud.user.create_user(
         db=db, user_in=user_in, 
-        organization_id=current_user.organization_id
+        organization_id=current_user.organization_id,
+        role=UserRole.DRIVER
     )
     return new_user
 

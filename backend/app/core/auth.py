@@ -1,18 +1,13 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any
-
+from sqlalchemy.ext.asyncio import AsyncSession
 from jose import jwt
 from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.user_model import User
 from app import crud
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-ALGORITHM = settings.ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -30,6 +25,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
 async def authenticate_user(
     db: AsyncSession, *, email: str, password: str
 ) -> User | None:
