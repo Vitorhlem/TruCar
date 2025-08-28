@@ -36,8 +36,7 @@
     <div v-else-if="vehicleStore.vehicles && vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card class="vehicle-card column no-wrap full-height">
-          <q-img :src="vehicle.photo_url" height="160px" fit="cover" class="bg-grey-3">
-            <template v-slot:error>
+<q-img :src="vehicle.photo_url ?? undefined" height="160px" fit="cover"            <template v-slot:error>
               <div class="absolute-full flex flex-center bg-primary text-white">
                 <q-icon :name="getVehicleIcon(vehicle)" size="48px" />
               </div>
@@ -125,29 +124,7 @@
             <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" />
             <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" />
             <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" />
-
-            <q-file
-              v-model="photoFile"
-              label="Carregar Foto do Veículo"
-              outlined
-              clearable
-              counter
-              accept=".jpg, image/*"
-              max-files="1"
-            >
-              <template v-slot:prepend>
-                <q-icon name="attach_file" />
-              </template>
-              <template v-if="formData.photo_url && !photoFile" v-slot:append>
-                  <q-avatar square size="40px">
-                      <img :src="formData.photo_url" alt="Foto atual" />
-                  </q-avatar>
-              </template>
-            </q-file>
-            <div v-if="formData.photo_url && !photoFile" class="text-caption text-grey-7">
-                Foto atual será mantida se nenhuma nova for enviada.
-            </div>
-
+            <q-input outlined v-model="formData.photo_url" label="URL da Foto" />
             <q-separator class="q-my-lg" />
             <div class="text-subtitle1 text-weight-medium">Dados de Manutenção</div>
             <q-input outlined v-model.number="formData.next_maintenance_km" type="number" :label="`Próxima Revisão (${terminologyStore.distanceUnit})`" clearable />
@@ -179,7 +156,6 @@ import { useVehicleStore } from 'stores/vehicle-store';
 import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
 import { VehicleStatus, type Vehicle, type VehicleCreate, type VehicleUpdate } from 'src/models/vehicle-models';
-import api from 'src/services/api'; // Certifique-se de ter seu serviço de API configurado
 
 const $q = useQuasar();
 const vehicleStore = useVehicleStore();
@@ -192,7 +168,6 @@ const editingVehicleId = ref<number | null>(null);
 const isEditing = computed(() => editingVehicleId.value !== null);
 const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
-const photoFile = ref<File | null>(null); // Novo ref para o arquivo da foto
 
 function resetForm() {
   editingVehicleId.value = null;
@@ -202,7 +177,6 @@ function resetForm() {
     current_km: 0, current_engine_hours: 0,
     next_maintenance_date: null, next_maintenance_km: null, maintenance_notes: ''
   };
-  photoFile.value = null; // Resetar o arquivo de foto também
 }
 
 function openCreateDialog() {
@@ -218,51 +192,13 @@ function openEditDialog(vehicle: Vehicle) {
       ? vehicle.next_maintenance_date.split('-').reverse().join('/')
       : null,
   };
-  photoFile.value = null; // Limpar qualquer arquivo selecionado ao abrir edição
   isFormDialogOpen.value = true;
-}
-
-async function uploadPhoto(file: File): Promise<string | null> {
-  try {
-    const fd = new FormData();
-    fd.append('file', file);
-    // Adapte o endpoint de upload conforme o seu backend
-    const response = await api.post('/upload-photo', fd, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    // Supondo que o backend retorne a URL da foto salva
-    return response.data.file_url;
-  } catch (error) {
-    console.error("Erro ao fazer upload da foto:", error);
-    $q.notify({
-      type: 'negative',
-      message: 'Falha ao carregar a foto.'
-    });
-    return null;
-  }
 }
 
 async function onFormSubmit() {
   isSubmitting.value = true;
   try {
     const payload = { ...formData.value };
-
-    // Se um novo arquivo de foto foi selecionado, faça o upload
-    if (photoFile.value) {
-      const photoUrl = await uploadPhoto(photoFile.value);
-      if (photoUrl) {
-        payload.photo_url = photoUrl;
-      } else {
-        // Se o upload falhou, não continue com a submissão do formulário
-        isSubmitting.value = false;
-        return;
-      }
-    } else if (payload.photo_url === '') { // Se o campo de URL foi limpo e nenhum arquivo novo
-        payload.photo_url = null;
-    }
-
 
     if (payload.next_maintenance_date && typeof payload.next_maintenance_date === 'string' && payload.next_maintenance_date.includes('/')) {
       payload.next_maintenance_date = payload.next_maintenance_date.split('/').reverse().join('-');
@@ -281,10 +217,6 @@ async function onFormSubmit() {
     isFormDialogOpen.value = false;
   } catch (error) {
     console.error("Falha ao submeter formulário:", error);
-    $q.notify({
-      type: 'negative',
-      message: 'Falha ao salvar o veículo. Verifique os dados e tente novamente.'
-    });
   } finally {
     isSubmitting.value = false;
   }
@@ -313,17 +245,11 @@ function getVehicleIcon(vehicle: Vehicle): string {
   if (authStore.userSector === 'construcao_civil') return 'construction';
   if (vehicle.model) {
     const lowerModel = vehicle.model.toLowerCase();
-    if (lowerModel.includes('strada') || lowerModel.includes('fiorino') || lowerModel.includes('caminhonete')) {
+    if (lowerModel.includes('strada') || lowerModel.includes('fiorino')) {
       return 'local_shipping';
     }
-    if (lowerModel.includes('carro') || lowerModel.includes('sedan') || lowerModel.includes('hatch')) {
-      return 'directions_car';
-    }
-    if (lowerModel.includes('moto') || lowerModel.includes('motocicleta')) {
-      return 'two_wheeler';
-    }
   }
-  return 'directions_car'; // Ícone padrão
+  return 'directions_car';
 }
 
 function getStatusColor(status: VehicleStatus): string {
