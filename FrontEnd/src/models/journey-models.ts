@@ -1,5 +1,5 @@
 import type { User } from './auth-models';
-import { ImplementCreate } from './implement-models';
+import type { ImplementCreate } from './implement-models';
 import type { Vehicle } from './vehicle-models';
 
 export enum JourneyType {

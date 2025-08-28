@@ -15,5 +15,6 @@ export interface Implement {
 // O tipo para a CRIAÇÃO de um novo implemento
 export type ImplementCreate = Omit<Implement, 'id' | 'status'>; // Status é controlado pelo backend
 
+
 // O tipo para a ATUALIZAÇÃO (todos os campos são opcionais)
 export type ImplementUpdate = Partial<ImplementCreate & { status: Implement['status'] }>;

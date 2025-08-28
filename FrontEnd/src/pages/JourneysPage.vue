@@ -264,6 +264,10 @@ async function handleEndJourney() {
       await vehicleStore.fetchAllVehicles();
     }
     isEndDialogOpen.value = false;
+        await journeyStore.fetchAllJourneys();
+            await vehicleStore.fetchAllVehicles(); 
+
+
   } catch (error: unknown) {
     let message = 'Erro desconhecido ao finalizar operação.';
     if (isAxiosError(error) && error.response?.data?.detail) { message = error.response.data.detail as string; }
