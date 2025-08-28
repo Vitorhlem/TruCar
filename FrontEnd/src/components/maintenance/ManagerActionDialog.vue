@@ -56,20 +56,18 @@
             <q-btn @click="postComment" round dense flat icon="send" color="primary" :disable="!newCommentText.trim()" />
           </template>
         </q-input>
-        </q-card-section>
+      </q-card-section>
 
       <q-card-section v-else class="text-center text-grey-7 q-pa-lg">
         <q-icon name="lock" size="2em" />
         <div v-if="request.updated_at">Este chamado foi finalizado em {{ new Date(request.updated_at).toLocaleDateString('pt-BR') }} e não pode mais ser alterado.</div>
       </q-card-section>
-
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
-// CORREÇÃO: Removemos os imports não utilizados
+import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useMaintenanceStore } from 'stores/maintenance-store';
 import { useAuthStore } from 'stores/auth-store';
@@ -78,17 +76,14 @@ import { MaintenanceStatus, type MaintenanceRequest, type MaintenanceRequestUpda
 
 const props = defineProps<{
   modelValue: boolean,
-  request: MaintenanceRequest | null,
-  vehicleNoun: string, // Adicionado para consistência
+  request: MaintenanceRequest | null
 }>();
-
 const emit = defineEmits(['update:modelValue']);
 
 const $q = useQuasar();
 const maintenanceStore = useMaintenanceStore();
 const authStore = useAuthStore();
 const terminologyStore = useTerminologyStore();
-
 const newCommentText = ref('');
 
 const isClosed = computed(() => 
@@ -96,16 +91,8 @@ const isClosed = computed(() =>
   props.request?.status === MaintenanceStatus.REJECTED
 );
 
-watch(() => props.modelValue, (isVisible) => {
-  if (isVisible && props.request) {
-    newCommentText.value = '';
-  }
-});
-
 async function postComment() {
-  if (!props.request) return; // Verificação de segurança
-  if (!newCommentText.value.trim()) return;
-
+  if (!props.request || !newCommentText.value.trim()) return;
   const payload: MaintenanceCommentCreate = {
     comment_text: newCommentText.value,
   };
@@ -113,22 +100,19 @@ async function postComment() {
   newCommentText.value = '';
 }
 
-// --- FUNÇÃO CORRIGIDA E SEGURA ---
 function handleUpdateStatus(newStatus: MaintenanceStatus) {
-  // CORREÇÃO: Garante que 'request' não é nulo antes de prosseguir
   if (!props.request) return;
 
   const performUpdate = async (notes: string | null) => {
-    // Verificação de segurança dupla
     if (!props.request) return;
-
     const payload: MaintenanceRequestUpdate = { 
       status: newStatus,
-      // CORREÇÃO: Garante que o valor seja string ou null, nunca undefined
-      manager_notes: notes
+      manager_notes: notes,
     };
     await maintenanceStore.updateRequest(props.request.id, payload);
-    emit('update:modelValue', false);
+    if (newStatus === MaintenanceStatus.COMPLETED || newStatus === MaintenanceStatus.REJECTED) {
+      emit('update:modelValue', false);
+    }
   };
 
   if (newStatus === MaintenanceStatus.COMPLETED || newStatus === MaintenanceStatus.REJECTED) {
@@ -142,11 +126,10 @@ function handleUpdateStatus(newStatus: MaintenanceStatus) {
       cancel: true,
       persistent: true,
     }).onOk((data: string) => {
-      // CORREÇÃO: O ESLint prefere que a chamada async seja tratada assim
       void performUpdate(data || null);
     });
   } else {
     void performUpdate(props.request.manager_notes);
   }
 }
-</script>
+</script> 

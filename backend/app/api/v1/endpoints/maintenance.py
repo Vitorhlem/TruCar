@@ -89,7 +89,7 @@ async def create_maintenance_request(
         new_request = await crud.maintenance.create_request(
             db=db, request_in=request_in, reporter_id=current_user.id, organization_id=current_user.organization_id
         )
-        # Lógica de notificação por e-mail pode ser adicionada aqui com BackgroundTasks se desejar
+        # Lógica de notificação por e-mail pode ser adicionada aqui
         return new_request
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -190,7 +190,7 @@ async def create_comment_for_request(
 ):
     """Adiciona um novo comentário a uma solicitação."""
     try:
-        return await crud.maintenance_comment.create_comment(
+        return await crud.maintenance.create_comment(
             db=db, comment_in=comment_in, request_id=request_id,
             user_id=current_user.id, organization_id=current_user.organization_id
         )

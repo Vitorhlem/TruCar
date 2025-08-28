@@ -11,7 +11,7 @@
       />
     </div>
 
-     <q-card flat bordered class="q-mb-md">
+    <q-card flat bordered class="q-mb-md">
        <q-card-section>
          <q-input
            outlined
@@ -48,7 +48,7 @@
       </q-tab-panel>
 
       <q-tab-panel name="closed">
-         <div v-if="closedRequests.length === 0 && !maintenanceStore.isLoading" class="text-center q-pa-xl text-grey-7">
+        <div v-if="closedRequests.length === 0 && !maintenanceStore.isLoading" class="text-center q-pa-xl text-grey-7">
           <q-icon name="inbox" size="4em" />
           <p class="q-mt-md">Nenhum chamado finalizado no histórico.</p>
         </div>
@@ -66,15 +66,15 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <CreateRequestDialog
-      v-model="isCreateDialogOpen"
-      :vehicle-noun="terminologyStore.vehicleNoun"
-      :plate-or-identifier-label="terminologyStore.plateOrIdentifierLabel"
-    />
     <ManagerActionDialog
       v-model="isDetailsDialogOpen"
       :request="selectedRequest"
       :vehicle-noun="terminologyStore.vehicleNoun"
+    />
+    <CreateRequestDialog
+      v-model="isCreateDialogOpen"
+      :vehicle-noun="terminologyStore.vehicleNoun"
+      :plate-or-identifier-label="terminologyStore.plateOrIdentifierLabel"
     />
   </q-page>
 </template>
@@ -95,7 +95,17 @@ const searchTerm = ref('');
 const tab = ref('open');
 const isCreateDialogOpen = ref(false);
 const isDetailsDialogOpen = ref(false);
-const selectedRequest = ref<MaintenanceRequest | null>(null);
+
+// --- A CORREÇÃO CRUCIAL ESTÁ AQUI ---
+// 1. Guardamos apenas o ID do chamado selecionado
+const selectedRequestId = ref<number | null>(null);
+
+// 2. Criamos uma 'computed property' que busca o objeto ATUALIZADO na store
+const selectedRequest = computed(() => {
+  if (!selectedRequestId.value) return null;
+  return maintenanceStore.requests.find(r => r.id === selectedRequestId.value) || null;
+});
+// --- FIM DA CORREÇÃO ---
 
 const openRequests = computed(() => maintenanceStore.requests.filter(r => r.status !== MaintenanceStatus.COMPLETED && r.status !== MaintenanceStatus.REJECTED));
 const closedRequests = computed(() => maintenanceStore.requests.filter(r => r.status === MaintenanceStatus.COMPLETED || r.status === MaintenanceStatus.REJECTED));
@@ -103,8 +113,10 @@ const closedRequests = computed(() => maintenanceStore.requests.filter(r => r.st
 function openCreateRequestDialog() {
   isCreateDialogOpen.value = true;
 }
+
 function openDetailsDialog(request: MaintenanceRequest) {
-  selectedRequest.value = request;
+  // 3. A função agora apenas guarda o ID. A 'computed property' faz o resto.
+  selectedRequestId.value = request.id;
   isDetailsDialogOpen.value = true;
 }
 
