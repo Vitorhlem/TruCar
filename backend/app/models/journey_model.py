@@ -5,7 +5,7 @@ from sqlalchemy import (
     Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Float
 )
 from sqlalchemy.orm import relationship
-
+from .implement_model import Implement
 from app.db.base_class import Base
 from .organization_model import Organization
 from .user_model import User
@@ -23,6 +23,8 @@ class Journey(Base):
     end_mileage = Column(Integer, nullable=True)
     is_active = Column(Boolean, default=True)
     trip_type = Column(String(50), nullable=False)
+    implement_id = Column(Integer, ForeignKey("implements.id"), nullable=True)
+
     
     # --- AS DUAS LINHAS QUE ESTAVAM EM FALTA ---
     destination_address = Column(String, nullable=True)
@@ -36,7 +38,7 @@ class Journey(Base):
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
     driver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
-
+    implement = relationship("Implement", back_populates="journeys")
     vehicle = relationship("Vehicle", back_populates="journeys")
     driver = relationship("User", back_populates="journeys")
     organization = relationship("Organization")

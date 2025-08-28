@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     gps,
     fuel_logs,
     performance,
+    implements,
     report_generator
 )
 
@@ -31,3 +32,4 @@ api_router.include_router(fuel_logs.router, prefix="/fuel-logs", tags=["Fuel Log
 # 2. Adicionamos a nova linha para o roteador de performance
 api_router.include_router(performance.router, prefix="/performance", tags=["Performance"])
 api_router.include_router(report_generator.router, prefix="/report-generator", tags=["Report Generator"])
+api_router.include_router(implements.router, prefix="/implements", tags=["Implements"])
