@@ -15,6 +15,7 @@
           icon="add" :label="terminologyStore.addVehicleButtonLabel" unelevated
         />
       </div>
+      
     </div>
 
     <div v-if="vehicleStore.isLoading" class="row q-col-gutter-md">
@@ -30,21 +31,28 @@
             <q-skeleton type="text" width="70%" />
           </q-card-section>
         </q-card>
+        
       </div>
     </div>
 
     <div v-else-if="vehicleStore.vehicles && vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card class="vehicle-card column no-wrap full-height">
-<q-img :src="vehicle.photo_url ?? undefined" height="160px" fit="cover"            <template v-slot:error>
+          
+          <q-img :src="vehicle.photo_url ?? undefined" height="160px" fit="cover" class="bg-grey-3">
+            <template v-slot:error>
               <div class="absolute-full flex flex-center bg-primary text-white">
                 <q-icon :name="getVehicleIcon(vehicle)" size="48px" />
+                
               </div>
+              
             </template>
-            <div class="absolute-bottom-left q-pa-sm" style="background-color: rgba(0,0,0,0.5);">
-                <q-badge :color="getStatusColor(vehicle.status)" :label="vehicle.status" />
+            <div class="absolute-bottom-left q-pa-sm" style="background-color: rgba(0,0,0,0.0);">
             </div>
+
           </q-img>
+                      <q-badge :color="getStatusColor(vehicle.status)" :label="vehicle.status" />
+
 
           <q-card-section>
             <div class="flex items-start no-wrap">
@@ -60,10 +68,13 @@
                         <q-tooltip>Excluir</q-tooltip>
                     </q-btn>
                 </div>
+
+                
             </div>
           </q-card-section>
 
           <q-space />
+          
           <q-separator />
 
           <q-card-section class="q-py-sm">
@@ -71,6 +82,7 @@
               <span>{{ terminologyStore.distanceUnit === 'km' ? 'Odômetro' : 'Horímetro' }}</span>
               <span class="text-weight-bold text-black">{{ (vehicle.current_km ?? vehicle.current_engine_hours ?? 0).toLocaleString('pt-BR') }} {{ terminologyStore.distanceUnit }}</span>
             </div>
+            
              <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption text-grey-8 q-mt-xs">
                 <span>Próx. Revisão</span>
                 <span class="text-weight-bold text-black ellipsis text-right" style="max-width: 60%;">
@@ -124,7 +136,29 @@
             <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" />
             <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" />
             <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" />
-            <q-input outlined v-model="formData.photo_url" label="URL da Foto" />
+
+            <q-file
+              v-model="photoFile"
+              label="Carregar Foto do Veículo"
+              outlined
+              clearable
+              counter
+              accept=".jpg, image/*"
+              max-files="1"
+            >
+              <template v-slot:prepend>
+                <q-icon name="attach_file" />
+              </template>
+              <template v-if="formData.photo_url && !photoFile" v-slot:append>
+                  <q-avatar square size="40px">
+                      <img :src="formData.photo_url ?? undefined" alt="Foto atual" />
+                  </q-avatar>
+              </template>
+            </q-file>
+            <div v-if="formData.photo_url && !photoFile" class="text-caption text-grey-7">
+                Foto atual será mantida se nenhuma nova for enviada.
+            </div>
+
             <q-separator class="q-my-lg" />
             <div class="text-subtitle1 text-weight-medium">Dados de Manutenção</div>
             <q-input outlined v-model.number="formData.next_maintenance_km" type="number" :label="`Próxima Revisão (${terminologyStore.distanceUnit})`" clearable />
@@ -156,6 +190,7 @@ import { useVehicleStore } from 'stores/vehicle-store';
 import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
 import { VehicleStatus, type Vehicle, type VehicleCreate, type VehicleUpdate } from 'src/models/vehicle-models';
+import api from 'src/services/api';
 
 const $q = useQuasar();
 const vehicleStore = useVehicleStore();
@@ -168,6 +203,7 @@ const editingVehicleId = ref<number | null>(null);
 const isEditing = computed(() => editingVehicleId.value !== null);
 const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
+const photoFile = ref<File | null>(null);
 
 function resetForm() {
   editingVehicleId.value = null;
@@ -177,6 +213,7 @@ function resetForm() {
     current_km: 0, current_engine_hours: 0,
     next_maintenance_date: null, next_maintenance_km: null, maintenance_notes: ''
   };
+  photoFile.value = null;
 }
 
 function openCreateDialog() {
@@ -192,13 +229,41 @@ function openEditDialog(vehicle: Vehicle) {
       ? vehicle.next_maintenance_date.split('-').reverse().join('/')
       : null,
   };
+  photoFile.value = null;
   isFormDialogOpen.value = true;
+}
+
+async function uploadPhoto(file: File): Promise<string | null> {
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const response = await api.post('/upload-photo', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.file_url;
+  } catch (error) {
+    console.error("Erro ao fazer upload da foto:", error);
+    $q.notify({ type: 'negative', message: 'Falha ao carregar a foto.' });
+    return null;
+  }
 }
 
 async function onFormSubmit() {
   isSubmitting.value = true;
   try {
     const payload = { ...formData.value };
+
+    if (photoFile.value) {
+      const photoUrl = await uploadPhoto(photoFile.value);
+      if (photoUrl) {
+        payload.photo_url = photoUrl;
+      } else {
+        isSubmitting.value = false;
+        return;
+      }
+    } else if (payload.photo_url === '') {
+        payload.photo_url = null;
+    }
 
     if (payload.next_maintenance_date && typeof payload.next_maintenance_date === 'string' && payload.next_maintenance_date.includes('/')) {
       payload.next_maintenance_date = payload.next_maintenance_date.split('/').reverse().join('-');
@@ -217,6 +282,10 @@ async function onFormSubmit() {
     isFormDialogOpen.value = false;
   } catch (error) {
     console.error("Falha ao submeter formulário:", error);
+    $q.notify({
+      type: 'negative',
+      message: 'Falha ao salvar o veículo. Verifique os dados e tente novamente.'
+    });
   } finally {
     isSubmitting.value = false;
   }
@@ -224,18 +293,22 @@ async function onFormSubmit() {
 
 const searchTerm = ref('');
 const pagination = ref({ page: 1, rowsPerPage: 8, rowsNumber: 0 });
+
 async function fetchFromServer(page: number, rowsPerPage: number, search: string) {
   await vehicleStore.fetchAllVehicles({ page, rowsPerPage, search });
   pagination.value.rowsNumber = vehicleStore.totalItems;
 }
+
 function onPageChange(page: number) {
   pagination.value.page = page;
   void fetchFromServer(page, pagination.value.rowsPerPage, searchTerm.value);
 }
+
 watch(searchTerm, (newValue) => {
   pagination.value.page = 1;
   void fetchFromServer(1, pagination.value.rowsPerPage, newValue);
 });
+
 onMounted(() => {
   void fetchFromServer(pagination.value.page, pagination.value.rowsPerPage, searchTerm.value);
 });
@@ -245,9 +318,9 @@ function getVehicleIcon(vehicle: Vehicle): string {
   if (authStore.userSector === 'construcao_civil') return 'construction';
   if (vehicle.model) {
     const lowerModel = vehicle.model.toLowerCase();
-    if (lowerModel.includes('strada') || lowerModel.includes('fiorino')) {
-      return 'local_shipping';
-    }
+    if (lowerModel.includes('strada') || lowerModel.includes('fiorino') || lowerModel.includes('caminhonete')) { return 'local_shipping'; }
+    if (lowerModel.includes('carro') || lowerModel.includes('sedan') || lowerModel.includes('hatch')) { return 'directions_car'; }
+    if (lowerModel.includes('moto') || lowerModel.includes('motocicleta')) { return 'two_wheeler'; }
   }
   return 'directions_car';
 }
