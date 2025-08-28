@@ -37,7 +37,7 @@
         <template v-slot:body-cell-actions="props">
           <q-td :props="props">
             <q-btn v-if="props.row.is_active" @click="openEndDialog(props.row)" flat round dense icon="event_busy" color="primary" :title="`Finalizar ${terminologyStore.journeyNoun}`" />
-            <q-btn @click="promptToDeleteJourney(props.row)" flat round dense icon="delete" color="negative" :title="`Excluir ${terminologyStore.journeyNoun}`" />
+            <q-btn v-if="authStore.isManager" @click="promptToDeleteJourney(props.row)" flat round dense icon="delete" color="negative" :title="`Excluir ${terminologyStore.journeyNoun}`" />
           </q-td>
         </template>
       </q-table>
@@ -49,20 +49,38 @@
         <q-form @submit.prevent="handleStartJourney">
           <q-card-section class="q-gutter-y-md">
             <q-select
-              outlined v-model="startForm.vehicle_id" :options="vehicleOptions"
-              :label="`${terminologyStore.vehicleNoun} *`" emit-value map-options
+              outlined
+              v-model="startForm.vehicle_id"
+              :options="vehicleOptions"
+              :label="`${terminologyStore.vehicleNoun} *`"
+              emit-value
+              map-options
               :rules="[val => !!val || 'Selecione um item']"
+            />
+            
+            <q-select
+              v-if="authStore.userSector === 'agronegocio'"
+              outlined
+              v-model="startForm.implement_id"
+              :options="implementOptions"
+              label="Implemento (Opcional)"
+              emit-value
+              map-options
+              clearable
+              :loading="implementStore.isLoading"
             />
             
             <q-input
               v-if="authStore.userSector === 'agronegocio'"
-              outlined v-model.number="startForm.start_engine_hours" type="number"
+              outlined v-model.number="startForm.start_engine_hours"
+              type="number"
               label="Horas Iniciais *"
               :rules="[val => val !== null && val !== undefined && val >= 0 || 'Valor deve ser positivo']"
             />
             <q-input
               v-else
-              outlined v-model.number="startForm.start_mileage" type="number"
+              outlined v-model.number="startForm.start_mileage"
+              type="number"
               label="KM Inicial *"
               :rules="[val => val !== null && val !== undefined && val >= 0 || 'Valor deve ser positivo']"
             />
@@ -70,7 +88,8 @@
             <q-input outlined v-model="startForm.trip_description" :label="`Descrição da ${terminologyStore.journeyNoun}`" />
           </q-card-section>
           <q-card-actions align="right">
-            <q-btn flat label="Cancelar" v-close-popup /><q-btn type="submit" unelevated color="primary" label="Iniciar" :loading="isSubmitting" />
+            <q-btn flat label="Cancelar" v-close-popup />
+            <q-btn type="submit" unelevated color="primary" label="Iniciar" :loading="isSubmitting" />
           </q-card-actions>
         </q-form>
       </q-card>
@@ -83,19 +102,22 @@
           <q-card-section>
             <q-input
               v-if="authStore.userSector === 'agronegocio'"
-              autofocus outlined v-model.number="endForm.end_engine_hours" type="number"
+              autofocus outlined v-model.number="endForm.end_engine_hours"
+              type="number"
               label="Horas Finais *"
-              :rules="[val => val >= (editingJourney?.start_engine_hours || 0) || 'Valor final inválido']"
+              :rules="[val => val !== null && val !== undefined && val >= (editingJourney?.start_engine_hours || 0) || 'Valor final inválido']"
             />
             <q-input
               v-else
-              autofocus outlined v-model.number="endForm.end_mileage" type="number"
+              autofocus outlined v-model.number="endForm.end_mileage"
+              type="number"
               label="KM Final *"
-              :rules="[val => val >= (editingJourney?.start_mileage || 0) || 'Valor final inválido']"
+              :rules="[val => val !== null && val !== undefined && val >= (editingJourney?.start_mileage || 0) || 'Valor final inválido']"
             />
           </q-card-section>
           <q-card-actions align="right">
-            <q-btn flat label="Cancelar" v-close-popup /><q-btn type="submit" unelevated color="primary" label="Finalizar" :loading="isSubmitting" />
+            <q-btn flat label="Cancelar" v-close-popup />
+            <q-btn type="submit" unelevated color="primary" label="Finalizar" :loading="isSubmitting" />
           </q-card-actions>
         </q-form>
       </q-card>
@@ -111,6 +133,7 @@ import { useJourneyStore } from 'stores/journey-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
+import { useImplementStore } from 'stores/implement-store';
 import { JourneyType, type Journey, type JourneyCreate, type JourneyUpdate } from 'src/models/journey-models';
 
 const $q = useQuasar();
@@ -118,16 +141,21 @@ const journeyStore = useJourneyStore();
 const vehicleStore = useVehicleStore();
 const authStore = useAuthStore();
 const terminologyStore = useTerminologyStore();
+const implementStore = useImplementStore();
 
 const isStartDialogOpen = ref(false);
 const isEndDialogOpen = ref(false);
 const isSubmitting = ref(false);
 const editingJourney = ref<Journey | null>(null);
 const startForm = ref<Partial<JourneyCreate>>({});
-const endForm = ref<Partial<JourneyUpdate>>({}); 
+const endForm = ref<Partial<JourneyUpdate>>({});
 
-const vehicleOptions = computed(() => vehicleStore.availableVehicles.map(v => ({ 
-  label: `${v.brand} ${v.model} (${v.license_plate || v.identifier})`, value: v.id 
+const vehicleOptions = computed(() => vehicleStore.availableVehicles.map(v => ({
+  label: `${v.brand} ${v.model} (${v.license_plate || v.identifier})`, value: v.id
+})));
+
+const implementOptions = computed(() => implementStore.availableImplements.map(i => ({
+  label: `${i.name} (${i.brand} ${i.model})`, value: i.id
 })));
 
 const columns = computed<QTableColumn[]>(() => {
@@ -137,28 +165,25 @@ const columns = computed<QTableColumn[]>(() => {
     { name: 'driver', label: 'Motorista', field: (row: Journey) => row.driver?.full_name || '', align: 'left', sortable: true },
     { name: 'startTime', label: 'Início', field: 'start_time', align: 'center', format: (val: string) => new Date(val).toLocaleString('pt-BR'), sortable: true },
     { name: 'endTime', label: 'Fim', field: 'end_time', align: 'center', format: (val: string | null) => val ? new Date(val).toLocaleString('pt-BR') : '---', sortable: true },
-    { 
-      name: 'distance', 
-      label: `${terminologyStore.distanceUnit} Rodados`, 
-      align: 'center', 
+    {
+      name: 'distance',
+      label: `${terminologyStore.distanceUnit} Rodados`,
+      align: 'center',
       field: (row: Journey) => {
-        if (authStore.userSector === 'agronegocio' && row.end_engine_hours && row.start_engine_hours) {
+        if (authStore.userSector === 'agronegocio' && row.end_engine_hours != null && row.start_engine_hours != null) {
           return (row.end_engine_hours - row.start_engine_hours).toFixed(1);
         }
-        if (row.end_mileage && row.start_mileage) {
+        if (row.end_mileage != null && row.start_mileage != null) {
           return row.end_mileage - row.start_mileage;
         }
         return '---';
       },
-      sortable: true 
+      sortable: true
     },
   ];
-
-  // A LÓGICA CORRETA E ROBUSTA PARA ADICIONAR A COLUNA DE AÇÕES
   if (authStore.isManager) {
     baseColumns.push({ name: 'actions', label: 'Ações', field: 'actions', align: 'right' });
   }
-
   return baseColumns;
 });
 
@@ -176,11 +201,20 @@ watch(() => startForm.value.vehicle_id, (newVehicleId) => {
 }, { deep: true });
 
 async function openStartDialog() {
-  await vehicleStore.fetchAllVehicles();
+  const promisesToFetch = [vehicleStore.fetchAllVehicles()];
+
+  // Só busca os implementos se o setor for 'agronegocio'
+  if (authStore.userSector === 'agronegocio') {
+    promisesToFetch.push(implementStore.fetchAllImplements());
+  }
+
+  await Promise.all(promisesToFetch);
+
   startForm.value = {
-    vehicle_id: null,
+    vehicle_id: undefined,
     trip_type: JourneyType.FREE_ROAM,
     trip_description: '',
+    implement_id: null,
   };
   isStartDialogOpen.value = true;
 }
@@ -189,7 +223,7 @@ function openEndDialog(journey?: Journey) {
   const journeyToEnd = journey || journeyStore.currentUserActiveJourney;
   if (!journeyToEnd) return;
   editingJourney.value = journeyToEnd;
-  endForm.value = {}; 
+  endForm.value = {};
   if (authStore.userSector === 'agronegocio') {
     endForm.value.end_engine_hours = journeyToEnd.vehicle.current_engine_hours ?? journeyToEnd.start_engine_hours ?? 0;
   } else {
@@ -219,7 +253,6 @@ async function handleEndJourney() {
   try {
     const updatedVehicle = await journeyStore.endJourney(editingJourney.value.id, endForm.value);
     $q.notify({ type: 'positive', message: terminologyStore.journeyEndSuccessMessage });
-
     if (updatedVehicle) {
       await vehicleStore.fetchAllVehicles();
     }
@@ -242,12 +275,9 @@ function promptToDeleteJourney(journey: Journey) {
     persistent: true,
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
   }).onOk(() => {
-    // A LINHA QUE ESTAVA EM FALTA:
-    // Chama a action da store, passando o ID da viagem a ser excluída.
     void journeyStore.deleteJourney(journey.id);
   });
 }
-
 
 onMounted(async () => {
   await journeyStore.fetchAllJourneys();
