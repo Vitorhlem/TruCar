@@ -34,6 +34,8 @@ export interface JourneyCreate {
   trip_type: JourneyType;
   destination_address?: string;
   trip_description?: string;
+  implement_id?: number | null;
+
   
   // OS CAMPOS QUE ESTAVAM EM FALTA:
   start_mileage?: number;

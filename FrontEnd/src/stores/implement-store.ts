@@ -1,17 +1,26 @@
+// src/stores/implement-store.ts
+
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 import type { Implement, ImplementCreate, ImplementUpdate } from 'src/models/implement-models';
 
 export const useImplementStore = defineStore('implement', () => {
+  // VOLTANDO A USAR implementList, pois 'implements' é uma palavra reservada.
   const implementList = ref<Implement[]>([]);
   const isLoading = ref(false);
+
+  const availableImplements = computed(() =>
+    // Usando a variável com o nome correto
+    implementList.value.filter((i) => i.status === 'available')
+  );
 
   async function fetchAllImplements() {
     isLoading.value = true;
     try {
       const response = await api.get<Implement[]>('/implements/');
+      // Usando a variável com o nome correto
       implementList.value = response.data;
     } catch (error) {
       console.error('Falha ao buscar implementos:', error);
@@ -31,7 +40,7 @@ export const useImplementStore = defineStore('implement', () => {
       throw error;
     }
   }
-  
+
   async function updateImplement(id: number, payload: ImplementUpdate) {
     try {
       await api.put(`/implements/${id}`, payload);
@@ -55,8 +64,10 @@ export const useImplementStore = defineStore('implement', () => {
   }
 
   return {
+    // Exportando o nome correto
     implementList,
     isLoading,
+    availableImplements,
     fetchAllImplements,
     addImplement,
     updateImplement,

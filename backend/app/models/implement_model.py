@@ -1,5 +1,6 @@
 # backend/app/models/implement_model.py
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+import enum
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -16,13 +17,16 @@ class Implement(Base):
     name = Column(String(100), nullable=False)
     brand = Column(String(50), nullable=False)
     model = Column(String(50), nullable=False)
-    type = Column(String, nullable=True) # Ex: "Arado", "Plantadeira"
+    # --- A COLUNA QUE CAUSOU O ERRO ---
+    type = Column(String(50), nullable=True) # Ex: "Arado", "Plantadeira"
+    # --- FIM ---
     status = Column(Enum(ImplementStatus), default=ImplementStatus.AVAILABLE)
-
     year = Column(Integer, nullable=False)
-    identifier = Column(String(50), unique=True, nullable=True) # Ex: número de série ou patrimônio
+    identifier = Column(String(50), unique=True, nullable=True)
 
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization")
 
+    # Esta relação pode precisar ser ajustada se o back_populates estiver errado
+    # Verifique seu journey_model.py
     journeys = relationship("Journey", back_populates="implement")

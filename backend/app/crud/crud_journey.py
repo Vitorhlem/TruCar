@@ -41,6 +41,7 @@ async def create_journey(
         **journey_data,
         driver_id=driver_id,
         organization_id=organization_id,
+        implement_id=journey_in.implement_id,
         is_active=True,
         start_time=datetime.utcnow()
     )
