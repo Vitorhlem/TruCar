@@ -125,6 +125,11 @@ const essentialLinks = computed(() => {
         icon: 'build',
         to: '/maintenance',
       },
+      {
+      title: 'Implementos',
+      icon: 'precision_manufacturing', // Ícone de exemplo
+      to: '/implements',
+    },
   ];
 
   // Links visíveis APENAS para gestores (isManager === true)

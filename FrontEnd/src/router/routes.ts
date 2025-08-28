@@ -17,6 +17,10 @@ const routes: RouteRecordRaw[] = [
       { path: 'fuel-logs', name: 'fuel-logs', component: () => import('pages/FuelLogsPage.vue') },
       { path: 'performance', name: 'performance', component: () => import('pages/PerformancePage.vue') },
       { path: 'reports', name: 'reports', component: () => import('pages/ReportsPage.vue') },
+      {path: 'implements', name: 'implements', component: () => import('pages/ImplementsPage.vue'), 
+        
+        meta: { requiresAuth: true, requiredRole: 'manager' } // Apenas gestores
+  },
     ],
   },
   {

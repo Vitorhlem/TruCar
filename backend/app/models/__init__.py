@@ -6,3 +6,4 @@ from .maintenance_model import MaintenanceRequest, MaintenanceComment, Maintenan
 from .fuel_log_model import FuelLog
 from .notification_model import Notification
 from .location_history_model import LocationHistory
+from .implement_model import Implement
