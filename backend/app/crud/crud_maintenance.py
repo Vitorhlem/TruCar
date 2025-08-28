@@ -12,19 +12,14 @@ from app.schemas.maintenance_schema import MaintenanceRequestCreate, Maintenance
 async def create_request(
     db: AsyncSession, *, request_in: MaintenanceRequestCreate, reporter_id: int, organization_id: int
 ) -> MaintenanceRequest:
-    """Cria uma nova solicitação de manutenção, garantindo que o veículo pertence à organização."""
+    """Cria uma nova solicitação de manutenção e retorna o objeto completo."""
     vehicle = await db.get(Vehicle, request_in.vehicle_id)
     if not vehicle or vehicle.organization_id != organization_id:
         raise ValueError("Veículo não encontrado nesta organização.")
 
-    db_obj = MaintenanceRequest(
-        **request_in.model_dump(),
-        reported_by_id=reporter_id,
-        organization_id=organization_id
-    )
+    db_obj = MaintenanceRequest(**request_in.model_dump(), reported_by_id=reporter_id, organization_id=organization_id)
     db.add(db_obj)
     await db.commit()
-    # Carrega todas as relações necessárias para a resposta Public
     await db.refresh(db_obj, ["reporter", "vehicle", "comments", "approver"])
     return db_obj
 
@@ -33,10 +28,8 @@ async def get_request(
 ) -> MaintenanceRequest | None:
     """Busca uma solicitação de manutenção específica, carregando todas as relações."""
     stmt = select(MaintenanceRequest).where(
-        MaintenanceRequest.id == request_id,
-        MaintenanceRequest.organization_id == organization_id
+        MaintenanceRequest.id == request_id, MaintenanceRequest.organization_id == organization_id
     ).options(
-        # CORREÇÃO: Garante o carregamento de todas as relações aninhadas
         selectinload(MaintenanceRequest.reporter),
         selectinload(MaintenanceRequest.approver),
         selectinload(MaintenanceRequest.vehicle),
@@ -48,7 +41,7 @@ async def get_request(
 async def get_all_requests(
     db: AsyncSession, *, organization_id: int, search: str | None = None, skip: int = 0, limit: int = 100
 ) -> List[MaintenanceRequest]:
-    """Busca todas as solicitações de uma organização, com filtro, paginação e carregando as relações."""
+    """Busca todas as solicitações, carregando TODAS as relações necessárias."""
     stmt = select(MaintenanceRequest).where(MaintenanceRequest.organization_id == organization_id)
     
     if search:
@@ -62,9 +55,11 @@ async def get_all_requests(
         )
     
     stmt = stmt.order_by(MaintenanceRequest.created_at.desc()).offset(skip).limit(limit).options(
-        # CORREÇÃO: Garante o carregamento das relações necessárias para a lista
+        # A CORREÇÃO CRUCIAL: Carregamos todas as relações que o schema Public precisa
         selectinload(MaintenanceRequest.reporter),
-        selectinload(MaintenanceRequest.vehicle)
+        selectinload(MaintenanceRequest.approver),
+        selectinload(MaintenanceRequest.vehicle),
+        selectinload(MaintenanceRequest.comments).selectinload(MaintenanceComment.user)
     )
     result = await db.execute(stmt)
     return result.scalars().all()
