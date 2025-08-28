@@ -89,6 +89,7 @@ async def create_maintenance_request(
         new_request = await crud.maintenance.create_request(
             db=db, request_in=request_in, reporter_id=current_user.id, organization_id=current_user.organization_id
         )
+        # Lógica de notificação por e-mail pode ser adicionada aqui com BackgroundTasks se desejar
         return new_request
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -116,13 +117,33 @@ async def delete_maintenance_request(
 async def read_maintenance_requests(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
+    skip: int = 0,
+    limit: int = 100,
     search: str | None = None,
 ):
     """Retorna as solicitações de manutenção. Gestores veem tudo, motoristas veem apenas o que reportaram."""
-    if current_user.role == UserRole.MANAGER:
-        return await crud.maintenance.get_all_requests(db=db, organization_id=current_user.organization_id, search=search)
-    else:
-        return await crud.maintenance.get_requests_by_driver(db=db, driver_id=current_user.id, organization_id=current_user.organization_id, search=search)
+    requests = await crud.maintenance.get_all_requests(
+        db=db, organization_id=current_user.organization_id, search=search, skip=skip, limit=limit
+    )
+    if current_user.role == UserRole.DRIVER:
+        return [req for req in requests if req.reported_by_id == current_user.id]
+    return requests
+
+@router.get("/", response_model=List[MaintenanceRequestPublic])
+async def read_maintenance_requests(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+):
+    """Retorna as solicitações de manutenção. Gestores veem tudo, motoristas veem apenas o que reportaram."""
+    requests = await crud.maintenance.get_all_requests(
+        db=db, organization_id=current_user.organization_id, search=search, skip=skip, limit=limit
+    )
+    if current_user.role == UserRole.DRIVER:
+        return [req for req in requests if req.reported_by_id == current_user.id]
+    return requests
 
 @router.put("/{request_id}", response_model=MaintenanceRequestPublic)
 async def update_request_status(
@@ -142,6 +163,7 @@ async def update_request_status(
     return await crud.maintenance.update_request_status(
         db=db, db_obj=request, update_data=update_data, manager_id=current_user.id
     )
+
 
 
 @router.get("/{request_id}/comments", response_model=List[MaintenanceCommentPublic])
