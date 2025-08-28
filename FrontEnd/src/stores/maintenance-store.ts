@@ -8,6 +8,10 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
   const requests = ref<MaintenanceRequest[]>([]);
   const isLoading = ref(false);
 
+  /**
+   * Busca a lista principal de solicitações do backend.
+   * Esta é a nossa "fonte da verdade" para a tela de listagem.
+   */
   async function fetchRequests(search: string | null = null) {
     isLoading.value = true;
     try {
@@ -20,29 +24,11 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
       isLoading.value = false;
     }
   }
-  
-  async function createRequest(payload: MaintenanceRequestCreate) {
-    try {
-      await api.post<MaintenanceRequest>('/maintenance/', payload);
-      Notify.create({ type: 'positive', message: 'Solicitação enviada com sucesso!' });
-      await fetchRequests();
-    } catch (error) {
-      Notify.create({ type: 'negative', message: 'Erro ao enviar solicitação.' });
-      throw error;
-    }
-  }
 
-  async function updateRequest(requestId: number, payload: MaintenanceRequestUpdate) {
-    try {
-      await api.put<MaintenanceRequest>(`/maintenance/${requestId}`, payload);
-      Notify.create({ type: 'positive', message: 'Status da solicitação atualizado!' });
-      await fetchRequestById(requestId);
-    } catch (error) {
-      Notify.create({ type: 'negative', message: 'Erro ao atualizar solicitação.' });
-      throw error;
-    }
-  }
-
+  /**
+   * Busca os detalhes de UMA ÚNICA solicitação.
+   * Útil para páginas de detalhes ou para atualizar um item sem recarregar a lista inteira.
+   */
   async function fetchRequestById(requestId: number) {
     try {
         const response = await api.get<MaintenanceRequest>(`/maintenance/${requestId}`);
@@ -55,11 +41,54 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
     }
   }
 
+  /**
+   * Cria uma nova solicitação e RECARREGA A LISTA COMPLETA.
+   */
+  async function createRequest(payload: MaintenanceRequestCreate) {
+    try {
+      await api.post<MaintenanceRequest>('/maintenance/', payload);
+      Notify.create({ type: 'positive', message: 'Solicitação enviada com sucesso!' });
+      // Após criar, busca a lista atualizada para refletir a adição.
+      await fetchRequests();
+    } catch (error) {
+      Notify.create({ type: 'negative', message: 'Erro ao enviar solicitação.' });
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza uma solicitação e RECARREGA A LISTA COMPLETA.
+   */
+  async function updateRequest(requestId: number, payload: MaintenanceRequestUpdate) {
+    try {
+      await api.put<MaintenanceRequest>(`/maintenance/${requestId}`, payload);
+      Notify.create({ type: 'positive', message: 'Status da solicitação atualizado!' });
+
+      // --- INÍCIO DA CORREÇÃO ---
+      // Em vez de buscar apenas o item, recarregamos a lista inteira
+      // para garantir que a ordenação e os dados estejam corretos na tela de listagem.
+      await fetchRequests();
+      // --- FIM DA CORREÇÃO ---
+
+    } catch (error) {
+      Notify.create({ type: 'negative', message: 'Erro ao atualizar solicitação.' });
+      throw error;
+    }
+  }
+
+  /**
+   * Adiciona um comentário e RECARREGA A LISTA COMPLETA.
+   */
   async function addComment(requestId: number, payload: MaintenanceCommentCreate) {
     try {
       await api.post<MaintenanceComment>(`/maintenance/${requestId}/comments`, payload);
-      // A CORREÇÃO CRUCIAL: Após adicionar, busca o chamado completo novamente.
-      await fetchRequestById(requestId);
+      
+      // --- INÍCIO DA CORREÇÃO ---
+      // Também recarregamos a lista principal. Isso garante que se a lista for
+      // ordenada por "última atividade", a solicitação comentada suba para o topo.
+      await fetchRequests();
+      // --- FIM DA CORREÇÃO ---
+
     } catch (error) {
       Notify.create({ type: 'negative', message: 'Erro ao enviar comentário.' });
       throw error;
@@ -70,7 +99,7 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
     requests,
     isLoading,
     fetchRequests,
-    fetchRequestById,
+    fetchRequestById, // Mantemos a função caso seja útil em uma página de detalhes no futuro
     createRequest,
     updateRequest,
     addComment,
