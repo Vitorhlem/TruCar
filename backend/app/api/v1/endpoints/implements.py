@@ -26,6 +26,22 @@ async def create_implement(
     )
     return implement
 
+@router.get("/management-list", response_model=List[ImplementPublic])
+async def read_all_implements_for_management(
+    db: AsyncSession = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Retorna uma lista de TODOS os implementos da organização,
+    sem filtrar por status. Para uso em telas de gerenciamento.
+    """
+    implements = await crud.implement.get_all_by_org_unfiltered(
+        db, organization_id=current_user.organization_id, skip=skip, limit=limit
+    )
+    return implements
+
 @router.get("/", response_model=List[ImplementPublic])
 async def read_implements(
     db: AsyncSession = Depends(deps.get_db),

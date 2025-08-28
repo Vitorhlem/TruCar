@@ -4,8 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
 
-from app.models.implement_model import Implement
+from app.models.implement_model import Implement, ImplementStatus
 from app.schemas.implement_schema import ImplementCreate, ImplementUpdate
+
 
 async def create_implement(
     db: AsyncSession, *, obj_in: ImplementCreate, organization_id: int
@@ -35,6 +36,21 @@ async def get_all_by_org(
     db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100
 ) -> List[Implement]:
     """Retorna uma lista de todos os implementos de uma organização específica."""
+    stmt = (
+        select(Implement)
+        .where(Implement.organization_id == organization_id,
+               Implement.status == ImplementStatus.AVAILABLE
+        )
+        .order_by(Implement.name)
+        .offset(skip).limit(limit)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+async def get_all_by_org_unfiltered(
+    db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100
+) -> List[Implement]:
+    """Retorna uma lista de TODOS os implementos de uma organização, sem filtro de status."""
     stmt = (
         select(Implement)
         .where(Implement.organization_id == organization_id)

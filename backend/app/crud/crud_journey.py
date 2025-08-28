@@ -9,6 +9,8 @@ from app.models.vehicle_model import Vehicle, VehicleStatus
 # A LINHA QUE FALTAVA PARA O EAGER LOADING:
 from app.models.user_model import User
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate
+from app.models.implement_model import Implement, ImplementStatus
+
 
 
 # Exceções customizadas para uma arquitetura mais limpa
@@ -18,7 +20,20 @@ class VehicleNotAvailableError(Exception):
 async def create_journey(
     db: AsyncSession, *, journey_in: JourneyCreate, driver_id: int, organization_id: int
 ) -> Journey:
+    
     """Cria uma nova operação e atualiza o status do veículo para 'Em uso'."""
+    if journey_in.implement_id:
+        implement = await db.get(Implement, journey_in.implement_id)
+        if not implement or implement.organization_id != organization_id:
+            raise ValueError("Implemento não encontrado.")
+        
+        if implement.status != ImplementStatus.AVAILABLE:
+            raise VehicleNotAvailableError(f"O implemento {implement.name} não está disponível.")
+        
+        # Altera o status do implemento
+        implement.status = ImplementStatus.IN_USE
+        db.add(implement)
+    
     if not journey_in.vehicle_id:
         raise ValueError("O ID do veículo é obrigatório.")
         
@@ -41,7 +56,6 @@ async def create_journey(
         **journey_data,
         driver_id=driver_id,
         organization_id=organization_id,
-        implement_id=journey_in.implement_id,
         is_active=True,
         start_time=datetime.utcnow()
     )
@@ -51,7 +65,7 @@ async def create_journey(
     db.add(vehicle)
 
     await db.commit()
-    await db.refresh(db_journey, ['vehicle', 'driver'])
+    await db.refresh(db_journey, ['vehicle', 'driver', 'implement'])
     return db_journey
 async def end_journey(
     db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
@@ -65,6 +79,12 @@ async def end_journey(
     db_journey.is_active = False
     db.add(db_journey)
 
+    if db_journey.implement:
+        implement = await db.get(Implement, db_journey.implement_id)
+        if implement:
+            implement.status = ImplementStatus.AVAILABLE
+            db.add(implement)
+
     vehicle = db_journey.vehicle
     if vehicle:
         vehicle.status = VehicleStatus.AVAILABLE
@@ -76,7 +96,7 @@ async def end_journey(
         db.add(vehicle)
 
     await db.commit()
-    await db.refresh(db_journey, ['vehicle', 'driver'])
+    await db.refresh(db_journey, ['vehicle', 'driver', 'implement'])
     
     return db_journey, vehicle
 
@@ -85,7 +105,7 @@ async def get_journey(db: AsyncSession, *, journey_id: int, organization_id: int
     """Busca uma viagem específica, garantindo que pertence à organização correta."""
     stmt = (
         select(Journey).where(Journey.id == journey_id, Journey.organization_id == organization_id)
-        .options(selectinload(Journey.driver), selectinload(Journey.vehicle))
+        .options(selectinload(Journey.driver), selectinload(Journey.vehicle), selectinload(Journey.implement))
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
@@ -104,7 +124,7 @@ async def get_all_journeys(db: AsyncSession, *, organization_id: int, skip: int 
     
     final_stmt = (
         stmt.order_by(Journey.start_time.desc())
-        .options(selectinload(Journey.driver).selectinload(User.organization), selectinload(Journey.vehicle)) # <-- Eager loading
+        .options(selectinload(Journey.driver).selectinload(User.organization), selectinload(Journey.vehicle), selectinload(Journey.implement)) # <-- Eager loading
         .offset(skip).limit(limit)
     )
     result = await db.execute(final_stmt)
@@ -115,7 +135,7 @@ async def get_active_journeys(db: AsyncSession, *, organization_id: int) -> list
     stmt = (
         select(Journey)
         .where(Journey.organization_id == organization_id, Journey.is_active == True)
-        .options(selectinload(Journey.vehicle), selectinload(Journey.driver))
+        .options(selectinload(Journey.vehicle), selectinload(Journey.driver), selectinload(Journey.implement))
     )
     result = await db.execute(stmt)
     return result.scalars().all()
