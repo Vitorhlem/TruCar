@@ -19,30 +19,73 @@
 
     <div v-if="vehicleStore.isLoading" class="row q-col-gutter-md">
       <div v-for="n in 8" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-        <q-card flat bordered><q-skeleton height="180px" square /></q-card>
+        <q-card flat bordered>
+          <q-skeleton height="160px" square />
+          <q-card-section>
+            <q-skeleton type="text" class="text-subtitle1" />
+            <q-skeleton type="text" width="50%" />
+          </q-card-section>
+          <q-separator />
+          <q-card-section>
+            <q-skeleton type="text" width="70%" />
+          </q-card-section>
+        </q-card>
       </div>
     </div>
 
     <div v-else-if="vehicleStore.vehicles && vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-        <q-card flat bordered class="column no-wrap full-height">
-          <q-card-section class="row items-center q-pa-md">
-            <q-icon :name="getVehicleIcon(vehicle)" color="primary" size="32px" class="q-mr-md" />
-            <div class="col ellipsis">
-              <div class="text-subtitle1 text-weight-bold ellipsis">{{ vehicle.brand }} {{ vehicle.model }}</div>
-              <div class="text-caption text-grey-8">{{ vehicle.license_plate || vehicle.identifier }} - {{ vehicle.year }}</div>
+        <q-card class="vehicle-card column no-wrap full-height">
+          <q-img :src="vehicle.photo_url" height="160px" fit="cover" class="bg-grey-3">
+            <template v-slot:error>
+              <div class="absolute-full flex flex-center bg-primary text-white">
+                <q-icon :name="getVehicleIcon(vehicle)" size="48px" />
+              </div>
+            </template>
+            <div class="absolute-bottom-left q-pa-sm" style="background-color: rgba(0,0,0,0.5);">
+                <q-badge :color="getStatusColor(vehicle.status)" :label="vehicle.status" />
+            </div>
+          </q-img>
+
+          <q-card-section>
+            <div class="flex items-start no-wrap">
+                <div class="col">
+                    <div class="text-subtitle1 text-weight-bold ellipsis">{{ vehicle.brand }} {{ vehicle.model }}</div>
+                    <div class="text-caption text-grey-8">{{ vehicle.license_plate || vehicle.identifier }} &bull; {{ vehicle.year }}</div>
+                </div>
+                <div v-if="authStore.isManager" class="col-auto">
+                    <q-btn @click.stop="openEditDialog(vehicle)" flat round dense icon="edit">
+                        <q-tooltip>Editar</q-tooltip>
+                    </q-btn>
+                    <q-btn @click.stop="promptToDelete(vehicle)" flat round dense icon="delete" color="negative">
+                        <q-tooltip>Excluir</q-tooltip>
+                    </q-btn>
+                </div>
             </div>
           </q-card-section>
+
           <q-space />
           <q-separator />
-          <q-card-actions class="row justify-between items-center q-pa-sm">
-             <q-badge :color="getStatusColor(vehicle.status)" text-color="white">{{ vehicle.status }}</q-badge>
-             <div class="text-caption text-weight-medium text-grey-8">{{ vehicle.current_km ?? vehicle.current_engine_hours ?? 0 }} {{ terminologyStore.distanceUnit }}</div>
-            <div v-if="authStore.isManager">
-              <q-btn @click="openEditDialog(vehicle)" flat round dense icon="edit" :title="terminologyStore.editButtonLabel" />
-              <q-btn @click="promptToDelete(vehicle)" flat round dense icon="delete" color="negative" title="Excluir" />
+
+          <q-card-section class="q-py-sm">
+            <div class="flex justify-between items-center text-caption text-grey-8">
+              <span>{{ terminologyStore.distanceUnit === 'km' ? 'Odômetro' : 'Horímetro' }}</span>
+              <span class="text-weight-bold text-black">{{ (vehicle.current_km ?? vehicle.current_engine_hours ?? 0).toLocaleString('pt-BR') }} {{ terminologyStore.distanceUnit }}</span>
             </div>
-          </q-card-actions>
+             <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption text-grey-8 q-mt-xs">
+                <span>Próx. Revisão</span>
+                <span class="text-weight-bold text-black ellipsis text-right" style="max-width: 60%;">
+                    {{ vehicle.next_maintenance_km ? `${vehicle.next_maintenance_km.toLocaleString('pt-BR')} ${terminologyStore.distanceUnit}` : '' }}
+                    {{ vehicle.next_maintenance_km && vehicle.next_maintenance_date ? ' ou ' : '' }}
+                    {{ vehicle.next_maintenance_date ? (new Date(vehicle.next_maintenance_date + 'T00:00:00')).toLocaleDateString('pt-BR') : '' }}
+                    <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
+                      {{ vehicle.next_maintenance_km ? `Próxima revisão em ${vehicle.next_maintenance_km.toLocaleString('pt-BR')} ${terminologyStore.distanceUnit}` : '' }}
+                      {{ vehicle.next_maintenance_km && vehicle.next_maintenance_date ? ' ou ' : '' }}
+                      {{ vehicle.next_maintenance_date ? `em ${(new Date(vehicle.next_maintenance_date + 'T00:00:00')).toLocaleDateString('pt-BR')}` : '' }}
+                    </q-tooltip>
+                </span>
+            </div>
+          </q-card-section>
         </q-card>
       </div>
     </div>
@@ -127,7 +170,6 @@ const isEditing = computed(() => editingVehicleId.value !== null);
 const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
 
-// CORRIGIDO: Função de reset mais completa
 function resetForm() {
   editingVehicleId.value = null;
   formData.value = {
@@ -212,13 +254,12 @@ function getVehicleIcon(vehicle: Vehicle): string {
 }
 
 function getStatusColor(status: VehicleStatus): string {
-  // Adicionamos o tipo Record<VehicleStatus, string> para o TypeScript entender a estrutura
   const colorMap: Record<VehicleStatus, string> = {
     [VehicleStatus.AVAILABLE]: 'positive',
-    [VehicleStatus.IN_USE]: 'orange-8', // Corrigido o erro de digitação
+    [VehicleStatus.IN_USE]: 'orange-8',
     [VehicleStatus.MAINTENANCE]: 'negative'
   };
-  return colorMap[status] || 'grey'; // Adicionamos um fallback para segurança
+  return colorMap[status] || 'grey';
 }
 
 function promptToDelete(vehicle: Vehicle) {
@@ -234,3 +275,15 @@ function promptToDelete(vehicle: Vehicle) {
   });
 }
 </script>
+
+<style scoped lang="scss">
+.vehicle-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+</style>
