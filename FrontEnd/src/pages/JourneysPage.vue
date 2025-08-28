@@ -180,6 +180,13 @@ const columns = computed<QTableColumn[]>(() => {
       },
       sortable: true
     },
+     { 
+      name: 'implement', 
+      label: 'Implemento', 
+      align: 'left', 
+      field: (row: Journey) => row.implement ? `${row.implement.name} (${row.implement.model})` : '---',
+      sortable: true
+    },
   ];
   if (authStore.isManager) {
     baseColumns.push({ name: 'actions', label: 'Ações', field: 'actions', align: 'right' });
@@ -205,13 +212,13 @@ async function openStartDialog() {
 
   // Só busca os implementos se o setor for 'agronegocio'
   if (authStore.userSector === 'agronegocio') {
-    promisesToFetch.push(implementStore.fetchAllImplements());
+    promisesToFetch.push(implementStore.fetchAvailableImplements());
   }
 
   await Promise.all(promisesToFetch);
 
   startForm.value = {
-    vehicle_id: undefined,
+    vehicle_id: null,
     trip_type: JourneyType.FREE_ROAM,
     trip_description: '',
     implement_id: null,

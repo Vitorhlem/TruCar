@@ -1,4 +1,5 @@
 import type { User } from './auth-models';
+import { ImplementCreate } from './implement-models';
 import type { Vehicle } from './vehicle-models';
 
 export enum JourneyType {
@@ -21,6 +22,8 @@ export interface Journey {
   // OS CAMPOS QUE ESTAVAM EM FALTA:
   start_engine_hours: number | null;
   end_engine_hours: number | null;
+  implement?: ImplementCreate;
+
 
   // Relações
   vehicle: Vehicle;

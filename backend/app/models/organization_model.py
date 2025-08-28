@@ -15,3 +15,4 @@ class Organization(Base):
     sector = Column(String(50), nullable=False)
     users = relationship("User", back_populates="organization")
     vehicles = relationship("Vehicle", back_populates="organization")
+    implements = relationship("Implement", back_populates="organization")
