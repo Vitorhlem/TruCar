@@ -71,34 +71,60 @@ async def end_journey(
     db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
 ) -> Tuple[Journey, Vehicle]:
     """Finaliza uma operação, atualiza o status E o odómetro/horímetro do veículo."""
-    update_data = journey_in.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_journey, field, value)
     
+    print(f"--- INICIANDO FINALIZAÇÃO DA JORNADA {db_journey.id} ---")
+    print(f"Payload recebido: {journey_in.model_dump()}")
+
+    # --- INÍCIO DA CORREÇÃO DEFINITIVA ---
+
+    # 1. ATUALIZAR A JORNADA
+    # Define os valores finais para a operação que está terminando.
     db_journey.end_time = datetime.utcnow()
     db_journey.is_active = False
+    if journey_in.end_engine_hours is not None:
+        db_journey.end_engine_hours = journey_in.end_engine_hours
+    if journey_in.end_mileage is not None:
+        db_journey.end_mileage = journey_in.end_mileage
+    
     db.add(db_journey)
+    print(f"Jornada ID {db_journey.id} marcada como finalizada com end_engine_hours = {db_journey.end_engine_hours}")
 
-    if db_journey.implement:
+    # 2. ATUALIZAR O VEÍCULO (MAQUINÁRIO)
+    # O horímetro final da operação se torna o NOVO horímetro ATUAL do maquinário.
+    updated_vehicle = None
+    if db_journey.vehicle_id:
+        vehicle = await db.get(Vehicle, db_journey.vehicle_id)
+        if vehicle:
+            print(f"Veículo ID {vehicle.id} encontrado. Horímetro ANTES: {vehicle.current_engine_hours}")
+            vehicle.status = VehicleStatus.AVAILABLE
+            
+            # A lógica principal:
+            if journey_in.end_engine_hours is not None:
+                vehicle.current_engine_hours = journey_in.end_engine_hours
+                print(f"!!! ATUALIZANDO HORÍMETRO DO VEÍCULO PARA: {vehicle.current_engine_hours} !!!")
+            
+            elif journey_in.end_mileage is not None:
+                vehicle.current_km = journey_in.end_mileage
+                print(f"!!! ATUALIZANDO KM DO VEÍCULO PARA: {vehicle.current_km} !!!")
+
+            db.add(vehicle)
+            updated_vehicle = vehicle
+
+    # 3. ATUALIZAR O IMPLEMENTO
+    if db_journey.implement_id:
         implement = await db.get(Implement, db_journey.implement_id)
         if implement:
             implement.status = ImplementStatus.AVAILABLE
             db.add(implement)
 
-    vehicle = db_journey.vehicle
-    if vehicle:
-        vehicle.status = VehicleStatus.AVAILABLE
-        if journey_in.end_engine_hours is not None:
-            vehicle.current_engine_hours = journey_in.end_engine_hours
-        elif journey_in.end_mileage is not None:
-            vehicle.current_km = journey_in.end_mileage
-        
-        db.add(vehicle)
+    # --- FIM DA CORREÇÃO DEFINITIVA ---
 
     await db.commit()
+    print("--- COMMIT REALIZADO COM SUCESSO ---")
+    
     await db.refresh(db_journey, ['vehicle', 'driver', 'implement'])
     
-    return db_journey, vehicle
+    return db_journey, updated_vehicle
 
 
 async def get_journey(db: AsyncSession, *, journey_id: int, organization_id: int) -> Optional[Journey]:

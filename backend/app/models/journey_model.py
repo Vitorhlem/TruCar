@@ -9,6 +9,7 @@ from .implement_model import Implement
 from app.db.base_class import Base
 from .organization_model import Organization
 from .user_model import User
+
 from .vehicle_model import Vehicle
 # IMPORTA o Enum a partir da nossa fonte da verdade (o schema).
 from app.schemas.journey_schema import JourneyType

@@ -15,9 +15,10 @@
           icon="add" :label="terminologyStore.addVehicleButtonLabel" unelevated
         />
       </div>
-      
+
     </div>
 
+    <!-- SKELETON LOADING -->
     <div v-if="vehicleStore.isLoading" class="row q-col-gutter-md">
       <div v-for="n in 8" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card flat bordered>
@@ -31,28 +32,27 @@
             <q-skeleton type="text" width="70%" />
           </q-card-section>
         </q-card>
-        
       </div>
     </div>
 
+    <!-- VEHICLE CARDS -->
     <div v-else-if="vehicleStore.vehicles && vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card class="vehicle-card column no-wrap full-height">
-          
+
           <q-img :src="vehicle.photo_url ?? undefined" height="160px" fit="cover" class="bg-grey-3">
             <template v-slot:error>
               <div class="absolute-full flex flex-center bg-primary text-white">
                 <q-icon :name="getVehicleIcon(vehicle)" size="48px" />
-                
               </div>
-              
             </template>
-            <div class="absolute-bottom-left q-pa-sm" style="background-color: rgba(0,0,0,0.0);">
-            </div>
-
+            <q-badge
+              :color="getStatusColor(vehicle.status)"
+              :label="vehicle.status"
+              class="absolute-top-right q-ma-sm"
+              style="font-size: 10px; padding: 4px 8px;"
+            />
           </q-img>
-                      <q-badge :color="getStatusColor(vehicle.status)" :label="vehicle.status" />
-
 
           <q-card-section>
             <div class="flex items-start no-wrap">
@@ -68,22 +68,29 @@
                         <q-tooltip>Excluir</q-tooltip>
                     </q-btn>
                 </div>
-
-                
             </div>
           </q-card-section>
 
           <q-space />
-          
+
           <q-separator />
 
+          <!-- INÍCIO DA CORREÇÃO -->
           <q-card-section class="q-py-sm">
             <div class="flex justify-between items-center text-caption text-grey-8">
               <span>{{ terminologyStore.distanceUnit === 'km' ? 'Odômetro' : 'Horímetro' }}</span>
-              <span class="text-weight-bold text-black">{{ (vehicle.current_km ?? vehicle.current_engine_hours ?? 0).toLocaleString('pt-BR') }} {{ terminologyStore.distanceUnit }}</span>
+              <span class="text-weight-bold text-black">
+                {{
+                  formatDistance(
+                    terminologyStore.distanceUnit === 'km'
+                      ? vehicle.current_km
+                      : vehicle.current_engine_hours,
+                    terminologyStore.distanceUnit as 'km' | 'Horas'
+                  )
+                }}
+              </span>
             </div>
-            
-             <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption text-grey-8 q-mt-xs">
+            <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption text-grey-8 q-mt-xs">
                 <span>Próx. Revisão</span>
                 <span class="text-weight-bold text-black ellipsis text-right" style="max-width: 60%;">
                     {{ vehicle.next_maintenance_km ? `${vehicle.next_maintenance_km.toLocaleString('pt-BR')} ${terminologyStore.distanceUnit}` : '' }}
@@ -97,16 +104,19 @@
                 </span>
             </div>
           </q-card-section>
+          <!-- FIM DA CORREÇÃO -->
         </q-card>
       </div>
     </div>
 
+    <!-- EMPTY STATE -->
     <div v-else class="full-width row flex-center text-primary q-gutter-sm q-pa-xl">
       <q-icon name="add_circle_outline" size="3em" />
       <span class="text-h6">Nenhum {{ terminologyStore.vehicleNoun.toLowerCase() }} encontrado</span>
       <q-btn @click="openCreateDialog" v-if="authStore.isManager" unelevated color="primary" :label="`Adicionar primeiro ${terminologyStore.vehicleNoun.toLowerCase()}`" class="q-ml-lg" />
     </div>
 
+    <!-- PAGINATION -->
     <div class="flex flex-center q-mt-lg" v-if="pagination.rowsNumber > pagination.rowsPerPage">
        <q-pagination
         v-model="pagination.page"
@@ -117,6 +127,7 @@
       />
     </div>
 
+    <!-- FORM DIALOG -->
     <q-dialog v-model="isFormDialogOpen">
       <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
@@ -136,7 +147,6 @@
             <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" />
             <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" />
             <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" />
-
             <q-file
               v-model="photoFile"
               label="Carregar Foto do Veículo"
@@ -146,9 +156,7 @@
               accept=".jpg, image/*"
               max-files="1"
             >
-              <template v-slot:prepend>
-                <q-icon name="attach_file" />
-              </template>
+              <template v-slot:prepend><q-icon name="attach_file" /></template>
               <template v-if="formData.photo_url && !photoFile" v-slot:append>
                   <q-avatar square size="40px">
                       <img :src="formData.photo_url ?? undefined" alt="Foto atual" />
@@ -158,7 +166,6 @@
             <div v-if="formData.photo_url && !photoFile" class="text-caption text-grey-7">
                 Foto atual será mantida se nenhuma nova for enviada.
             </div>
-
             <q-separator class="q-my-lg" />
             <div class="text-subtitle1 text-weight-medium">Dados de Manutenção</div>
             <q-input outlined v-model.number="formData.next_maintenance_km" type="number" :label="`Próxima Revisão (${terminologyStore.distanceUnit})`" clearable />
@@ -312,6 +319,19 @@ watch(searchTerm, (newValue) => {
 onMounted(() => {
   void fetchFromServer(pagination.value.page, pagination.value.rowsPerPage, searchTerm.value);
 });
+
+// --- INÍCIO DA ADIÇÃO: Função de Formatação ---
+function formatDistance(value: number | null | undefined, unit: 'km' | 'Horas'): string {
+  const numValue = value ?? 0;
+  // Formata com uma casa decimal para 'Horas' e sem para 'km'
+  const formattedValue = numValue.toLocaleString('pt-BR', {
+    minimumFractionDigits: unit === 'Horas' ? 1 : 0,
+    maximumFractionDigits: unit === 'Horas' ? 1 : 0,
+  });
+  return `${formattedValue} ${unit}`;
+}
+// --- FIM DA ADIÇÃO ---
+
 
 function getVehicleIcon(vehicle: Vehicle): string {
   if (authStore.userSector === 'agronegocio') return 'agriculture';
