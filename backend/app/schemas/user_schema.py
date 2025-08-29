@@ -1,9 +1,9 @@
-# backend/app/schemas/user_schema.py
+# ARQUIVO: backend/app/schemas/user_schema.py
 
-from pydantic import BaseModel, EmailStr # <-- CORREÇÃO AQUI
+from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 
-from app.models.organization_model import Sector 
+from app.models.organization_model import Sector
 from app.models.user_model import UserRole
 from .organization_schema import OrganizationPublic
 
@@ -21,7 +21,6 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
-
     password: Optional[str] = None
     is_active: Optional[bool] = None
     role: Optional[UserRole] = None
@@ -29,7 +28,7 @@ class UserUpdate(BaseModel):
 class UserPublic(UserBase):
     id: int
     organization: OrganizationPublic
-    role: UserRole # A role aparece na resposta
+    role: UserRole
 
     model_config = { "from_attributes": True }
 
@@ -42,17 +41,36 @@ class UserRegister(BaseModel):
     organization_name: str
     sector: Sector
 
-# --- SCHEMAS DE ESTATÍSTICAS (ADICIONADOS DE VOLTA) ---
+# --- SCHEMAS DE ESTATÍSTICAS (GENÉRICOS) ---
 
-class JourneysByVehicle(BaseModel):
+class PerformanceByVehicle(BaseModel):
     vehicle_info: str
-    km_driven_in_vehicle: int
+    value: float
 
 class UserStats(BaseModel):
     total_journeys: int
-    total_km_driven: float
-    journeys_by_vehicle: List[JourneysByVehicle]
+    primary_metric_label: str
+    primary_metric_value: float
+    primary_metric_unit: str
+    performance_by_vehicle: List[PerformanceByVehicle]
     maintenance_requests_count: int
-    avg_km_per_liter: float
-    avg_cost_per_km: float
-    fleet_avg_km_per_liter: float
+    avg_km_per_liter: Optional[float] = None
+    avg_cost_per_km: Optional[float] = None
+    fleet_avg_km_per_liter: Optional[float] = None
+
+# --- SCHEMAS DE PLACAR DE LÍDERES ---
+
+class LeaderboardUser(BaseModel):
+    # O conteúdo desta classe PRECISA estar indentado
+    id: int
+    full_name: str
+    avatar_url: Optional[str] = None
+    primary_metric_value: float
+    total_journeys: int
+
+    model_config = { "from_attributes": True }
+
+class LeaderboardResponse(BaseModel):
+    # O conteúdo desta classe PRECISA estar indentado
+    leaderboard: List[LeaderboardUser]
+    primary_metric_unit: str

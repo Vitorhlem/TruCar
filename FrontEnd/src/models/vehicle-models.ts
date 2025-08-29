@@ -16,6 +16,7 @@ export interface Vehicle {
   photo_url?: string | null;
   license_plate?: string | null;
   identifier?: string | null;
+  telemetry_device_id?: string | null;
   current_km?: number | null;
   current_engine_hours?: number | null;
   last_latitude?: number | null;
@@ -32,6 +33,7 @@ export interface VehicleCreate {
   year: number;
   license_plate?: string | null;
   identifier?: string | null;
+  telemetry_device_id?: string | null;
   photo_url?: string | null;
   current_km?: number | null;
   current_engine_hours?: number | null;

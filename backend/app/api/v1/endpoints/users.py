@@ -44,7 +44,25 @@ async def create_user(
         role=UserRole.DRIVER
     )
     return new_user
-
+@router.get("/{user_id}", response_model=UserPublic)
+async def read_user_by_id(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    user_id: int,
+    current_user: User = Depends(deps.get_current_active_manager),
+):
+    """
+    Busca os dados de um único utilizador da organização do gestor.
+    """
+    user = await crud.user.get_user(
+        db, user_id=user_id, organization_id=current_user.organization_id
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilizador não encontrado.",
+        )
+    return user
 
 
 @router.get("/me", response_model=UserPublic)

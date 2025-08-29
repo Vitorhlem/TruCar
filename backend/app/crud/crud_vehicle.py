@@ -1,158 +1,129 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
-from typing import List, Optional, Tuple
+from sqlalchemy.future import select
+from sqlalchemy import or_, func
+from typing import List
 
 from app.models.vehicle_model import Vehicle
+from app.schemas.telemetry_schema import TelemetryPayload
 from app.schemas.vehicle_schema import VehicleCreate, VehicleUpdate
-from app.models.location_history_model import LocationHistory
 
-# Em backend/app/crud/crud_vehicle.py
-from app.models.vehicle_model import Vehicle, VehicleStatus
-from app.schemas.vehicle_schema import VehicleCreate
-
-async def create_vehicle(
-    db: AsyncSession, *, vehicle_in: VehicleCreate, organization_id: int
-) -> Vehicle:
-    """
-    Cria um novo veículo, garantindo que a organization_id seja definida.
-    """
-    # Cria um dicionário a partir do schema Pydantic
-    vehicle_data = vehicle_in.model_dump()
+class CRUDVehicle:
     
-    # Adiciona a organization_id ao dicionário de dados
-    db_vehicle = Vehicle(**vehicle_data, organization_id=organization_id)
-    
-    db.add(db_vehicle)
-    await db.commit()
-    await db.refresh(db_vehicle)
-    return db_vehicle
+    async def get_multi_by_org(
+        self,
+        db: AsyncSession,
+        *,
+        organization_id: int,
+        skip: int = 0,
+        limit: int = 8,
+        search: str | None = None
+    ) -> List[Vehicle]:
+        print(f"--- BUSCANDO VEÍCULOS PARA A ORGANIZATION_ID: {organization_id} ---")
 
-# ADICIONE ESTA FUNÇÃO COMPLETA
-async def get_multi_by_org(
-    db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100, search: str | None = None
-) -> Tuple[List[Vehicle], int]:
-    """Retorna uma lista paginada de veículos para uma organização e a contagem total."""
-    
-    # Base da query com o filtro de organização
-    base_query = select(Vehicle).where(Vehicle.organization_id == organization_id)
-    count_query = select(func.count()).select_from(Vehicle).where(Vehicle.organization_id == organization_id)
+        stmt = select(Vehicle).where(Vehicle.organization_id == organization_id)
 
-    # Aplica o filtro de busca se ele existir
-    if search:
-        search_term = f"%{search}%"
-        search_filter = or_(
-            Vehicle.brand.ilike(search_term),
-            Vehicle.model.ilike(search_term),
-            Vehicle.license_plate.ilike(search_term),
-            Vehicle.identifier.ilike(search_term)
-        )
-        base_query = base_query.where(search_filter)
-        count_query = count_query.where(search_filter)
-
-    # Executa a contagem total
-    total_count_result = await db.execute(count_query)
-    total = total_count_result.scalar_one()
-
-    # Aplica a paginação e ordenação na query principal
-    final_query = base_query.offset(skip).limit(limit).order_by(Vehicle.id)
-    vehicles_result = await db.execute(final_query)
-    vehicles = vehicles_result.scalars().all()
-    
-    return vehicles, total
-
-async def get_all_vehicles_by_org(
-    db: AsyncSession, *, organization_id: int
-) -> List[Vehicle]:
-    """
-    Retorna uma lista de todos os veículos para uma organização específica.
-    """
-    stmt = (
-        select(Vehicle)
-        .where(Vehicle.organization_id == organization_id)
-        .order_by(Vehicle.id)
-    )
-    result = await db.execute(stmt)
-    return result.scalars().all()
-
-
-async def get_vehicle(
-    db: AsyncSession, *, vehicle_id: int, organization_id: int
-) -> Vehicle | None:
-    """Busca um veículo específico pelo ID, garantindo que ele pertença à organização correta."""
-    stmt = select(Vehicle).where(Vehicle.id == vehicle_id, Vehicle.organization_id == organization_id)
-    result = await db.execute(stmt)
-    return result.scalars().first()
-
-async def get_vehicle_by_license_plate(db: AsyncSession, *, license_plate: str, organization_id: int) -> Optional[Vehicle]:
-    """Busca um veículo pela sua placa, garantindo que pertence à organização correta."""
-    stmt = select(Vehicle).where(Vehicle.license_plate == license_plate, Vehicle.organization_id == organization_id)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
-
-
-async def get_all_vehicles(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 10, search: str | None = None) -> List[Vehicle]:
-    """Retorna uma lista de veículos de uma organização, com paginação e busca."""
-    stmt = select(Vehicle).where(Vehicle.organization_id == organization_id)
-    if search:
-        search_term = f"%{search}%"
-        stmt = stmt.where(
-            or_(
-                Vehicle.brand.ilike(search_term),
-                Vehicle.model.ilike(search_term),
-                Vehicle.license_plate.ilike(search_term)
+        # --- INÍCIO DA CORREÇÃO ---
+        # Aplica o filtro de busca APENAS se o termo de busca tiver conteúdo.
+        if search and search.strip():
+            search_term = f"%{search.lower()}%"
+            stmt = stmt.where(
+                or_(
+                    func.lower(Vehicle.brand).like(search_term),
+                    func.lower(Vehicle.model).like(search_term),
+                    func.lower(Vehicle.license_plate).like(search_term),
+                    func.lower(Vehicle.identifier).like(search_term)
+                )
             )
-        )
-    stmt = stmt.order_by(Vehicle.id).offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+        # --- FIM DA CORREÇÃO ---
 
-async def get_vehicles_count(db: AsyncSession, *, organization_id: int, search: str | None = None) -> int:
-    """Retorna o número total de veículos de uma organização, aplicando o filtro de busca."""
-    stmt = select(func.count()).select_from(Vehicle).where(Vehicle.organization_id == organization_id)
-    if search:
-        search_term = f"%{search}%"
-        stmt = stmt.where(
-            or_(
-                Vehicle.brand.ilike(search_term),
-                Vehicle.model.ilike(search_term),
-                Vehicle.license_plate.ilike(search_term)
+        stmt = stmt.order_by(Vehicle.brand).offset(skip).limit(limit)
+        result = await db.execute(stmt)
+        return result.scalars().all()
+
+    async def count_by_org(self, db: AsyncSession, *, organization_id: int, search: str | None = None) -> int:
+        """
+        Conta o número total de veículos para paginação, considerando a busca.
+        """
+        stmt = select(func.count()).select_from(Vehicle).where(Vehicle.organization_id == organization_id)
+
+        # --- INÍCIO DA CORREÇÃO ---
+        # Aplica o filtro de busca APENAS se o termo de busca tiver conteúdo.
+        if search and search.strip():
+            search_term = f"%{search.lower()}%"
+            stmt = stmt.where(
+                or_(
+                    func.lower(Vehicle.brand).like(search_term),
+                    func.lower(Vehicle.model).like(search_term),
+                    func.lower(Vehicle.license_plate).like(search_term),
+                    func.lower(Vehicle.identifier).like(search_term)
+                )
             )
-        )
-    result = await db.execute(stmt)
-    return result.scalar_one()
+        # --- FIM DA CORREÇÃO ---
+        
+        result = await db.execute(stmt)
+        return result.scalar_one()
 
-async def update_vehicle(db: AsyncSession, *, db_vehicle: Vehicle, vehicle_in: VehicleUpdate) -> Vehicle:
-    """Atualiza os dados de um veículo."""
-    update_data = vehicle_in.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_vehicle, field, value)
-    db.add(db_vehicle)
-    await db.commit()
-    await db.refresh(db_vehicle)
-    return db_vehicle
+    async def update_vehicle_from_telemetry(self, db: AsyncSession, *, payload: TelemetryPayload) -> Vehicle | None:
+        """
+        Encontra um veículo pelo seu telemetry_device_id e atualiza seus dados.
+        """
+        stmt = select(Vehicle).where(Vehicle.telemetry_device_id == payload.device_id)
+        result = await db.execute(stmt)
+        vehicle_obj = result.scalar_one_or_none()
 
-async def delete_vehicle(db: AsyncSession, *, db_vehicle: Vehicle) -> Vehicle:
-    """Deleta um veículo do banco de dados a partir do objeto."""
-    await db.delete(db_vehicle)
-    await db.commit()
-    return db_vehicle
+        if not vehicle_obj:
+            print(f"AVISO: Recebida telemetria de um dispositivo não registrado: {payload.device_id}")
+            return None
 
-async def update_location(db: AsyncSession, *, vehicle_id: int, lat: float, lon: float):
-    """Atualiza a última localização de um veículo e cria um registo de histórico."""
-    # A verificação da organização deve ser feita no endpoint antes de chamar esta função
-    vehicle = await db.get(Vehicle, vehicle_id)
-    if not vehicle:
-        return
+        vehicle_obj.last_latitude = payload.latitude
+        vehicle_obj.last_longitude = payload.longitude
+        if payload.engine_hours > (vehicle_obj.current_engine_hours or 0):
+            vehicle_obj.current_engine_hours = payload.engine_hours
+        
+        db.add(vehicle_obj)
+        await db.commit()
+        await db.refresh(vehicle_obj)
+        return vehicle_obj
 
-    vehicle.last_latitude = lat
-    vehicle.last_longitude = lon
-    db.add(vehicle)
-    
-    history_entry = LocationHistory(
-        vehicle_id=vehicle_id,
-        latitude=lat,
-        longitude=lon,
-        organization_id=vehicle.organization_id
-    )
-    db.add(history_entry)
-    await db.commit()
+    async def create_with_owner(self, db: AsyncSession, *, obj_in: VehicleCreate, organization_id: int) -> Vehicle:
+        """Cria um novo veículo associado a uma organização."""
+        
+        # --- INÍCIO DA CORREÇÃO ---
+        # 1. Cria o objeto a partir do payload do frontend
+        db_obj = Vehicle(**obj_in.model_dump())
+        
+        # 2. Atribui a organization_id de forma explícita e garantida
+        db_obj.organization_id = organization_id
+        # --- FIM DA CORREÇÃO ---
+
+        db.add(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
+        
+        print(f"--- VEÍCULO CRIADO COM SUCESSO! ID: {db_obj.id}, ORG ID: {db_obj.organization_id} ---")
+        
+        return db_obj
+        
+    async def get(self, db: AsyncSession, *, vehicle_id: int, organization_id: int) -> Vehicle | None:
+        """Busca um veículo pelo ID, garantindo que pertence à organização."""
+        stmt = select(Vehicle).where(Vehicle.id == vehicle_id, Vehicle.organization_id == organization_id)
+        result = await db.execute(stmt)
+        return result.scalars().first()
+
+    async def update(self, db: AsyncSession, *, db_vehicle: Vehicle, vehicle_in: VehicleUpdate) -> Vehicle:
+        """Atualiza os dados de um veículo."""
+        update_data = vehicle_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_vehicle, field, value)
+        db.add(db_vehicle)
+        await db.commit()
+        await db.refresh(db_vehicle)
+        return db_vehicle
+
+    async def remove(self, db: AsyncSession, *, db_vehicle: Vehicle) -> Vehicle:
+        """Deleta um veículo do banco de dados."""
+        await db.delete(db_vehicle)
+        await db.commit()
+        return db_vehicle
+
+vehicle = CRUDVehicle()

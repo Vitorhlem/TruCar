@@ -1,79 +1,124 @@
 <template>
   <q-page padding>
+    <!-- CABEÇALHO -->
     <div class="flex items-center justify-between q-mb-md">
-      <h1 class="text-h5 text-weight-bold q-my-none">Placar de Líderes de Performance</h1>
-      <q-btn @click="performanceStore.fetchLeaderboard()" flat round dense icon="refresh" :loading="performanceStore.isLoading" />
+      <h1 class="text-h4 text-weight-bold q-my-none">Placar de Líderes</h1>
+      <q-btn flat round dense icon="refresh" @click="leaderboardStore.fetchLeaderboard" :loading="leaderboardStore.isLoading" />
     </div>
 
-    <div v-if="performanceStore.isLoading" class="text-center q-pa-xl">
-      <q-spinner-dots color="primary" size="40px" />
+    <!-- ESTADO DE CARREGAMENTO -->
+    <div v-if="leaderboardStore.isLoading" class="text-center q-pa-xl">
+      <q-spinner color="primary" size="3em" />
     </div>
 
-    <div v-else-if="performanceStore.leaderboard.length === 0" class="text-center q-pa-xl text-grey-7">
+    <!-- PÓDIO TOP 3 -->
+    <div v-else-if="leaderboard.length > 0" class="row q-col-gutter-md justify-center items-end q-mb-lg">
+      <!-- 2º LUGAR -->
+      <div v-if="leaderboard[1]" class="col-4 text-center podium-card silver">
+        <q-avatar size="80px"><img :src="leaderboard[1].avatar_url || defaultAvatar" /></q-avatar>
+        <div class="text-weight-bold q-mt-sm ellipsis">{{ leaderboard[1].full_name }}</div>
+        <div class="text-h5 text-weight-bolder">{{ leaderboard[1].primary_metric_value.toFixed(1) }}</div>
+        <div class="text-caption text-grey-7">{{ unit }}</div>
+      </div>
+      <!-- 1º LUGAR -->
+      <div v-if="leaderboard[0]" class="col-4 text-center podium-card gold">
+        <q-avatar size="100px"><img :src="leaderboard[0].avatar_url || defaultAvatar" /></q-avatar>
+        <div class="text-weight-bold q-mt-sm ellipsis">{{ leaderboard[0].full_name }}</div>
+        <div class="text-h4 text-weight-bolder">{{ leaderboard[0].primary_metric_value.toFixed(1) }}</div>
+        <div class="text-caption text-grey-7">{{ unit }}</div>
+      </div>
+      <!-- 3º LUGAR -->
+      <div v-if="leaderboard[2]" class="col-4 text-center podium-card bronze">
+        <q-avatar size="70px"><img :src="leaderboard[2].avatar_url || defaultAvatar" /></q-avatar>
+        <div class="text-weight-bold q-mt-sm ellipsis">{{ leaderboard[2].full_name }}</div>
+        <div class="text-h6 text-weight-bolder">{{ leaderboard[2].primary_metric_value.toFixed(1) }}</div>
+        <div class="text-caption text-grey-7">{{ unit }}</div>
+      </div>
+    </div>
+
+    <!-- LISTA DO RESTANTE DOS LÍDERES -->
+    <q-card v-if="leaderboard.length > 0" flat bordered>
+      <q-list separator>
+        <q-item v-for="(user, index) in leaderboard" :key="user.id" clickable v-ripple>
+          <q-item-section side class="text-h6 text-weight-medium text-grey-7" style="width: 50px;">
+            {{ index + 1 }}
+          </q-item-section>
+
+          <q-item-section avatar>
+            <q-avatar>
+              <img :src="user.avatar_url || defaultAvatar" />
+            </q-avatar>
+          </q-item-section>
+
+          <q-item-section>
+            <q-item-label class="text-weight-medium">{{ user.full_name }}</q-item-label>
+            <q-item-label caption>{{ user.total_journeys }} viagens</q-item-label>
+          </q-item-section>
+
+          <q-item-section side class="text-right">
+            <q-item-label class="text-h6 text-weight-bold text-primary">
+              {{ user.primary_metric_value.toFixed(1) }}
+            </q-item-label>
+            <q-item-label caption>{{ unit }}</q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-card>
+
+    <!-- ESTADO VAZIO -->
+    <div v-else class="text-center q-pa-xl text-grey-7">
       <q-icon name="leaderboard" size="4em" />
-      <p class="q-mt-md">Ainda não há dados suficientes para gerar o ranking.</p>
-    </div>
-
-    <div v-else class="q-gutter-y-lg">
-      <div v-if="topThree[0]" class="row items-end q-col-gutter-md">
-        <div v-if="topThree[1]" class="col text-center">
-          <PodiumCard :driver="topThree[1]" rank="2" />
-        </div>
-        <div class="col text-center">
-          <PodiumCard :driver="topThree[0]" rank="1" />
-        </div>
-        <div v-if="topThree[2]" class="col text-center">
-          <PodiumCard :driver="topThree[2]" rank="3" />
-        </div>
-      </div>
-
-      <div class="q-gutter-y-md">
-        <q-card
-          v-for="(driver, index) in remainingDrivers"
-          :key="driver.user_id"
-          flat bordered
-          class="floating-card"
-        >
-          <q-card-section horizontal class="items-center">
-            <q-item-section class="col-auto text-center text-h6 text-weight-bold text-grey-6 q-pa-md">
-              {{ performanceStore.leaderboard.length < 3 ? index + 1 : index + 4 }}
-            </q-item-section>
-            <q-separator vertical inset />
-            <q-item-section avatar class="q-pl-md">
-               <q-avatar size="56px">
-                <img v-if="driver.avatar_url" :src="driver.avatar_url">
-                <q-icon v-else name="account_circle" color="grey-5" size="56px" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <div class="text-body1 text-weight-medium">{{ driver.full_name }}</div>
-            </q-item-section>
-            <q-item-section side class="q-pa-md">
-              <div class="text-h6 text-weight-bold">{{ driver.performance_score.toFixed(0) }}</div>
-              <div class="text-caption">Score</div>
-            </q-item-section>
-          </q-card-section>
-        </q-card>
-      </div>
+      <p class="q-mt-md">Ainda não há dados suficientes para gerar o placar de líderes.</p>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { onMounted, computed } from 'vue';
-import { usePerformanceStore } from 'stores/performance-store';
-import PodiumCard from 'src/components/performance/PodiumCard.vue';
+import { useLeaderboardStore } from 'stores/leaderboard-store';
+// --- INÍCIO DA CORREÇÃO ---
+// Usamos um caminho relativo a partir da pasta 'pages'
+import defaultAvatar from '../assets/default-avatar.png';
+// --- FIM DA CORREÇÃO ---
 
-const performanceStore = usePerformanceStore();
+const leaderboardStore = useLeaderboardStore();
 
-const topThree = computed(() => performanceStore.leaderboard.slice(0, 3));
-const remainingDrivers = computed(() => {
-  return performanceStore.leaderboard.length < 3
-    ? performanceStore.leaderboard
-    : performanceStore.leaderboard.slice(3);
-});
+const leaderboard = computed(() => leaderboardStore.leaderboard);
+const unit = computed(() => leaderboardStore.unit);
 
 onMounted(() => {
-  void performanceStore.fetchLeaderboard();
+  void leaderboardStore.fetchLeaderboard();
 });
 </script>
+
+<style scoped lang="scss">
+.podium-card {
+  padding: 16px 8px;
+  border-radius: 8px;
+  border-bottom: 4px solid;
+  transition: transform 0.2s ease-in-out;
+
+  &:hover {
+    transform: translateY(-5px);
+  }
+}
+
+.gold {
+  border-color: #ffd700;
+  background: linear-gradient(145deg, #fef5d6, #fff);
+  order: 2; /* 1º lugar fica no meio */
+  transform: scale(1.1);
+}
+
+.silver {
+  border-color: #c0c0c0;
+  background: linear-gradient(145deg, #f0f0f0, #fff);
+  order: 1; /* 2º lugar fica na esquerda */
+}
+
+.bronze {
+  border-color: #cd7f32;
+  background: linear-gradient(145deg, #fce9d8, #fff);
+  order: 3; /* 3º lugar fica na direita */
+}
+</style>
