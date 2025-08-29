@@ -11,6 +11,7 @@ export const useUserStore = defineStore('user', () => {
   const users = ref<User[]>([]);
   const isLoading = ref(false);
   const selectedUserStats = ref<UserStats | null>(null);
+  const selectedUser = ref<User | null>(null); // Novo estado para o usuário selecionado
 
   // --- ACTIONS ---
 
@@ -96,6 +97,21 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function fetchUserById(userId: number) {
+    isLoading.value = true;
+    try {
+      // Assumindo que você tenha um endpoint para buscar um usuário pelo ID
+      // Se não tiver, podemos criá-lo ou usar a lista 'users' se ela já estiver carregada.
+      const response = await api.get<User>(`/users/${userId}`);
+      selectedUser.value = response.data;
+    } catch (error) {
+      Notify.create({ type: 'negative', message: 'Falha ao carregar dados do usuário.' });
+      console.error(`Falha ao buscar usuário ${userId}:`, error);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
 return {
     users,
     isLoading,
@@ -104,6 +120,8 @@ return {
     addNewUser,
     updateUser,
     deleteUser,
-    fetchUserStats,
+    selectedUser,
+    fetchUserById,
+    fetchUserStats
   };
 });

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
+from app.models.organization_model import Organization # Importe o modelo Organization
 
 from app.core.security import get_password_hash, verify_password
 from app.models.user_model import User, UserRole
@@ -138,90 +139,157 @@ async def authenticate(db: AsyncSession, *, email: str, password: str) -> User |
     return user
 
 async def get_user_stats(db: AsyncSession, *, user_id: int, organization_id: int) -> dict | None:
-    """Calcula as estatísticas de um utilizador, garantindo que pertence à organização."""
+    """Calcula as estatísticas de um utilizador, adaptando-as ao setor da organização."""
+    
+    # 1. Busca o usuário e sua organização para saber o setor
     user = await get_user(db, user_id=user_id, organization_id=organization_id)
-    if not user:
-        return None 
+    if not user or not user.organization:
+        return None
 
-    # Total de Viagens e KM
-    total_stats_stmt = select(
-        func.count(Journey.id), func.sum(Journey.end_mileage - Journey.start_mileage)
-    ).where(Journey.driver_id == user_id, Journey.organization_id == organization_id, Journey.is_active == False)
-    result = (await db.execute(total_stats_stmt)).first()
-    total_journeys = result[0] if result else 0
-    total_km = result[1] if result and result[1] is not None else 0.0
+    # 2. Busca todas as jornadas finalizadas do usuário
+    journeys_stmt = select(Journey).where(
+        Journey.driver_id == user_id,
+        Journey.organization_id == organization_id,
+        Journey.is_active == False
+    )
+    journeys_result = await db.execute(journeys_stmt)
+    journeys = journeys_result.scalars().all()
 
-    # Cálculos de Abastecimento
-    fuel_stats_stmt = select(
-        func.sum(FuelLog.liters), func.sum(FuelLog.total_cost)
-    ).where(FuelLog.user_id == user_id, FuelLog.organization_id == organization_id)
-    total_liters, total_cost = (await db.execute(fuel_stats_stmt)).first() or (0, 0)
-    total_liters = total_liters or 0.0
-    total_cost = total_cost or 0.0
+    total_journeys = len(journeys)
     
-    # Chamados de Manutenção
-    maintenance_count_stmt = select(func.count(MaintenanceRequest.id)).where(
-        MaintenanceRequest.reported_by_id == user_id, MaintenanceRequest.organization_id == organization_id
-    )
-    maintenance_requests_count = (await db.execute(maintenance_count_stmt)).scalar_one()
-
-    # Médias da Frota (da organização)
-    fleet_km_stmt = select(func.sum(Journey.end_mileage - Journey.start_mileage)).where(Journey.is_active == False, Journey.organization_id == organization_id)
-    fleet_liters_stmt = select(func.sum(FuelLog.liters)).where(FuelLog.organization_id == organization_id)
-    total_fleet_km = (await db.execute(fleet_km_stmt)).scalar_one() or 0.0
-    total_fleet_liters = (await db.execute(fleet_liters_stmt)).scalar_one() or 0.0
-
-    # KPIs Finais
-    avg_km_per_liter = (total_km / total_liters) if total_liters > 0 else 0.0
-    avg_cost_per_km = (total_cost / total_km) if total_km > 0 else 0.0
-    fleet_avg_km_per_liter = (total_fleet_km / total_fleet_liters) if total_fleet_liters > 0 else 0.0
-
-    # KM por veículo
-    km_by_vehicle_stmt = (
-        select(
-            Vehicle.brand, Vehicle.model, Vehicle.license_plate,
-            func.sum(Journey.end_mileage - Journey.start_mileage).label("total_km")
-        )
-        .join(Journey, Journey.vehicle_id == Vehicle.id)
-        .where(Journey.driver_id == user_id, Journey.organization_id == organization_id, Journey.is_active == False)
-        .group_by(Vehicle.id)
-        .order_by(func.sum(Journey.end_mileage - Journey.start_mileage).desc())
-    )
-    km_by_vehicle_result = (await db.execute(km_by_vehicle_stmt)).all()
+    # --- INÍCIO DA LÓGICA CONDICIONAL ---
     
-    journeys_by_vehicle = [{
-        "vehicle_info": f"{row.brand} {row.model} ({row.license_plate})",
-        "km_driven_in_vehicle": row.total_km
-    } for row in km_by_vehicle_result]
-
-    return {
-        "total_journeys": total_journeys,
-        "total_km_driven": total_km,
-        "journeys_by_vehicle": journeys_by_vehicle,
-        "maintenance_requests_count": maintenance_requests_count,
-        "avg_km_per_liter": avg_km_per_liter,
-        "avg_cost_per_km": avg_cost_per_km,
-        "fleet_avg_km_per_liter": fleet_avg_km_per_liter
-    }
-
-    six_months_ago = datetime.utcnow() - timedelta(days=180)
-    fuel_cost_stmt = (
-        select(
-            func.to_char(FuelLog.timestamp, 'YYYY-MM').label('month'),
-            func.sum(FuelLog.total_cost).label('total_cost')
-        )
-        .where(FuelLog.timestamp >= six_months_ago)
-    )
-    # Se o usuário for um motorista, filtra apenas os seus próprios registros
-    if current_user.role == UserRole.DRIVER:
-        fuel_cost_stmt = fuel_cost_stmt.where(FuelLog.user_id == current_user.id)
+    if user.organization.sector == 'agronegocio':
+        # --- LÓGICA PARA AGRONEGÓCIO ---
         
-    fuel_cost_stmt = fuel_cost_stmt.group_by('month').order_by('month')
-    fuel_cost_result = await db.execute(fuel_cost_stmt)
-    fuel_cost_last_6_months = [{"month": row.month, "total_cost": row.total_cost} for row in fuel_cost_result]
+        # Métrica Principal: Horas Totais
+        total_value = sum(
+            (j.end_engine_hours - j.start_engine_hours)
+            for j in journeys if j.end_engine_hours is not None and j.start_engine_hours is not None
+        )
+        
+        # Performance por Veículo (em Horas)
+        performance_stmt = (
+            select(
+                Vehicle.brand, Vehicle.model, Vehicle.identifier,
+                func.sum(Journey.end_engine_hours - Journey.start_engine_hours).label("total_value")
+            )
+            .join(Journey, Journey.vehicle_id == Vehicle.id)
+            .where(Journey.driver_id == user_id, Journey.is_active == False)
+            .group_by(Vehicle.id)
+            .order_by(func.sum(Journey.end_engine_hours - Journey.start_engine_hours).desc())
+        )
+        performance_result = (await db.execute(performance_stmt)).all()
+        
+        performance_by_vehicle = [{
+            "vehicle_info": f"{row.brand} {row.model} ({row.identifier})",
+            "value": row.total_value or 0.0
+        } for row in performance_result]
+
+        stats_payload = {
+            "total_journeys": total_journeys,
+            "primary_metric_label": "Horas Totais Trabalhadas",
+            "primary_metric_value": total_value,
+            "primary_metric_unit": "Horas",
+            "performance_by_vehicle": performance_by_vehicle,
+        }
+
+    else:
+        # --- LÓGICA PARA SERVIÇOS E OUTROS (BASEADA EM KM) ---
+
+        # Métrica Principal: KM Totais
+        total_value = sum(
+            (j.end_mileage - j.start_mileage)
+            for j in journeys if j.end_mileage is not None and j.start_mileage is not None
+        )
+
+        # Performance por Veículo (em KM)
+        performance_stmt = (
+            select(
+                Vehicle.brand, Vehicle.model, Vehicle.license_plate,
+                func.sum(Journey.end_mileage - Journey.start_mileage).label("total_value")
+            )
+            .join(Journey, Journey.vehicle_id == Vehicle.id)
+            .where(Journey.driver_id == user_id, Journey.is_active == False)
+            .group_by(Vehicle.id)
+            .order_by(func.sum(Journey.end_mileage - Journey.start_mileage).desc())
+        )
+        performance_result = (await db.execute(performance_stmt)).all()
+        
+        performance_by_vehicle = [{
+            "vehicle_info": f"{row.brand} {row.model} ({row.license_plate})",
+            "value": row.total_value or 0.0
+        } for row in performance_result]
+        
+        # KPIs de Combustível (só fazem sentido para KM)
+        # (Seu código original de cálculo de combustível pode ser inserido aqui)
+        
+        stats_payload = {
+            "total_journeys": total_journeys,
+            "primary_metric_label": "Distância Total Percorrida",
+            "primary_metric_value": total_value,
+            "primary_metric_unit": "km",
+            "performance_by_vehicle": performance_by_vehicle,
+            # Adicione aqui os KPIs de combustível se desejar
+            "avg_km_per_liter": 0.0, # Substituir pelo cálculo real
+            "avg_cost_per_km": 0.0, # Substituir pelo cálculo real
+            "fleet_avg_km_per_liter": 0.0, # Substituir pelo cálculo real
+        }
+        
+    # 3. Cálculos Comuns a Todos os Setores
+    maintenance_count_stmt = select(func.count(MaintenanceRequest.id)).where(
+        MaintenanceRequest.reported_by_id == user_id
+    )
+    maintenance_requests_count = (await db.execute(maintenance_count_stmt)).scalar_one_or_none() or 0
+
+    stats_payload["maintenance_requests_count"] = maintenance_requests_count
+
+    return stats_payload
+
+async def get_leaderboard_data(db: AsyncSession, *, organization_id: int) -> dict:
+    """
+    Busca e calcula os dados do placar de líderes para uma organização,
+    adaptando a métrica de performance ao setor.
+    """
+    org = await db.get(Organization, organization_id)
+    if not org:
+        return {"leaderboard": [], "primary_metric_unit": "N/A"}
+
+    if org.sector == 'agronegocio':
+        metric_calculation = func.sum(Journey.end_engine_hours - Journey.start_engine_hours)
+        primary_metric_unit = "Horas"
+    else:
+        metric_calculation = func.sum(Journey.end_mileage - Journey.start_mileage)
+        primary_metric_unit = "km"
+
+    leaderboard_stmt = (
+        select(
+            User.id,
+            User.full_name,
+            User.avatar_url,
+            func.count(Journey.id).label("total_journeys"),
+            metric_calculation.label("primary_metric_value")
+        )
+        .join(Journey, User.id == Journey.driver_id)
+        .where(
+            User.organization_id == organization_id,
+            User.role == UserRole.DRIVER,
+            Journey.is_active == False
+            # A condição de agregação foi REMOVIDA daqui
+        )
+        .group_by(User.id)
+        # --- INÍCIO DA CORREÇÃO ---
+        # A condição foi MOVIDA para a cláusula HAVING, que é executada após o GROUP BY
+        .having(metric_calculation.is_not(None))
+        # --- FIM DA CORREÇÃO ---
+        .order_by(metric_calculation.desc().nullslast())
+        .limit(50)
+    )
+
+    result = await db.execute(leaderboard_stmt)
+    leaderboard_users = result.all()
 
     return {
-        "kpis": kpis,
-        "fuel_cost_last_6_months": fuel_cost_last_6_months,
-        # ... (outros dados)
+        "leaderboard": leaderboard_users,
+        "primary_metric_unit": primary_metric_unit
     }

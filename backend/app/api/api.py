@@ -1,4 +1,6 @@
 from fastapi import APIRouter
+from app.api.v1.endpoints import login, users, vehicles, leaderboard # Adicione 'leaderboard'
+
 
 # 1. Adicionamos 'performance' à lista de imports
 from app.api.v1.endpoints import (
@@ -13,12 +15,15 @@ from app.api.v1.endpoints import (
     fuel_logs,
     performance,
     implements,
-    report_generator
+    report_generator,
+    telemetry
 )
 
 api_router = APIRouter()
 
 # Registra todos os roteadores
+api_router.include_router(telemetry.router, prefix="/telemetry", tags=["telemetry"])
+
 api_router.include_router(login.router, prefix="/login", tags=["Login"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_router.include_router(vehicles.router, prefix="/vehicles", tags=["Vehicles"])
@@ -33,3 +38,4 @@ api_router.include_router(fuel_logs.router, prefix="/fuel-logs", tags=["Fuel Log
 api_router.include_router(performance.router, prefix="/performance", tags=["Performance"])
 api_router.include_router(report_generator.router, prefix="/report-generator", tags=["Report Generator"])
 api_router.include_router(implements.router, prefix="/implements", tags=["Implements"])
+api_router.include_router(leaderboard.router, prefix="/leaderboard", tags=["leaderboard"])

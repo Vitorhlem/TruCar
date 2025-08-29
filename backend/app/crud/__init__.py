@@ -10,3 +10,4 @@ from . import crud_vehicle as vehicle
 from . import crud_fuel_log as fuel_log
 from . import crud_organization as organization
 from . import crud_implement as implement
+from .crud_vehicle import vehicle
