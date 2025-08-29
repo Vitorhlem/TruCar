@@ -44,7 +44,9 @@
         <q-list separator>
           <q-item v-if="store.isLoading && store.openOrders.length === 0"><q-item-section><q-skeleton type="text" /></q-item-section></q-item>
           <q-item v-if="!store.isLoading && store.openOrders.length === 0" class="text-grey-7 q-pa-md">Nenhuma oportunidade disponível.</q-item>
+          <!-- --- INÍCIO DA CORREÇÃO: Adicionamos o @click de volta --- -->
           <q-item v-else v-for="order in store.openOrders" :key="order.id" clickable @click="openClaimDialog(order)">
+          <!-- --- FIM DA CORREÇÃO --- -->
             <q-item-section avatar><q-icon name="add_shopping_cart" color="positive" /></q-item-section>
             <q-item-section>
               <q-item-label>{{ order.description || 'Frete sem descrição' }}</q-item-label>
@@ -57,14 +59,11 @@
 
     <!-- Diálogos -->
     <q-dialog v-model="isClaimDialogOpen">
-      <ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" />
+      <ClaimFreightDialog v-if="selectedOrderForClaim" :order="selectedOrderForClaim" @close="isClaimDialogOpen = false" />
     </q-dialog>
-
-    <!-- --- INÍCIO DA CORREÇÃO --- -->
     <q-dialog v-model="isDriverDialogOpen">
-      <DriverFreightDialog :order="selectedOrderForAction" @close="isDriverDialogOpen = false" />
+      <DriverFreightDialog @close="handleDriverDialogClose" />
     </q-dialog>
-    <!-- --- FIM DA CORREÇÃO --- -->
   </q-page>
 </template>
 
@@ -78,17 +77,23 @@ import type { FreightOrder } from 'src/models/freight-order-models';
 const store = useFreightOrderStore();
 const isClaimDialogOpen = ref(false);
 const isDriverDialogOpen = ref(false);
-const selectedOrderForAction = ref<FreightOrder | null>(null);
+const selectedOrderForClaim = ref<FreightOrder | null>(null);
 
+// Esta função agora é usada pelo template
 function openClaimDialog(order: FreightOrder) {
-  selectedOrderForAction.value = order;
+  selectedOrderForClaim.value = order;
   isClaimDialogOpen.value = true;
 }
 
-// --- CORREÇÃO: Simplificamos a lógica para ser consistente ---
 function openDriverDialog(order: FreightOrder) {
-  selectedOrderForAction.value = order;
+  void store.fetchOrderDetails(order.id);
   isDriverDialogOpen.value = true;
+}
+
+function handleDriverDialogClose() {
+  isDriverDialogOpen.value = false;
+  store.activeOrderDetails = null;
+  refreshData();
 }
 
 function refreshData() {
@@ -100,9 +105,3 @@ onMounted(() => {
   refreshData();
 });
 </script>
-
-<style scoped>
-.floating-card {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-</style>
