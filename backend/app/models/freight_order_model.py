@@ -7,17 +7,20 @@ from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 
 class FreightStatus(str, enum.Enum):
-    PENDING = "Pendente"
+    OPEN = "Aberta"           # <-- NOVO: Visível para todos os motoristas
+    CLAIMED = "Atribuída"       # <-- NOVO: Um motorista pegou
+    PENDING = "Pendente"       # (Pode ser removido ou usado para "agendado")
     IN_TRANSIT = "Em Trânsito"
     DELIVERED = "Entregue"
     CANCELED = "Cancelado"
+# --- FIM DA ADIÇÃO ---
 
 class FreightOrder(Base):
     __tablename__ = "freight_orders"
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String(500), nullable=True)
-    status = Column(Enum(FreightStatus), nullable=False, default=FreightStatus.PENDING)
+    status = Column(Enum(FreightStatus), nullable=False, default=FreightStatus.OPEN)
 
     scheduled_start_time = Column(DateTime, nullable=True)
     scheduled_end_time = Column(DateTime, nullable=True)

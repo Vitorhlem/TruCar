@@ -4,7 +4,10 @@ import type { Client } from './client-models';
 import type { User } from './auth-models';
 import type { Vehicle } from './vehicle-models';
 
-export type FreightStatus = "Pendente" | "Em Trânsito" | "Entregue" | "Cancelado";
+// --- INÍCIO DA CORREÇÃO: Adicionamos os novos status ---
+export type FreightStatus = "Aberta" | "Atribuída" | "Em Trânsito" | "Entregue" | "Cancelado";
+// --- FIM DA CORREÇÃO ---
+
 export type StopPointType = "Coleta" | "Entrega";
 export type StopPointStatus = "Pendente" | "Concluído";
 
@@ -19,7 +22,6 @@ export interface StopPoint {
   actual_arrival_time?: string | null;
 }
 
-// --- CORREÇÃO: Transformado de interface para type para calar o linter ---
 export type StopPointCreate = Omit<StopPoint, 'id' | 'status' | 'actual_arrival_time'>;
 
 export interface FreightOrder {
@@ -45,4 +47,8 @@ export interface FreightOrderUpdate {
   status?: FreightStatus;
   vehicle_id?: number | null;
   driver_id?: number | null;
+}
+
+export interface FreightOrderClaim {
+  vehicle_id: number;
 }

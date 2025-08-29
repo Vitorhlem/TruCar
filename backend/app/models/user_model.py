@@ -9,6 +9,8 @@ from app.db.base_class import Base
 class UserRole(str, enum.Enum):
     MANAGER = "manager"
     DRIVER = "driver"
+    CLIENT = "client" # <-- NOVO PAPEL
+
 
 class User(Base):
     __tablename__ = "users"
