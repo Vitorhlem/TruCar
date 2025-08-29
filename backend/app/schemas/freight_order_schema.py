@@ -31,6 +31,9 @@ class StopPointPublic(StopPointBase):
 
 # --- Schemas para Ordens de Frete (FreightOrder) ---
 
+class FreightOrderClaim(BaseModel):
+    vehicle_id: int
+
 class FreightOrderBase(BaseModel):
     description: Optional[str] = None
     scheduled_start_time: Optional[datetime] = None
