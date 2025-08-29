@@ -59,10 +59,10 @@
 
     <!-- Diálogos -->
     <q-dialog v-model="isClaimDialogOpen">
-      <ClaimFreightDialog v-if="selectedOrderForClaim" :order="selectedOrderForClaim" @close="isClaimDialogOpen = false" />
+      <ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" />
     </q-dialog>
     <q-dialog v-model="isDriverDialogOpen">
-      <DriverFreightDialog @close="handleDriverDialogClose" />
+      <DriverFreightDialog :order="selectedOrderForAction" @close="handleDriverDialogClose" />
     </q-dialog>
   </q-page>
 </template>
@@ -77,22 +77,21 @@ import type { FreightOrder } from 'src/models/freight-order-models';
 const store = useFreightOrderStore();
 const isClaimDialogOpen = ref(false);
 const isDriverDialogOpen = ref(false);
-const selectedOrderForClaim = ref<FreightOrder | null>(null);
+const selectedOrderForAction = ref<FreightOrder | null>(null);
 
-// Esta função agora é usada pelo template
 function openClaimDialog(order: FreightOrder) {
-  selectedOrderForClaim.value = order;
+  selectedOrderForAction.value = order;
   isClaimDialogOpen.value = true;
 }
 
 function openDriverDialog(order: FreightOrder) {
-  void store.fetchOrderDetails(order.id);
+  selectedOrderForAction.value = order;
   isDriverDialogOpen.value = true;
 }
 
 function handleDriverDialogClose() {
   isDriverDialogOpen.value = false;
-  store.activeOrderDetails = null;
+  selectedOrderForAction.value = null;
   refreshData();
 }
 

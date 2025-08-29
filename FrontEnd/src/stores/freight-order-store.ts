@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
+import type { Journey } from 'src/models/journey-models';
+
 import type { FreightOrder, FreightOrderCreate, FreightOrderUpdate, FreightOrderClaim } from 'src/models/freight-order-models';
 
 export const useFreightOrderStore = defineStore('freightOrder', () => {
@@ -80,13 +82,12 @@ export const useFreightOrderStore = defineStore('freightOrder', () => {
     }
   }
 
-    async function startJourneyForStop(orderId: number, stopPointId: number) {
+    async function startJourneyForStop(orderId: number, stopPointId: number): Promise<Journey | null> {
     try {
-      await api.post(`/freight-orders/${orderId}/start-leg/${stopPointId}`);
+      const response = await api.post<Journey>(`/freight-orders/${orderId}/start-leg/${stopPointId}`);
       Notify.create({ type: 'positive', message: 'Viagem iniciada!' });
-      // --- CORREÇÃO CRÍTICA: Recarrega os detalhes da ordem ATIVA ---
-      // Isso garante que a nova 'Journey' ativa seja carregada no estado 'activeOrderDetails'.
-      await fetchOrderDetails(orderId);
+      // Não recarregamos aqui para não causar loop, o componente vai gerenciar
+      return response.data;
     } catch (error) {
       Notify.create({ type: 'negative', message: 'Falha ao iniciar viagem.' });
       throw error;
@@ -98,15 +99,12 @@ export const useFreightOrderStore = defineStore('freightOrder', () => {
       const payload = { journey_id: journeyId, end_mileage: endMileage };
       await api.put(`/freight-orders/${orderId}/complete-stop/${stopPointId}`, payload);
       Notify.create({ type: 'positive', message: 'Parada concluída!' });
-      // Recarrega os detalhes para a próxima parada ou para finalizar
-      await fetchOrderDetails(orderId);
-      // Atualiza a lista geral que a página do cockpit usa
-      await fetchMyPendingOrders();
+      // Após concluir, a página principal irá recarregar os dados
     } catch (error) {
       Notify.create({ type: 'negative', message: 'Falha ao concluir parada.' });
       throw error;
     }
-    }
+  }
 
   async function addFreightOrder(payload: FreightOrderCreate) {
     try {

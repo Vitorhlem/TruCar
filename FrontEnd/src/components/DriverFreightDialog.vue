@@ -60,14 +60,12 @@ const freightOrderStore = useFreightOrderStore();
 const isSubmitting = ref(false);
 const endMileage = ref<number | null>(null);
 const activeJourney = ref<Journey | null>(null);
-const completeForm = ref<any>(null); // Ref para o formulário
 
-const order = computed(() => freightOrderStore.activeOrderDetails);
-const isEnRoute = computed(() => order.value?.status === 'Em Trânsito');
-const nextStop = computed((): StopPoint | null => order.value?.stop_points.find(s => s.status === 'Pendente') || null);
-const stopIndex = computed(() => order.value?.stop_points.findIndex(s => s.id === nextStop.value?.id) ?? 0);
+const isEnRoute = computed(() => props.order?.status === 'Em Trânsito');
+const nextStop = computed((): StopPoint | null => props.order?.stop_points.find(s => s.status === 'Pendente') || null);
+const stopIndex = computed(() => props.order?.stop_points.findIndex(s => s.id === nextStop.value?.id) ?? 0);
 
-watch(order, (newOrder) => {
+watch(() => props.order, (newOrder) => {
   if (newOrder?.journeys) {
     activeJourney.value = newOrder.journeys.find(j => j.is_active) || null;
   }
@@ -76,57 +74,31 @@ watch(order, (newOrder) => {
   }
 }, { immediate: true, deep: true });
 
-// --- FUNÇÃO DE VALIDAÇÃO COM LOGS ---
 function validateEndMileage(val: number | null): boolean | string {
-  console.log("--- Validando KM Final ---");
-  if (val === null || val === undefined) {
-    console.log("Resultado: Falhou (valor nulo/undefined)");
-    return 'Campo obrigatório';
-  }
-
-  const startKm = activeJourney.value?.start_mileage;
-  console.log(`Valor digitado (val): ${val}, Tipo: ${typeof val}`);
-  console.log(`KM Inicial da Jornada Ativa (startKm): ${startKm}, Tipo: ${typeof startKm}`);
-
-  if (startKm === undefined || startKm === null) {
-      console.log("Resultado: Passou (não foi possível encontrar KM inicial para comparar)");
-      return true; // Não podemos validar se não temos um ponto de partida
-  }
-
-  if (val < startKm) {
-    console.log(`Resultado: Falhou (${val} < ${startKm})`);
-    return `O KM final não pode ser menor que o inicial do trecho (${startKm} km)`;
-  }
-  
-  console.log("Resultado: Passou!");
+  if (val === null || val === undefined) return 'Campo obrigatório';
+  const startKm = activeJourney.value?.start_mileage ?? 0;
+  if (val < startKm) return `O KM final não pode ser menor que o inicial (${startKm} km)`;
   return true;
 }
 
 async function handleStart() {
-  if (!order.value || !nextStop.value) return;
+  if (!props.order || !nextStop.value) return;
   isSubmitting.value = true;
   try {
-    const newJourney = await freightOrderStore.startJourneyForStop(order.value.id, nextStop.value.id);
-    activeJourney.value = newJourney;
+    const newJourney = await freightOrderStore.startJourneyForStop(props.order.id, nextStop.value.id);
+    activeJourney.value = newJourney; // Atualiza o estado local
+    // Força a atualização da lista na página principal
+    await freightOrderStore.fetchMyPendingOrders();
   } finally { isSubmitting.value = false; }
 }
 
 async function handleComplete() {
-  console.log("--- handleComplete FOI CHAMADA! ---");
-  // Adiciona uma validação explícita do formulário
-  const isValid = await completeForm.value?.validate();
-  if (!isValid) {
-    console.log("Formulário inválido, submissão cancelada.");
-    return;
-  }
-
-  if (!order.value || !nextStop.value || endMileage.value === null || !activeJourney.value) {
-    return;
-  }
+  if (!props.order || !nextStop.value || endMileage.value === null || !activeJourney.value) return;
   isSubmitting.value = true;
   try {
-    await freightOrderStore.completeStop(order.value.id, nextStop.value.id, activeJourney.value.id, endMileage.value);
+    await freightOrderStore.completeStop(props.order.id, nextStop.value.id, activeJourney.value.id, endMileage.value);
     endMileage.value = null;
+    await freightOrderStore.fetchMyPendingOrders();
   } finally { isSubmitting.value = false; }
 }
 </script>
