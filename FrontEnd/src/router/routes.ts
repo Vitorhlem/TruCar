@@ -18,7 +18,10 @@ const routes: RouteRecordRaw[] = [
       { path: 'performance', name: 'performance', component: () => import('pages/PerformancePage.vue') },
       { path: 'reports', name: 'reports', component: () => import('pages/ReportsPage.vue') },
       { path: 'implements', name: 'implements', component: () => import('pages/ImplementsPage.vue')},
-      { path: 'live-map', component: () => import('pages/LiveMapPage.vue'),
+      { path: 'live-map', component: () => import('pages/LiveMapPage.vue')},
+      { path: 'freight-orders', component: () => import('pages/FreightOrdersPage.vue') },
+      { path: 'clients', component: () => import('pages/ClientsPage.vue'),
+
       
         
         meta: { requiresAuth: true, requiredRole: 'manager' } // Apenas gestores

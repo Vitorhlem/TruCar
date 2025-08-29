@@ -1,13 +1,15 @@
+// ARQUIVO: src/stores/auth-store.ts
+
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
-import type { LoginForm, TokenData, User } from 'src/models/auth-models';
+import type { LoginForm, TokenData, User, UserSector } from 'src/models/auth-models';
 
 function getInitialUser(): User | null {
   const userString = localStorage.getItem('user');
   if (!userString || userString === 'undefined') return null;
   try {
-    return JSON.parse(userString);
+    return JSON.parse(userString) as User;
   } catch (e) {
     console.error("Falha ao interpretar o 'user' do localStorage.", e);
     localStorage.removeItem('user');
@@ -21,32 +23,29 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!accessToken.value);
   const isManager = computed(() => user.value?.role === 'manager');
-  const userSector = computed(() => user.value?.organization?.sector || null);
+
+  // Este 'computed' agora funciona corretamente porque o tipo UserSector está completo
+  const userSector = computed((): UserSector => {
+    return user.value?.organization?.sector ?? null;
+  });
 
   async function login(loginForm: LoginForm): Promise<boolean> {
     const params = new URLSearchParams();
     params.append('username', loginForm.email);
     params.append('password', loginForm.password);
-
     try {
       const response = await api.post<TokenData>('/login/token', params);
-      
-      // A CORREÇÃO CRUCIAL: Desempacota a resposta plana
       const { access_token, user: userData } = response.data;
-
       accessToken.value = access_token;
       user.value = userData;
-      
       localStorage.setItem('accessToken', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
-
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      return true; // Retorna true em caso de sucesso
+      return true;
     } catch (error) {
       console.error('Falha no login:', error);
-      // Limpa quaisquer dados antigos em caso de falha
       logout();
-      return false; // Retorna false em caso de falha
+      return false;
     }
   }
 
@@ -67,13 +66,5 @@ export const useAuthStore = defineStore('auth', () => {
   
   init();
 
-  return {
-    accessToken,
-    user,
-    isAuthenticated,
-    isManager,
-    userSector,
-    login,
-    logout,
-  };
+  return { accessToken, user, isAuthenticated, isManager, userSector, login, logout };
 });

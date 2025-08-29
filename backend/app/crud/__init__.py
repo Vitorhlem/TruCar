@@ -11,3 +11,5 @@ from . import crud_fuel_log as fuel_log
 from . import crud_organization as organization
 from . import crud_implement as implement
 from .crud_vehicle import vehicle
+from .crud_client import client
+from .crud_freight_order import freight_order

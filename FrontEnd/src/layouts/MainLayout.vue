@@ -2,30 +2,14 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-        />
-        <q-toolbar-title>
-          TruCar
-        </q-toolbar-title>
-        
+        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
+        <q-toolbar-title>TruCar</q-toolbar-title>
         <q-btn v-if="authStore.isManager" flat round dense icon="notifications" class="q-mr-sm">
-          <q-badge v-if="notificationStore.unreadCount > 0" color="red" floating>
-            {{ notificationStore.unreadCount }}
-          </q-badge>
+          <q-badge v-if="notificationStore.unreadCount > 0" color="red" floating>{{ notificationStore.unreadCount }}</q-badge>
           <q-menu @show="notificationStore.fetchNotifications()" style="width: 350px">
-            <q-list bordered separator>
-              <q-item-label header>Notificações</q-item-label>
-              <!-- Lógica de notificações aqui -->
-            </q-list>
+            <q-list bordered separator><q-item-label header>Notificações</q-item-label></q-list>
           </q-menu>
         </q-btn>
-
         <q-btn-dropdown flat :label="authStore.user?.full_name || 'Usuário'">
           <q-list>
             <q-item clickable v-close-popup @click="handleLogout">
@@ -36,40 +20,18 @@
         </q-btn-dropdown>
       </q-toolbar>
     </q-header>
-
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      bordered
-    >
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
       <q-scroll-area class="fit">
-        <!-- O erro de sintaxe foi removido daqui -->
         <q-list padding>
           <q-item-label header>Menu Principal</q-item-label>
-          
-          <!-- O v-for agora renderizará todos os links, incluindo o mapa -->
-          <q-item
-            v-for="link in essentialLinks"
-            :key="link.title"
-            clickable
-            :to="link.to"
-            exact
-            v-ripple
-          >
-            <q-item-section avatar>
-              <q-icon :name="link.icon" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ link.title }}</q-item-label>
-            </q-item-section>
+          <q-item v-for="link in essentialLinks" :key="link.title" clickable :to="link.to" exact v-ripple>
+            <q-item-section avatar><q-icon :name="link.icon" /></q-item-section>
+            <q-item-section><q-item-label>{{ link.title }}</q-item-label></q-item-section>
           </q-item>
         </q-list>
       </q-scroll-area>
     </q-drawer>
-
-    <q-page-container>
-      <router-view />
-    </q-page-container>
+    <q-page-container><router-view /></q-page-container>
   </q-layout>
 </template>
 
@@ -77,91 +39,58 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'stores/auth-store';
-import { useTerminologyStore } from 'stores/terminology-store';
+// import { useTerminologyStore } from 'stores/terminology-store'; // Removido pois não é usado no script
 import { useNotificationStore } from 'stores/notification-store';
 
 const leftDrawerOpen = ref(false);
 const router = useRouter();
 const authStore = useAuthStore();
-const terminologyStore = useTerminologyStore();
+// const terminologyStore = useTerminologyStore(); // Removido
 const notificationStore = useNotificationStore();
 
 let pollTimer: number;
 
-function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value;
-}
-
-function handleLogout() {
-  authStore.logout();
-  void router.push('/auth/login');
-}
+function toggleLeftDrawer() { leftDrawerOpen.value = !leftDrawerOpen.value; }
+function handleLogout() { authStore.logout(); void router.push('/auth/login'); }
 
 const essentialLinks = computed(() => {
-  const links = [
-    {
-      title: 'Dashboard',
-      icon: 'dashboard',
-      to: '/dashboard',
-    },
-    // --- INÍCIO DA CORREÇÃO ---
-    // Adicionamos o "Mapa em Tempo Real" aqui, na lista dinâmica.
-    {
-      title: 'Mapa em Tempo Real',
-      icon: 'map',
-      to: '/live-map',
-    },
-    // --- FIM DA CORREÇÃO ---
-    {
-      title: terminologyStore.vehiclePageTitle,
-      icon: authStore.userSector === 'agronegocio' ? 'agriculture' : 'local_shipping',
-      to: '/vehicles',
-    },
-    {
-      title: terminologyStore.journeyPageTitle,
-      icon: 'route',
-      to: '/journeys',
-    },
-    {
-      title: 'Ranking de Motoristas',
-      icon: 'leaderboard',
-      to: '/performance',
-    },
-    {
-      title: 'Manutenções',
-      icon: 'build',
-      to: '/maintenance',
-    },
-    {
-      title: 'Implementos',
-      icon: 'precision_manufacturing',
-      to: '/implements',
-    },
-  ];
-
-  if (authStore.isManager) {
-    links.push({
-      title: 'Gestão de Utilizadores',
-      icon: 'manage_accounts',
-      to: '/users',
-    });
+  const baseLinks = [{ title: 'Dashboard', icon: 'dashboard', to: '/dashboard' }, { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' }];
+  const sectorLinks = [];
+  const sector = authStore.userSector;
+  if (sector === 'agronegocio') {
+    sectorLinks.push(
+      { title: 'Gerenciamento de Maquinário', icon: 'agriculture', to: '/vehicles' },
+      { title: 'Registro de Operações', icon: 'route', to: '/journeys' },
+      { title: 'Implementos', icon: 'precision_manufacturing', to: '/implements' }
+    );
+  } else if (sector === 'frete') {
+    sectorLinks.push(
+      { title: 'Gerenciamento de Veículos', icon: 'local_shipping', to: '/vehicles' },
+      { title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' },
+      { title: 'Clientes', icon: 'groups', to: '/clients' }
+    );
+  } else {
+    sectorLinks.push(
+      { title: 'Gerenciamento de Veículos', icon: 'local_shipping', to: '/vehicles' },
+      { title: 'Registro de Viagens', icon: 'route', to: '/journeys' }
+    );
   }
-
-  return links;
+  const commonLinks = [{ title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' }, { title: 'Manutenções', icon: 'build', to: '/maintenance' }];
+  const managerLinks = [];
+  if (authStore.isManager) {
+    managerLinks.push({ title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' });
+  }
+  return [...baseLinks, ...sectorLinks, ...commonLinks, ...managerLinks];
 });
 
 onMounted(() => {
   if (authStore.isManager) {
     void notificationStore.fetchUnreadCount();
-    pollTimer = window.setInterval(() => {
-      void notificationStore.fetchUnreadCount();
-    }, 60000);
+    pollTimer = window.setInterval(() => { void notificationStore.fetchUnreadCount(); }, 60000);
   }
 });
 
-onUnmounted(() => {
-  clearInterval(pollTimer);
-});
+onUnmounted(() => { clearInterval(pollTimer); });
 </script>
 
 <style lang="scss" scoped>

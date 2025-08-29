@@ -7,6 +7,8 @@ class Sector(str, enum.Enum):
     AGRONEGOCIO = "agronegocio"
     CONSTRUCAO_CIVIL = "construcao_civil"
     SERVICOS = "servicos"
+    FRETE = "frete" # <-- NOVA OPÇÃO
+
 
 class Organization(Base):
     __tablename__ = "organizations"
@@ -16,3 +18,5 @@ class Organization(Base):
     users = relationship("User", back_populates="organization")
     vehicles = relationship("Vehicle", back_populates="organization")
     implements = relationship("Implement", back_populates="organization")
+    clients = relationship("Client", back_populates="organization")
+    freight_orders = relationship("FreightOrder", back_populates="organization")

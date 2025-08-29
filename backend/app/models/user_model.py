@@ -20,7 +20,7 @@ class User(Base):
     role = Column(String(50), nullable=False)
     is_active = Column(Boolean(), default=True)
     avatar_url = Column(String(512), nullable=True)
-
+    freight_orders = relationship("FreightOrder", back_populates="driver")
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization", back_populates="users")
 

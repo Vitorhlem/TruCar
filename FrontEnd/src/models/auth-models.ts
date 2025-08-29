@@ -1,11 +1,8 @@
-// Define a estrutura para o objeto Organization que vem dentro do User
-export interface Organization {
-  id: number;
-  name: string;
-  sector: 'agronegocio' | 'construcao_civil' | 'servicos';
-}
+// ARQUIVO: src/models/auth-models.ts
 
-// Define a estrutura para o objeto User
+// --- CORREÇÃO: Adicionamos TODOS os setores possíveis ao tipo ---
+export type UserSector = 'agronegocio' | 'servicos' | 'frete' | 'construcao_civil' | null;
+
 export interface User {
   id: number;
   email: string;
@@ -13,18 +10,20 @@ export interface User {
   is_active: boolean;
   role: 'manager' | 'driver';
   avatar_url: string | null;
-  organization: Organization;
+  organization: {
+    id: number;
+    name: string;
+    sector: UserSector; // Usa o tipo completo
+  };
 }
 
-// A interface CORRIGIDA para a RESPOSTA COMPLETA do login
-export interface TokenData {
-  access_token: string;
-  token_type: string;
-  user: User;
-}
-
-// A interface para o FORMULÁRIO de login
+// Interfaces para o formulário de login e resposta do token
 export interface LoginForm {
   email: string;
   password: string;
+}
+
+export interface TokenData {
+  access_token: string;
+  user: User;
 }

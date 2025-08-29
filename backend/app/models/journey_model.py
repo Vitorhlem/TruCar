@@ -25,7 +25,8 @@ class Journey(Base):
     is_active = Column(Boolean, default=True)
     trip_type = Column(String(50), nullable=False)
     implement_id = Column(Integer, ForeignKey("implements.id"), nullable=True)
-
+    freight_order_id = Column(Integer, ForeignKey("freight_orders.id"), nullable=True)
+    freight_order = relationship("FreightOrder", back_populates="journeys")
     
     # --- AS DUAS LINHAS QUE ESTAVAM EM FALTA ---
     destination_address = Column(String, nullable=True)
