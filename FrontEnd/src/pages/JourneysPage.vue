@@ -14,7 +14,7 @@
         </div>
         <q-card flat bordered>
           <q-list separator>
-            <q-item v-if="freightOrderStore.isLoading && freightOrderStore.openOrders.length === 0" class="q-pa-md"><q-item-section><q-skeleton type="text" /><q-skeleton type="text" width="60%" /></q-item-section></q-item>
+            <q-item v-if="freightOrderStore.isLoading && freightOrderStore.openOrders.length === 0" class="q-pa-md"><q-item-section><q-skeleton type="text" width="80%" /><q-skeleton type="text" width="50%" /></q-item-section></q-item>
             <q-item v-if="!freightOrderStore.isLoading && freightOrderStore.openOrders.length === 0" class="text-center text-grey-7 q-pa-md">
               Nenhum frete aberto no momento.
             </q-item>
@@ -37,9 +37,9 @@
         </div>
         <q-card flat bordered>
           <q-list separator>
-            <q-item v-if="freightOrderStore.isLoading && freightOrderStore.myPendingOrders.length === 0" class="q-pa-md"><q-item-section><q-skeleton type="text" /><q-skeleton type="text" width="60%" /></q-item-section></q-item>
+            <q-item v-if="freightOrderStore.isLoading && freightOrderStore.myPendingOrders.length === 0" class="q-pa-md"><q-item-section><q-skeleton type="text" width="80%" /><q-skeleton type="text" width="50%" /></q-item-section></q-item>
             <q-item v-if="!freightOrderStore.isLoading && freightOrderStore.myPendingOrders.length === 0" class="text-center text-grey-7 q-pa-md">
-              Você não tem tarefas pendentes.
+              Você não tem tarefas ativas.
             </q-item>
             <q-item v-else v-for="order in freightOrderStore.myPendingOrders" :key="order.id" clickable @click="openDriverDialog(order)" :active="order.status === 'Em Trânsito'" active-class="bg-blue-1 text-primary">
               <q-item-section avatar><q-icon :name="order.status === 'Em Trânsito' ? 'local_shipping' : 'assignment_turned_in'" /></q-item-section>
@@ -57,7 +57,6 @@
     <!-- ### VISÃO PARA AGRO/SERVIÇOS (ANTIGA) ### -->
     <!-- ########################################## -->
     <div v-else>
-      <!-- Seu código antigo e completo para Agro/Serviços vai aqui -->
       <div class="flex items-center justify-between q-mb-md">
         <h1 class="text-h5 text-weight-bold q-my-none">{{ terminologyStore.journeyPageTitle }}</h1>
         <q-btn v-if="!journeyStore.currentUserActiveJourney" @click="openStartDialog" color="primary" icon="add_road" :label="terminologyStore.startJourneyButtonLabel" unelevated />
@@ -82,12 +81,12 @@
       </q-card>
     </div>
 
-    <!-- Diálogos para TODOS os setores -->
+    <!-- Diálogos para Fretes -->
     <q-dialog v-model="isClaimDialogOpen">
       <ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" />
     </q-dialog>
-    <q-dialog v-model="isDriverDialogOpen">
-      <DriverFreightDialog v-if="freightOrderStore.activeDriverOrder" @close="isDriverDialogOpen = false" />
+  <q-dialog v-model="isDriverDialogOpen">
+      <DriverFreightDialog :order="freightOrderStore.activeOrderDetails" @close="isDriverDialogOpen = false" />
     </q-dialog>
 
     <!-- Diálogos para AGRO/SERVIÇOS -->
@@ -165,8 +164,9 @@ function openClaimDialog(order: FreightOrder) {
   isClaimDialogOpen.value = true;
 }
 function openDriverDialog(order: FreightOrder) {
-  freightOrderStore.activeDriverOrder = order;
+  void freightOrderStore.fetchOrderDetails(order.id);
   isDriverDialogOpen.value = true;
+
 }
 function refreshFreightData() {
   void freightOrderStore.fetchOpenOrders();
@@ -272,7 +272,7 @@ function promptToDeleteJourney(journey: Journey) {
 // --- LÓGICA DE CARREGAMENTO PRINCIPAL (CONDICIONAL) ---
 onMounted(() => {
   if (authStore.userSector === 'frete') {
-    refreshFreightData(); // Chama a função que busca ambos os dados de frete
+    refreshFreightData();
   } else {
     void journeyStore.fetchAllJourneys();
   }

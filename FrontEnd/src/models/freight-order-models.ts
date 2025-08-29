@@ -3,6 +3,8 @@
 import type { Client } from './client-models';
 import type { User } from './auth-models';
 import type { Vehicle } from './vehicle-models';
+import type { Journey } from './journey-models'; // <-- 1. IMPORTE O TIPO JOURNEY
+
 
 // --- INÍCIO DA CORREÇÃO: Adicionamos os novos status ---
 export type FreightStatus = "Aberta" | "Atribuída" | "Em Trânsito" | "Entregue" | "Cancelado";
@@ -33,6 +35,8 @@ export interface FreightOrder {
   client: Client;
   vehicle?: Vehicle | null;
   driver?: User | null;
+  journeys?: Journey[];
+
   stop_points: StopPoint[];
 }
 

@@ -5,14 +5,6 @@
       <q-btn flat round dense icon="close" @click="$emit('close')" />
     </q-toolbar>
 
-    <q-card style="width: 500px; max-width: 90vw;">
-    <q-toolbar v-if="order" class="bg-primary text-white">
-      <q-toolbar-title class="ellipsis">{{ order.description || 'Detalhes do Frete' }}</q-toolbar-title>
-      <!-- --- CORREÇÃO: Usamos a função 'emit' para fechar --- -->
-      <q-btn flat round dense icon="close" @click="$emit('close')" />
-    </q-toolbar>
-    <!-- ... (resto do template como estava) ... -->
-  </q-card>
 
     <q-card-section v-if="order">
       <div class="text-overline">Cliente</div>

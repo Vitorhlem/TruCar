@@ -4,12 +4,14 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
         <q-toolbar-title>TruCar</q-toolbar-title>
+        
         <q-btn v-if="authStore.isManager" flat round dense icon="notifications" class="q-mr-sm">
           <q-badge v-if="notificationStore.unreadCount > 0" color="red" floating>{{ notificationStore.unreadCount }}</q-badge>
           <q-menu @show="notificationStore.fetchNotifications()" style="width: 350px">
             <q-list bordered separator><q-item-label header>Notificações</q-item-label></q-list>
           </q-menu>
         </q-btn>
+        
         <q-btn-dropdown flat :label="authStore.user?.full_name || 'Usuário'">
           <q-list>
             <q-item clickable v-close-popup @click="handleLogout">
@@ -20,6 +22,7 @@
         </q-btn-dropdown>
       </q-toolbar>
     </q-header>
+
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
       <q-scroll-area class="fit">
         <q-list padding>
@@ -31,6 +34,7 @@
         </q-list>
       </q-scroll-area>
     </q-drawer>
+
     <q-page-container><router-view /></q-page-container>
   </q-layout>
 </template>
@@ -39,14 +43,15 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'stores/auth-store';
-// import { useTerminologyStore } from 'stores/terminology-store'; // Removido pois não é usado no script
 import { useNotificationStore } from 'stores/notification-store';
+// A terminologyStore é necessária para os títulos dinâmicos
+import { useTerminologyStore } from 'stores/terminology-store';
 
 const leftDrawerOpen = ref(false);
 const router = useRouter();
 const authStore = useAuthStore();
-// const terminologyStore = useTerminologyStore(); // Removido
 const notificationStore = useNotificationStore();
+const terminologyStore = useTerminologyStore();
 
 let pollTimer: number;
 
@@ -54,32 +59,58 @@ function toggleLeftDrawer() { leftDrawerOpen.value = !leftDrawerOpen.value; }
 function handleLogout() { authStore.logout(); void router.push('/auth/login'); }
 
 const essentialLinks = computed(() => {
-  const baseLinks = [{ title: 'Dashboard', icon: 'dashboard', to: '/dashboard' }, { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' }];
+  const baseLinks = [
+    { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
+    { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' },
+  ];
+
   const sectorLinks = [];
   const sector = authStore.userSector;
-  if (sector === 'agronegocio') {
+  const isManager = authStore.isManager;
+
+  // Lógica para Agro e Serviços (ambos veem a mesma estrutura)
+  if (sector === 'agronegocio' || sector === 'servicos') {
     sectorLinks.push(
-      { title: 'Gerenciamento de Maquinário', icon: 'agriculture', to: '/vehicles' },
-      { title: 'Registro de Operações', icon: 'route', to: '/journeys' },
-      { title: 'Implementos', icon: 'precision_manufacturing', to: '/implements' }
+      { title: terminologyStore.vehiclePageTitle, icon: sector === 'agronegocio' ? 'agriculture' : 'local_shipping', to: '/vehicles' },
+      { title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' }
     );
-  } else if (sector === 'frete') {
-    sectorLinks.push(
-      { title: 'Gerenciamento de Veículos', icon: 'local_shipping', to: '/vehicles' },
-      { title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' },
-      { title: 'Clientes', icon: 'groups', to: '/clients' }
-    );
-  } else {
-    sectorLinks.push(
-      { title: 'Gerenciamento de Veículos', icon: 'local_shipping', to: '/vehicles' },
-      { title: 'Registro de Viagens', icon: 'route', to: '/journeys' }
-    );
+    // Link específico para Agro
+    if (sector === 'agronegocio') {
+      sectorLinks.push({ title: 'Implementos', icon: 'precision_manufacturing', to: '/implements' });
+    }
+  } 
+  // Lógica para Fretes (dividida entre Gestor e Motorista)
+  else if (sector === 'frete') {
+    if (isManager) {
+      // Menu do GESTOR de Fretes
+      sectorLinks.push(
+        { title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' },
+        { title: 'Gerenciamento de Frota', icon: 'local_shipping', to: '/vehicles' },
+        { title: 'Clientes', icon: 'groups', to: '/clients' }
+      );
+    } else {
+      // Menu do MOTORISTA de Fretes
+      sectorLinks.push(
+        { title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' }
+      );
+    }
   }
-  const commonLinks = [{ title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' }, { title: 'Manutenções', icon: 'build', to: '/maintenance' }];
+
+  const commonLinks = [
+    { title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' },
+    { title: 'Manutenções', icon: 'build', to: '/maintenance' },
+  ];
+
   const managerLinks = [];
-  if (authStore.isManager) {
-    managerLinks.push({ title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' });
+  // O link 'Gestão de Utilizadores' é para TODOS os gestores, independentemente do setor
+  if (isManager) {
+    managerLinks.push({
+      title: 'Gestão de Utilizadores',
+      icon: 'manage_accounts',
+      to: '/users',
+    });
   }
+
   return [...baseLinks, ...sectorLinks, ...commonLinks, ...managerLinks];
 });
 

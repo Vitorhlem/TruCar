@@ -44,6 +44,7 @@ class CRUDFreightOrder:
                 selectinload(FreightOrder.vehicle),
                 selectinload(FreightOrder.driver),
                 selectinload(FreightOrder.stop_points),
+                # --- CORREÇÃO: Garante que as jornadas sejam sempre carregadas ---
                 selectinload(FreightOrder.journeys)
             )
         )
@@ -138,47 +139,69 @@ class CRUDFreightOrder:
 
     async def start_journey_for_stop(self, db: AsyncSession, *, order: FreightOrder, stop: StopPoint, vehicle: Vehicle) -> Journey:
         """Inicia uma nova Journey (trecho) para uma parada de um frete."""
-        if order.status == FreightStatus.CLAIMED:
+        if order.status == FreightStatus.CLAIMED: # Ação correta é a partir de 'Atribuída'
             order.status = FreightStatus.IN_TRANSIT
             db.add(order)
             
         new_journey = Journey(
-            vehicle_id=vehicle.id, driver_id=order.driver_id, organization_id=order.organization_id,
-            freight_order_id=order.id, start_mileage=vehicle.current_km,
-            start_engine_hours=vehicle.current_engine_hours, start_time=datetime.utcnow(),
-            is_active=True, trip_type=JourneyType.FREE_ROAM
+            vehicle_id=vehicle.id,
+            driver_id=order.driver_id,
+            organization_id=order.organization_id,
+            freight_order_id=order.id,
+            start_mileage=vehicle.current_km,
+            start_engine_hours=vehicle.current_engine_hours,
+            start_time=datetime.utcnow(),
+            is_active=True,
+            trip_type=JourneyType.FREE_ROAM
         )
         db.add(new_journey)
         await db.commit()
-        await db.refresh(new_journey)
+        
+        # --- INÍCIO DA CORREÇÃO ---
+        # Após o commit, fazemos o refresh forçando o carregamento dos relacionamentos
+        # que o schema 'JourneyPublic' espera na resposta da API.
+        await db.refresh(new_journey, attribute_names=["driver", "vehicle"])
+        # --- FIM DA CORREÇÃO ---
+        
         return new_journey
 
     async def complete_stop_point(self, db: AsyncSession, *, order: FreightOrder, stop: StopPoint, journey: Journey, end_mileage: int) -> StopPoint:
-        """Marca uma parada como concluída e finaliza o trecho (Journey)."""
+        """Marca uma parada como concluída, finaliza o trecho (Journey) e ATUALIZA o veículo."""
+        
+        # 1. Atualiza a Parada
         stop.status = StopPointStatus.COMPLETED
         stop.actual_arrival_time = datetime.utcnow()
         db.add(stop)
         
+        # 2. Finaliza a Journey (o trecho)
         journey.is_active = False
         journey.end_time = datetime.utcnow()
         if end_mileage is not None:
              journey.end_mileage = end_mileage
         db.add(journey)
         
+        # --- INÍCIO DA CORREÇÃO CRÍTICA ---
+        # 3. Atualiza o KM ATUAL do Veículo
+        # Usamos 'order.vehicle' que já foi pré-carregado
         if order.vehicle and end_mileage is not None:
+            print(f"Atualizando KM do veículo ID {order.vehicle.id} de {order.vehicle.current_km} para {end_mileage}")
             order.vehicle.current_km = end_mileage
             db.add(order.vehicle)
+        # --- FIM DA CORREÇÃO CRÍTICA ---
 
+        # 4. Verifica se o frete inteiro terminou
+        # Usamos 'order.stop_points' que também já foi pré-carregado
         all_stops_completed = all(s.status == StopPointStatus.COMPLETED for s in order.stop_points)
         if all_stops_completed:
             order.status = FreightStatus.DELIVERED
-            # Também libera o veículo
+            # Se o frete terminou, libera o veículo
             if order.vehicle:
                 order.vehicle.status = VehicleStatus.AVAILABLE
                 db.add(order.vehicle)
             db.add(order)
             
         await db.commit()
+        # Faz o refresh apenas no objeto que a API precisa retornar
         await db.refresh(stop)
         return stop
 
