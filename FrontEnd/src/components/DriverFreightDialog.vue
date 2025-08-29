@@ -4,7 +4,10 @@
       <q-toolbar-title class="ellipsis">{{ order.description || 'Detalhes do Frete' }}</q-toolbar-title>
       <q-btn flat round dense icon="close" @click="emit('close')" />
     </q-toolbar>
-    <div v-if="isSubmitting" class="q-pa-xl text-center"><q-spinner color="primary" size="3em" /></div>
+
+    <div v-if="isSubmitting" class="q-pa-xl text-center">
+      <q-spinner color="primary" size="3em" />
+    </div>
 
     <div v-else-if="nextStop">
       <q-card-section>
@@ -18,8 +21,16 @@
       </q-card-actions>
       
       <q-card-section v-if="isEnRoute">
-        <q-form @submit.prevent="handleComplete">
-          <q-input outlined v-model.number="endMileage" type="number" label="KM Final do Veículo *" :rules="[validateEndMileage]" autofocus lazy-rules />
+        <q-form @submit.prevent="handleComplete" ref="completeForm">
+          <q-input
+            outlined
+            v-model.number="endMileage"
+            type="number"
+            label="KM Final do Veículo *"
+            :rules="[validateEndMileage]"
+            autofocus
+            lazy-rules
+          />
           <q-btn unelevated color="positive" class="full-width q-mt-md" label="Confirmar Chegada e Concluir Parada" icon="check_circle" type="submit" />
         </q-form>
       </q-card-section>
@@ -48,51 +59,73 @@ const freightOrderStore = useFreightOrderStore();
 
 const isSubmitting = ref(false);
 const endMileage = ref<number | null>(null);
+const activeJourney = ref<Journey | null>(null);
+const completeForm = ref<any>(null); // Ref para o formulário
 
-const isEnRoute = computed(() => props.order?.status === 'Em Trânsito');
-const nextStop = computed((): StopPoint | null => props.order?.stop_points.find((s: StopPoint) => s.status === 'Pendente') || null);
-const stopIndex = computed(() => props.order?.stop_points.findIndex(s => s.id === nextStop.value?.id) ?? 0);
+const order = computed(() => freightOrderStore.activeOrderDetails);
+const isEnRoute = computed(() => order.value?.status === 'Em Trânsito');
+const nextStop = computed((): StopPoint | null => order.value?.stop_points.find(s => s.status === 'Pendente') || null);
+const stopIndex = computed(() => order.value?.stop_points.findIndex(s => s.id === nextStop.value?.id) ?? 0);
 
+watch(order, (newOrder) => {
+  if (newOrder?.journeys) {
+    activeJourney.value = newOrder.journeys.find(j => j.is_active) || null;
+  }
+  if (newOrder?.status === 'Entregue') {
+    setTimeout(() => emit('close'), 1500);
+  }
+}, { immediate: true, deep: true });
+
+// --- FUNÇÃO DE VALIDAÇÃO COM LOGS ---
 function validateEndMileage(val: number | null): boolean | string {
-  if (val === null || val === undefined) return 'Campo obrigatório';
-  const startKm = props.order?.vehicle?.current_km ?? 0;
-  if (val < startKm) return `O KM final não pode ser menor que o atual (${startKm} km)`;
+  console.log("--- Validando KM Final ---");
+  if (val === null || val === undefined) {
+    console.log("Resultado: Falhou (valor nulo/undefined)");
+    return 'Campo obrigatório';
+  }
+
+  const startKm = activeJourney.value?.start_mileage;
+  console.log(`Valor digitado (val): ${val}, Tipo: ${typeof val}`);
+  console.log(`KM Inicial da Jornada Ativa (startKm): ${startKm}, Tipo: ${typeof startKm}`);
+
+  if (startKm === undefined || startKm === null) {
+      console.log("Resultado: Passou (não foi possível encontrar KM inicial para comparar)");
+      return true; // Não podemos validar se não temos um ponto de partida
+  }
+
+  if (val < startKm) {
+    console.log(`Resultado: Falhou (${val} < ${startKm})`);
+    return `O KM final não pode ser menor que o inicial do trecho (${startKm} km)`;
+  }
+  
+  console.log("Resultado: Passou!");
   return true;
 }
 
-// --- INÍCIO DA CORREÇÃO ---
-// O 'watch' agora observa a propriedade 'nextStop', que é a fonte da verdade
-// sobre a conclusão do frete.
-watch(nextStop, (currentValue, oldValue) => {
-  // A condição 'oldValue !== null' garante que isso só aconteça após a conclusão
-  // de uma parada, e não na carga inicial do diálogo.
-  if (currentValue === null && oldValue !== null) {
-    // Adiciona um pequeno delay para o usuário ver a notificação de sucesso
-    setTimeout(() => {
-      emit('close');
-    }, 1500);
-  }
-});
-// --- FIM DA CORREÇÃO ---
-
 async function handleStart() {
-  if (!props.order || !nextStop.value) return;
+  if (!order.value || !nextStop.value) return;
   isSubmitting.value = true;
   try {
-    await freightOrderStore.startJourneyForStop(props.order.id, nextStop.value.id);
+    const newJourney = await freightOrderStore.startJourneyForStop(order.value.id, nextStop.value.id);
+    activeJourney.value = newJourney;
   } finally { isSubmitting.value = false; }
 }
 
 async function handleComplete() {
-  if (!props.order || !nextStop.value || endMileage.value === null) return;
-  const activeJourney = props.order.journeys?.find((j: Journey) => j.is_active);
-  if (!activeJourney) {
-    console.error("Não foi possível encontrar uma jornada ativa para finalizar.");
+  console.log("--- handleComplete FOI CHAMADA! ---");
+  // Adiciona uma validação explícita do formulário
+  const isValid = await completeForm.value?.validate();
+  if (!isValid) {
+    console.log("Formulário inválido, submissão cancelada.");
+    return;
+  }
+
+  if (!order.value || !nextStop.value || endMileage.value === null || !activeJourney.value) {
     return;
   }
   isSubmitting.value = true;
   try {
-    await freightOrderStore.completeStop(props.order.id, nextStop.value.id, activeJourney.id, endMileage.value);
+    await freightOrderStore.completeStop(order.value.id, nextStop.value.id, activeJourney.value.id, endMileage.value);
     endMileage.value = null;
   } finally { isSubmitting.value = false; }
 }
