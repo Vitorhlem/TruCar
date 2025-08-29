@@ -7,3 +7,6 @@ from .fuel_log_model import FuelLog
 from .notification_model import Notification
 from .location_history_model import LocationHistory
 from .implement_model import Implement
+from .client_model import Client
+from .freight_order_model import FreightOrder
+from .stop_point_model import StopPoint

@@ -24,6 +24,7 @@ class Vehicle(Base):
     status = Column(String(50), nullable=False, default=VehicleStatus.AVAILABLE.value)
     current_km = Column(Integer, nullable=False, default=0)
     current_engine_hours = Column(Float, nullable=True, default=0)
+    freight_orders = relationship("FreightOrder", back_populates="vehicle")
 
     # --- INÍCIO DAS COLUNAS DE TELEMETRIA (VERIFIQUE SE ELAS ESTÃO AQUI) ---
     telemetry_device_id = Column(String(100), unique=True, index=True, nullable=True)

@@ -16,7 +16,9 @@ from app.api.v1.endpoints import (
     performance,
     implements,
     report_generator,
-    telemetry
+    telemetry,
+    clients,
+    freight_orders
 )
 
 api_router = APIRouter()
@@ -39,3 +41,5 @@ api_router.include_router(performance.router, prefix="/performance", tags=["Perf
 api_router.include_router(report_generator.router, prefix="/report-generator", tags=["Report Generator"])
 api_router.include_router(implements.router, prefix="/implements", tags=["Implements"])
 api_router.include_router(leaderboard.router, prefix="/leaderboard", tags=["leaderboard"])
+api_router.include_router(clients.router, prefix="/clients", tags=["Clients"])
+api_router.include_router(freight_orders.router, prefix="/freight-orders", tags=["Freight Orders"])
