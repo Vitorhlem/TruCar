@@ -17,7 +17,7 @@
           <q-input outlined v-model="formData.password" type="password" label="Sua Senha *" :rules="[val => !!val || 'Campo obrigatório']" />
         </q-card-section>
         <q-card-actions class="q-px-md">
-          <q-btn type="submit" color="primary" label="Registar e Entrar" class="full-width" unelevated :loading="isLoading" />
+          <q-btn type="submit" color="primary" label="Criar Minha Conta" class="full-width" unelevated :loading="isLoading" />
           <q-btn to="/auth/login" label="Já tenho uma conta" flat class="full-width q-mt-sm" />
         </q-card-actions>
       </q-form>
@@ -31,44 +31,45 @@ import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
 import axios from 'axios';
-import { useAuthStore } from 'stores/auth-store';
 
 const formData = ref({
   organization_name: '',
-  sector: null as 'agronegocio' | 'construcao_civil' | 'servicos' | null,
+  sector: null as 'agronegocio' | 'construcao_civil' | 'servicos' | 'frete' | null,
   full_name: '',
   email: '',
   password: '',
 });
 
-// Em RegisterPage.vue
 const sectorOptions = [
-  { label: 'Agronegócio', value: 'agronegocio' }, // <-- CORRETO
-  { label: 'Construção Civil', value: 'construcao_civil' }, // <-- CORRETO
-  { label: 'Prestadores de Serviço', value: 'servicos' }, // <-- CORRETO
+  { label: 'Agronegócio', value: 'agronegocio' },
+  { label: 'Construção Civil', value: 'construcao_civil' },
+  { label: 'Prestadores de Serviço', value: 'servicos' },
+  { label: 'Fretes', value: 'frete' },
 ];
 
 const router = useRouter();
 const $q = useQuasar();
-const authStore = useAuthStore();
 const isLoading = ref(false);
 
+// --- FUNÇÃO ONSUBMIT CORRIGIDA ---
 async function onSubmit() {
   isLoading.value = true;
   try {
-    // Primeiro, regista a nova organização e o utilizador
+    // 1. Tenta criar a conta no backend
     await api.post('/login/register', formData.value);
     
-    // Depois, faz o login automaticamente para obter o token e os dados do utilizador
-    await authStore.login({
-      email: formData.value.email,
-      password: formData.value.password
+    // 2. Se o passo 1 funcionou, mostra uma mensagem de sucesso
+    $q.notify({
+      type: 'positive',
+      message: 'Conta criada com sucesso! Por favor, faça o login para continuar.',
+      timeout: 5000
     });
     
-    // Finalmente, redireciona para o dashboard
-    await router.push({ name: 'dashboard' });
+    // 3. Redireciona o usuário para a página de LOGIN
+    await router.push('/auth/login');
 
   } catch (error) {
+    // Se o passo 1 falhar (ex: email já existe), o erro será capturado aqui
     let errorMessage = 'Erro ao criar conta. Tente novamente.';
     if (axios.isAxiosError(error) && error.response?.data?.detail) {
       errorMessage = error.response.data.detail;

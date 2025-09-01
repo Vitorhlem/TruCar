@@ -23,6 +23,18 @@
       </q-toolbar>
     </q-header>
 
+    <!-- ===== BANNER DO PLANO DEMO ADICIONADO ===== -->
+    <q-banner v-if="isDemoPlan" inline-actions class="bg-primary text-white shadow-2">
+      <template v-slot:avatar>
+        <q-icon name="workspace_premium" color="white" />
+      </template>
+      <div class="text-weight-medium">Você está no Plano Demo.</div>
+      <template v-slot:action>
+        <q-btn flat dense color="white" label="Desbloquear todos os recursos" @click="showUpgradeDialog" />
+      </template>
+    </q-banner>
+    <!-- ===== FIM DA ADIÇÃO ===== -->
+
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
       <q-scroll-area class="fit">
         <q-list padding>
@@ -42,13 +54,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar'; // <-- ADICIONADO
 import { useAuthStore } from 'stores/auth-store';
 import { useNotificationStore } from 'stores/notification-store';
-// A terminologyStore é necessária para os títulos dinâmicos
 import { useTerminologyStore } from 'stores/terminology-store';
 
 const leftDrawerOpen = ref(false);
 const router = useRouter();
+const $q = useQuasar(); // <-- ADICIONADO
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const terminologyStore = useTerminologyStore();
@@ -57,6 +70,23 @@ let pollTimer: number;
 
 function toggleLeftDrawer() { leftDrawerOpen.value = !leftDrawerOpen.value; }
 function handleLogout() { authStore.logout(); void router.push('/auth/login'); }
+
+// --- LÓGICA DO PLANO DEMO ADICIONADA ---
+const isDemoPlan = computed(() => authStore.user?.organization?.plan_status === 'demo');
+
+function showUpgradeDialog() {
+  $q.dialog({
+    title: 'Desbloqueie o Potencial Máximo do TruCar',
+    message: 'Para liberar recursos avançados como relatórios detalhados e cadastro ilimitado de veículos e motoristas, entre em contato com nossa equipe comercial.',
+    ok: {
+      label: 'Entendido',
+      color: 'primary',
+      unelevated: true
+    },
+    persistent: true
+  });
+}
+// --- FIM DA ADIÇÃO ---
 
 const essentialLinks = computed(() => {
   const baseLinks = [
@@ -68,28 +98,23 @@ const essentialLinks = computed(() => {
   const sector = authStore.userSector;
   const isManager = authStore.isManager;
 
-  // Lógica para Agro e Serviços (ambos veem a mesma estrutura)
   if (sector === 'agronegocio' || sector === 'servicos') {
     sectorLinks.push(
       { title: terminologyStore.vehiclePageTitle, icon: sector === 'agronegocio' ? 'agriculture' : 'local_shipping', to: '/vehicles' },
       { title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' }
     );
-    // Link específico para Agro
     if (sector === 'agronegocio') {
       sectorLinks.push({ title: 'Implementos', icon: 'precision_manufacturing', to: '/implements' });
     }
   } 
-  // Lógica para Fretes (dividida entre Gestor e Motorista)
   else if (sector === 'frete') {
     if (isManager) {
-      // Menu do GESTOR de Fretes
       sectorLinks.push(
         { title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' },
         { title: 'Gerenciamento de Frota', icon: 'local_shipping', to: '/vehicles' },
         { title: 'Clientes', icon: 'groups', to: '/clients' }
       );
     } else {
-      // Menu do MOTORISTA de Fretes
       sectorLinks.push(
         { title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' }
       );
@@ -102,7 +127,6 @@ const essentialLinks = computed(() => {
   ];
 
   const managerLinks = [];
-  // O link 'Gestão de Utilizadores' é para TODOS os gestores, independentemente do setor
   if (isManager) {
     managerLinks.push({
       title: 'Gestão de Utilizadores',

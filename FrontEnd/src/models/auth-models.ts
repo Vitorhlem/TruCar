@@ -1,5 +1,3 @@
-// ARQUIVO: src/models/auth-models.ts
-
 // --- CORREÇÃO: Adicionamos TODOS os setores possíveis ao tipo ---
 export type UserSector = 'agronegocio' | 'servicos' | 'frete' | 'construcao_civil' | null;
 
@@ -13,7 +11,10 @@ export interface User {
   organization: {
     id: number;
     name: string;
-    sector: UserSector; // Usa o tipo completo
+    sector: UserSector;
+    // --- ADICIONADO ---
+    // Agora o TypeScript sabe que a propriedade plan_status existe.
+    plan_status: 'demo' | 'active' | 'inactive';
   };
 }
 

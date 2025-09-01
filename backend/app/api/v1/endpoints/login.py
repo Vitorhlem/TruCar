@@ -6,12 +6,16 @@ from typing import Any
 from app import crud
 from app.api import deps
 from app.core import auth
-from app.schemas.token_schema import TokenData, Token
+from app.schemas.token_schema import TokenData
+# --- ADICIONADO ---
+# Importamos os schemas e o Enum necessários para a criação explícita
 from app.schemas.user_schema import UserRegister, UserPublic, UserCreate
 from app.schemas.organization_schema import OrganizationCreate
-from app.models.user_model import UserRole, User
+from app.models.user_model import User, UserRole
+# --- FIM DA ADIÇÃO ---
 
 router = APIRouter()
+
 
 @router.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 async def register_new_user(
@@ -20,6 +24,7 @@ async def register_new_user(
     user_in: UserRegister
 ) -> Any:
     """Regista uma nova organização e o seu primeiro utilizador (gestor)."""
+    # 1. As verificações de existência estão corretas e devem ser mantidas
     org = await crud.organization.get_organization_by_name(db, name=user_in.organization_name)
     if org:
         raise HTTPException(
@@ -33,7 +38,8 @@ async def register_new_user(
             detail="Um utilizador com este email já está registado.",
         )
 
-    # "Traduzimos" os dados de registo para os schemas corretos
+    # --- LÓGICA DE CRIAÇÃO REVERTIDA E CORRIGIDA ---
+    # 2. Voltamos a criar a organização e o usuário em etapas, forçando o papel de MANAGER.
     org_to_create = OrganizationCreate(name=user_in.organization_name, sector=user_in.sector)
     new_org = await crud.organization.create_organization(db, obj_in=org_to_create)
     
@@ -43,10 +49,11 @@ async def register_new_user(
         password=user_in.password,
     )
     
-    # A CORREÇÃO CRUCIAL: Passamos a 'role' de MANAGER explicitamente.
+    # A função `create_user` já faz o refresh da organização, garantindo que o `plan_status` seja retornado.
     new_user = await crud.user.create_user(
         db, user_in=user_to_create, organization_id=new_org.id, role=UserRole.MANAGER
     )
+    # --- FIM DA CORREÇÃO ---
     
     return new_user
 
@@ -76,3 +83,4 @@ async def login_for_access_token(
         "token_type": "bearer",
         "user": user 
     }
+
