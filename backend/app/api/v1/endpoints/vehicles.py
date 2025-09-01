@@ -1,11 +1,13 @@
-# ARQUIVO: backend/app/api/v1/endpoints/vehicles.py
-
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.api import deps
 from app.models.user_model import User
+# --- ADICIONADO ---
+# Importamos o Enum para verificar o status do plano da organização
+from app.models.organization_model import PlanStatus
+# --- FIM DA ADIÇÃO ---
 from app.schemas.vehicle_schema import (
     VehicleCreate, 
     VehicleUpdate, 
@@ -55,7 +57,6 @@ async def read_vehicle_by_id(
     """
     Busca um único veículo pelo ID.
     """
-    # --- CORREÇÃO: Chama a função padronizada 'get' ---
     vehicle = await crud.vehicle.get(
         db, vehicle_id=vehicle_id, organization_id=current_user.organization_id
     )
@@ -74,11 +75,19 @@ async def create_vehicle(
     """
     Cria um novo veículo para a organização do gestor logado.
     """
-    # A verificação de placa duplicada pode ser adicionada ao CRUD se necessário,
-    # ou podemos confiar na restrição UNIQUE do banco de dados.
-    # Por simplicidade, vamos chamar a função de criação padronizada.
-    
-    # --- CORREÇÃO: Chama a função padronizada 'create_with_owner' ---
+    # --- LÓGICA DE RESTRIÇÃO DO PLANO DEMO ADICIONADA ---
+    # Verificamos se a organização do usuário está no plano de demonstração
+    if current_user.organization.plan_status == PlanStatus.DEMO:
+        # Se estiver, contamos quantos veículos a organização já possui
+        vehicle_count = await crud.vehicle.count_by_org(db, organization_id=current_user.organization_id)
+        # Se o número de veículos for 1 ou mais, bloqueamos a criação
+        if vehicle_count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seu Plano Demo permite o cadastro de apenas 1 veículo. Para adicionar mais, por favor, realize o upgrade do seu plano."
+            )
+    # --- FIM DA LÓGICA DE RESTRIÇÃO ---
+
     vehicle = await crud.vehicle.create_with_owner(
         db=db, obj_in=vehicle_in, organization_id=current_user.organization_id
     )
@@ -96,14 +105,12 @@ async def update_vehicle(
     """
     Atualiza um veículo.
     """
-    # Primeiro, busca o veículo para garantir que ele existe e pertence à organização
     db_vehicle = await crud.vehicle.get(
         db, vehicle_id=vehicle_id, organization_id=current_user.organization_id
     )
     if not db_vehicle:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado.")
     
-    # --- CORREÇÃO: Chama a função padronizada 'update' ---
     updated_vehicle = await crud.vehicle.update(db=db, db_vehicle=db_vehicle, vehicle_in=vehicle_in)
     return updated_vehicle
 
@@ -118,13 +125,11 @@ async def delete_vehicle(
     """
     Exclui um veículo.
     """
-    # Primeiro, busca o veículo para garantir que ele existe
     db_vehicle = await crud.vehicle.get(
         db, vehicle_id=vehicle_id, organization_id=current_user.organization_id
     )
     if not db_vehicle:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado.")
     
-    # --- CORREÇÃO: Chama a função padronizada 'remove' ---
     await crud.vehicle.remove(db=db, db_vehicle=db_vehicle)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

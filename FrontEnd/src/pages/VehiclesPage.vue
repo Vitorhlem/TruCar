@@ -17,7 +17,6 @@
       </div>
     </div>
 
-    <!-- SKELETON LOADING -->
     <div v-if="vehicleStore.isLoading" class="row q-col-gutter-md">
       <div v-for="n in 8" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card flat bordered>
@@ -28,7 +27,6 @@
       </div>
     </div>
 
-    <!-- VEHICLE CARDS -->
     <div v-else-if="vehicleStore.vehicles && vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card class="vehicle-card column no-wrap full-height">
@@ -83,62 +81,59 @@
       </div>
     </div>
 
-    <!-- EMPTY STATE -->
     <div v-else class="full-width row flex-center text-primary q-gutter-sm q-pa-xl">
       <q-icon name="add_circle_outline" size="3em" />
       <span class="text-h6">Nenhum {{ terminologyStore.vehicleNoun.toLowerCase() }} encontrado</span>
       <q-btn @click="openCreateDialog" v-if="authStore.isManager" unelevated color="primary" :label="`Adicionar primeiro ${terminologyStore.vehicleNoun.toLowerCase()}`" class="q-ml-lg" />
     </div>
 
-    <!-- PAGINATION -->
     <div class="flex flex-center q-mt-lg" v-if="pagination.rowsNumber > pagination.rowsPerPage">
       <q-pagination v-model="pagination.page" :max="Math.ceil(pagination.rowsNumber / pagination.rowsPerPage)" @update:model-value="onPageChange" direction-links boundary-links icon-first="skip_previous" icon-last="skip_next" icon-prev="fast_rewind" icon-next="fast_forward" />
     </div>
 
-    <!-- FORM DIALOG -->
     <q-dialog v-model="isFormDialogOpen">
-      <q-card style="width: 500px; max-width: 90vw;">
-        <q-card-section>
-          <div class="text-h6">{{ isEditing ? terminologyStore.editButtonLabel : terminologyStore.newButtonLabel }}</div>
-        </q-card-section>
-        <q-form @submit.prevent="onFormSubmit">
-          <q-card-section class="q-gutter-y-md">
-            <q-input outlined v-model="formData.brand" label="Marca *" :rules="[val => !!val || 'Campo obrigatório']" />
-            <q-input outlined v-model="formData.model" label="Modelo *" :rules="[val => !!val || 'Campo obrigatório']" />
-            <q-input v-if="!isEditing" outlined v-model="formData.license_plate" :label="terminologyStore.plateOrIdentifierLabel + ' *'" :mask="authStore.userSector !== 'agronegocio' ? 'AAA#A##' : ''" :rules="[val => !!val || 'Campo obrigatório']" />
-            <q-input outlined v-model.number="formData.year" type="number" label="Ano *" :rules="[val => val > 1980 || 'Ano inválido']" />
-            <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" />
-            <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" />
-            <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" />
-            <q-file v-model="photoFile" label="Carregar Foto do Veículo" outlined clearable accept=".jpg, image/*">
-              <template v-slot:prepend><q-icon name="attach_file" /></template>
-              <template v-if="formData.photo_url && !photoFile" v-slot:append>
-                <q-avatar square><img :src="formData.photo_url ?? undefined" alt="Foto atual" /></q-avatar>
-              </template>
-            </q-file>
-            <q-separator class="q-my-md" />
-            <div class="text-subtitle1 text-weight-medium">Telemetria (Opcional)</div>
-            <q-input outlined v-model="formData.telemetry_device_id" label="ID do Dispositivo de Telemetria" hint="Ex: TRATOR-001. Este ID conecta o maquinário ao dispositivo físico." />
-            <q-separator class="q-my-lg" />
-            <div class="text-subtitle1 text-weight-medium">Dados de Manutenção</div>
-            <q-input outlined v-model.number="formData.next_maintenance_km" type="number" :label="`Próxima Revisão (${terminologyStore.distanceUnit})`" clearable />
-            <q-input outlined v-model="formData.next_maintenance_date" mask="##/##/####" label="Próxima Revisão (Data)" clearable>
-              <template v-slot:append>
-                <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="formData.next_maintenance_date" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date>
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-            <q-input outlined v-model="formData.maintenance_notes" type="textarea" label="Anotações de Manutenção" autogrow />
+        <q-card style="width: 500px; max-width: 90vw;">
+          <q-card-section>
+            <div class="text-h6">{{ isEditing ? terminologyStore.editButtonLabel : terminologyStore.newButtonLabel }}</div>
           </q-card-section>
-          <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Cancelar" v-close-popup />
-            <q-btn type="submit" unelevated color="primary" label="Salvar" :loading="isSubmitting" />
-          </q-card-actions>
-        </q-form>
-      </q-card>
+          <q-form @submit.prevent="onFormSubmit">
+            <q-card-section class="q-gutter-y-md">
+              <q-input outlined v-model="formData.brand" label="Marca *" :rules="[val => !!val || 'Campo obrigatório']" />
+              <q-input outlined v-model="formData.model" label="Modelo *" :rules="[val => !!val || 'Campo obrigatório']" />
+              <q-input v-if="!isEditing" outlined v-model="formData.license_plate" :label="terminologyStore.plateOrIdentifierLabel + ' *'" :mask="authStore.userSector !== 'agronegocio' ? 'AAA#A##' : ''" :rules="[val => !!val || 'Campo obrigatório']" />
+              <q-input outlined v-model.number="formData.year" type="number" label="Ano *" :rules="[val => val > 1980 || 'Ano inválido']" />
+              <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" />
+              <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" />
+              <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" />
+              <q-file v-model="photoFile" label="Carregar Foto do Veículo" outlined clearable accept=".jpg, image/*">
+                <template v-slot:prepend><q-icon name="attach_file" /></template>
+                <template v-if="formData.photo_url && !photoFile" v-slot:append>
+                  <q-avatar square><img :src="formData.photo_url ?? undefined" alt="Foto atual" /></q-avatar>
+                </template>
+              </q-file>
+              <q-separator class="q-my-md" />
+              <div class="text-subtitle1 text-weight-medium">Telemetria (Opcional)</div>
+              <q-input outlined v-model="formData.telemetry_device_id" label="ID do Dispositivo de Telemetria" hint="Ex: TRATOR-001. Este ID conecta o maquinário ao dispositivo físico." />
+              <q-separator class="q-my-lg" />
+              <div class="text-subtitle1 text-weight-medium">Dados de Manutenção</div>
+              <q-input outlined v-model.number="formData.next_maintenance_km" type="number" :label="`Próxima Revisão (${terminologyStore.distanceUnit})`" clearable />
+              <q-input outlined v-model="formData.next_maintenance_date" mask="##/##/####" label="Próxima Revisão (Data)" clearable>
+                <template v-slot:append>
+                  <q-icon name="event" class="cursor-pointer">
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-date v-model="formData.next_maintenance_date" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date>
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
+              <q-input outlined v-model="formData.maintenance_notes" type="textarea" label="Anotações de Manutenção" autogrow />
+            </q-card-section>
+            <q-card-actions align="right" class="q-pa-md">
+              <q-btn flat label="Cancelar" v-close-popup />
+              <q-btn type="submit" unelevated color="primary" label="Salvar" :loading="isSubmitting" />
+            </q-card-actions>
+          </q-form>
+        </q-card>
     </q-dialog>
   </q-page>
 </template>
@@ -151,6 +146,7 @@ import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
 import { VehicleStatus, type Vehicle, type VehicleCreate, type VehicleUpdate } from 'src/models/vehicle-models';
 import api from 'src/services/api';
+import axios from 'axios'; // <--- ADICIONADO
 
 const $q = useQuasar();
 const vehicleStore = useVehicleStore();
@@ -226,8 +222,6 @@ async function onFormSubmit() {
       delete payload.license_plate;
     }
 
-    // --- INÍCIO DA CORREÇÃO ---
-    // Passamos os parâmetros de paginação/busca atuais para as actions da store.
     const currentFetchParams = {
       page: pagination.value.page,
       rowsPerPage: pagination.value.rowsPerPage,
@@ -239,11 +233,15 @@ async function onFormSubmit() {
     } else {
       await vehicleStore.addNewVehicle(payload as VehicleCreate, currentFetchParams);
     }
-    // --- FIM DA CORREÇÃO ---
 
     isFormDialogOpen.value = false;
-  } catch {
-    $q.notify({ type: 'negative', message: 'Falha ao salvar o veículo. Verifique os dados.' });
+  } catch (error) { // <--- BLOCO CATCH CORRIGIDO
+    let errorMessage = 'Falha ao salvar o veículo. Verifique os dados.';
+    // Verificamos se o erro é do Axios e se contém a mensagem 'detail' do nosso backend
+    if (axios.isAxiosError(error) && error.response?.data?.detail) {
+      errorMessage = error.response.data.detail;
+    }
+    $q.notify({ type: 'negative', message: errorMessage });
   } finally {
     isSubmitting.value = false;
   }
@@ -271,6 +269,7 @@ onMounted(() => {
   void fetchFromServer(pagination.value.page, pagination.value.rowsPerPage, searchTerm.value);
 });
 
+// O resto das suas funções (formatDistance, getVehicleIcon, etc) permanecem as mesmas
 function formatDistance(value: number | null | undefined, unit: 'km' | 'Horas'): string {
   const numValue = value ?? 0;
   const formattedValue = numValue.toLocaleString('pt-BR', {
