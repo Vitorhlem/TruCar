@@ -1,11 +1,18 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from typing import Optional, Set
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8', extra="ignore")
 
     PROJECT_NAME: str = "TruCar"
     API_V1_STR: str = "/api/v1"
+
+    # --- ADICIONADO ---
+    # Coloque aqui o seu e-mail de administrador para ter acesso aos endpoints protegidos.
+    # Se tiver mais de um, separe por vírgula dentro das aspas no seu arquivo .env
+    # Ex: SUPERUSER_EMAILS="admin1@email.com,admin2@email.com"
+    SUPERUSER_EMAILS: Set[str] = {"gestao1@empresa.com"}
+    # --- FIM DA ADIÇÃO --
 
     SMTP_SERVER: str
     SMTP_PORT: int

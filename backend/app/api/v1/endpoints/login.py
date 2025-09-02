@@ -23,8 +23,10 @@ async def register_new_user(
     db: AsyncSession = Depends(deps.get_db),
     user_in: UserRegister
 ) -> Any:
-    """Regista uma nova organização e o seu primeiro utilizador (gestor)."""
-    # 1. As verificações de existência estão corretas e devem ser mantidas
+    """
+    Regista um novo utilizador através do fluxo PÚBLICO.
+    SEMPRE cria uma conta com plano DEMO.
+    """
     org = await crud.organization.get_organization_by_name(db, name=user_in.organization_name)
     if org:
         raise HTTPException(
@@ -38,24 +40,13 @@ async def register_new_user(
             detail="Um utilizador com este email já está registado.",
         )
 
-    # --- LÓGICA DE CRIAÇÃO REVERTIDA E CORRIGIDA ---
-    # 2. Voltamos a criar a organização e o usuário em etapas, forçando o papel de MANAGER.
-    org_to_create = OrganizationCreate(name=user_in.organization_name, sector=user_in.sector)
-    new_org = await crud.organization.create_organization(db, obj_in=org_to_create)
-    
-    user_to_create = UserCreate(
-        full_name=user_in.full_name,
-        email=user_in.email,
-        password=user_in.password,
-    )
-    
-    # A função `create_user` já faz o refresh da organização, garantindo que o `plan_status` seja retornado.
-    new_user = await crud.user.create_user(
-        db, user_in=user_to_create, organization_id=new_org.id, role=UserRole.MANAGER
-    )
-    # --- FIM DA CORREÇÃO ---
+    # --- CHAMADA CORRETA ---
+    # Garantimos que a função com a lógica de negócio correta seja chamada.
+    new_user = await crud.user.create_new_organization_and_user(db=db, user_in=user_in)
+    # --- FIM DA CHAMADA ---
     
     return new_user
+
 
 
 @router.post("/token", response_model=TokenData)

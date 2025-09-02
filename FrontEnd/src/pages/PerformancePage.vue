@@ -76,10 +76,7 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue';
 import { useLeaderboardStore } from 'stores/leaderboard-store';
-// --- INÍCIO DA CORREÇÃO ---
-// Usamos um caminho relativo a partir da pasta 'pages'
 import defaultAvatar from '../assets/default-avatar.png';
-// --- FIM DA CORREÇÃO ---
 
 const leaderboardStore = useLeaderboardStore();
 
@@ -122,3 +119,4 @@ onMounted(() => {
   order: 3; /* 3º lugar fica na direita */
 }
 </style>
+

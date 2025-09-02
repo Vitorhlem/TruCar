@@ -1,22 +1,29 @@
-// ARQUIVO: src/models/user-models.ts
 
+import type { User } from './auth-models';
+
+// O tipo 'UserRole' é importado implicitamente através do tipo 'User'
+type UserRole = User['role'];
+
+// Usado ao criar um novo utilizador
 export interface UserCreate {
-  email: string;
   full_name: string;
+  email: string;
   password?: string;
-  role: 'manager' | 'driver';
-  avatar_url?: string | null;
+  role: UserRole;
+  avatar_url?: string | null; // Adicionado para consistência
 }
 
+// Usado ao atualizar um utilizador existente. Todos os campos são opcionais.
 export interface UserUpdate {
-  email?: string;
   full_name?: string;
+  email?: string;
   password?: string;
-  role?: 'manager' | 'driver';
+  role?: UserRole;
   is_active?: boolean;
+  // --- CORRIGIDO ---
+  // Agora o avatar_url pode ser string ou null, como no objeto User principal.
   avatar_url?: string | null;
 }
-
 // --- INÍCIO DA CORREÇÃO ---
 
 // Renomeado para ser genérico: pode conter KM ou Horas

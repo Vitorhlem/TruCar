@@ -30,11 +30,9 @@ async def create_freight_order(
     *,
     db: AsyncSession = Depends(deps.get_db),
     freight_order_in: FreightOrderCreate,
-    current_user: User = Depends(deps.get_current_active_manager)
+    current_user: User = Depends(deps.get_current_active_manager) # Protegido
 ):
-    """
-    (Gestor) Cria uma nova ordem de frete com suas paradas.
-    """
+    """(Gestor) Cria uma nova ordem de frete com suas paradas."""
     client = await crud.client.get(db=db, id=freight_order_in.client_id, organization_id=current_user.organization_id)
     if not client:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cliente inválido.")
@@ -51,11 +49,9 @@ async def update_freight_order(
     db: AsyncSession = Depends(deps.get_db),
     freight_order_id: int,
     freight_order_in: FreightOrderUpdate,
-    current_user: User = Depends(deps.get_current_active_manager)
+    current_user: User = Depends(deps.get_current_active_manager) # Protegido
 ):
-    """
-    (Gestor) Atualiza uma ordem de frete, como alocar um veículo/motorista.
-    """
+    """(Gestor) Atualiza uma ordem de frete."""
     db_freight_order = await crud.freight_order.get(db=db, id=freight_order_id, organization_id=current_user.organization_id)
     if not db_freight_order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ordem de frete não encontrada.")
@@ -76,9 +72,7 @@ async def claim_freight_order(
     claim_in: FreightOrderClaim,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """
-    (Motorista) Permite que um motorista se atribua a um frete aberto.
-    """
+    """(Motorista) Permite que um motorista se atribua a um frete aberto."""
     if current_user.role != UserRole.DRIVER:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas motoristas podem se atribuir a fretes.")
 
@@ -164,16 +158,17 @@ async def read_freight_orders(
     limit: int = 100,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """
-    (Gestor) Retorna a lista de todas as ordens de frete da organização.
-    """
-    if not current_user.role == UserRole.MANAGER:
+    """(Gestor) Retorna a lista de todas as ordens de frete da organização."""
+    # --- LÓGICA DE PERMISSÃO CORRIGIDA ---
+    # Agora verificamos os papéis de gestor (ativo e demo)
+    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
         raise HTTPException(status_code=403, detail="Apenas gestores podem ver todas as ordens de frete.")
     
     freight_orders = await crud.freight_order.get_multi_by_org(
         db, organization_id=current_user.organization_id, skip=skip, limit=limit
     )
     return freight_orders
+
 
 
 @router.get("/open", response_model=List[FreightOrderPublic])

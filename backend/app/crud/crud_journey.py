@@ -2,12 +2,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Tuple
+from sqlalchemy import func # <-- ADICIONADO func
+
 from datetime import datetime, date, timedelta
 
 from app.models.journey_model import Journey
 from app.models.vehicle_model import Vehicle, VehicleStatus
 # A LINHA QUE FALTAVA PARA O EAGER LOADING:
-from app.models.user_model import User
+from app.models.user_model import User, UserRole
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate
 from app.models.implement_model import Implement, ImplementStatus
 
@@ -20,8 +22,7 @@ class VehicleNotAvailableError(Exception):
 async def create_journey(
     db: AsyncSession, *, journey_in: JourneyCreate, driver_id: int, organization_id: int
 ) -> Journey:
-    
-    """Cria uma nova operação e atualiza o status do veículo para 'Em uso'."""
+    # ... (o resto da sua função create_journey permanece igual)
     if journey_in.implement_id:
         implement = await db.get(Implement, journey_in.implement_id)
         if not implement or implement.organization_id != organization_id:
@@ -30,7 +31,6 @@ async def create_journey(
         if implement.status != ImplementStatus.AVAILABLE:
             raise VehicleNotAvailableError(f"O implemento {implement.name} não está disponível.")
         
-        # Altera o status do implemento
         implement.status = ImplementStatus.IN_USE
         db.add(implement)
     
@@ -46,9 +46,8 @@ async def create_journey(
 
     journey_data = journey_in.model_dump(exclude_unset=True)
     
-    # Lógica explícita para garantir que o valor inicial correto seja usado
     if journey_in.start_engine_hours is not None:
-        journey_data['start_mileage'] = vehicle.current_km # Usa o KM atual como base
+        journey_data['start_mileage'] = vehicle.current_km
     else:
         journey_data['start_mileage'] = journey_in.start_mileage or vehicle.current_km
 
@@ -67,6 +66,29 @@ async def create_journey(
     await db.commit()
     await db.refresh(db_journey, ['vehicle', 'driver', 'implement'])
     return db_journey
+
+async def count_journeys_in_current_month(db: AsyncSession, *, organization_id: int) -> int:
+    """Conta quantas jornadas uma organização criou no mês corrente."""
+    today = date.today()
+    start_of_month = today.replace(day=1)
+    
+    # Lógica para encontrar o primeiro dia do próximo mês
+    if start_of_month.month == 12:
+        start_of_next_month = start_of_month.replace(year=start_of_month.year + 1, month=1)
+    else:
+        start_of_next_month = start_of_month.replace(month=start_of_month.month + 1)
+
+    stmt = (
+        select(func.count(Journey.id))
+        .where(
+            Journey.organization_id == organization_id,
+            Journey.start_time >= start_of_month,
+            Journey.start_time < start_of_next_month
+        )
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one()
+
 async def end_journey(
     db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
 ) -> Tuple[Journey, Vehicle]:
@@ -136,21 +158,46 @@ async def get_journey(db: AsyncSession, *, journey_id: int, organization_id: int
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
-async def get_all_journeys(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100, driver_id: int | None = None, vehicle_id: int | None = None, date_from: date | None = None, date_to: date | None = None) -> List[Journey]:
-    """Busca todas as viagens de uma organização, com filtros."""
+async def get_all_journeys(
+    db: AsyncSession, *, 
+    organization_id: int, 
+    requester_role: UserRole,  # <-- NOVO PARÂMETRO
+    skip: int = 0, 
+    limit: int = 100, 
+    driver_id: int | None = None, 
+    vehicle_id: int | None = None, 
+    date_from: date | None = None, 
+    date_to: date | None = None
+) -> List[Journey]:
+    """Busca todas as viagens de uma organização, com filtros e lógica de demo."""
     stmt = select(Journey).where(Journey.organization_id == organization_id)
+
+    # --- LÓGICA DE LIMITE DE HISTÓRICO PARA DEMO ---
+    if requester_role == UserRole.CLIENTE_DEMO:
+        # Se for um cliente demo, ignoramos os filtros de data do utilizador
+        # e forçamos o filtro para os últimos 7 dias.
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        stmt = stmt.where(Journey.start_time >= seven_days_ago)
+    else:
+        # Apenas aplicamos os filtros de data se não for um cliente demo
+        if date_from:
+            stmt = stmt.where(Journey.start_time >= date_from)
+        if date_to:
+            stmt = stmt.where(Journey.start_time < date_to + timedelta(days=1))
+    # --- FIM DA LÓGICA ---
+
     if driver_id:
         stmt = stmt.where(Journey.driver_id == driver_id)
     if vehicle_id:
         stmt = stmt.where(Journey.vehicle_id == vehicle_id)
-    if date_from:
-        stmt = stmt.where(Journey.start_time >= date_from)
-    if date_to:
-        stmt = stmt.where(Journey.start_time < date_to + timedelta(days=1))
     
     final_stmt = (
         stmt.order_by(Journey.start_time.desc())
-        .options(selectinload(Journey.driver).selectinload(User.organization), selectinload(Journey.vehicle), selectinload(Journey.implement)) # <-- Eager loading
+        .options(
+            selectinload(Journey.driver).selectinload(User.organization), 
+            selectinload(Journey.vehicle), 
+            selectinload(Journey.implement)
+        )
         .offset(skip).limit(limit)
     )
     result = await db.execute(final_stmt)

@@ -1,22 +1,26 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
 import { api } from 'boot/axios';
 import type { DashboardSummary } from 'src/models/report-models';
 
-export const useDashboardStore = defineStore('dashboard', () => {
-  const summary = ref<DashboardSummary | null>(null);
-  const isLoading = ref(false);
+export const useDashboardStore = defineStore('dashboard', {
+  // 1. As variáveis ('refs') agora vivem dentro do 'state'
+  state: () => ({
+    summary: null as DashboardSummary | null,
+    isLoading: false,
+  }),
 
-  async function fetchSummary() {
-    isLoading.value = true;
-    try {
-      const response = await api.get<DashboardSummary>('/reports/dashboard-summary');
-      summary.value = response.data;
-    } catch (error) {
-      console.error('Falha ao buscar dados do dashboard:', error);
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  return { summary, isLoading, fetchSummary };
+  // 2. As funções agora vivem dentro de 'actions'
+  actions: {
+    async fetchSummary() {
+      this.isLoading = true; // 3. Usamos 'this' em vez de '.value'
+      try {
+        const response = await api.get<DashboardSummary>('/dashboard/summary');
+        this.summary = response.data;
+      } catch (error) {
+        console.error('Falha ao buscar dados do dashboard:', error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+  },
 });

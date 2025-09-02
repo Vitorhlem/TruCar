@@ -1,12 +1,7 @@
 <template>
   <q-page padding>
 
-    <!-- ########################################## -->
-    <!-- ### VISÃO PARA O SETOR DE FRETES       ### -->
-    <!-- ########################################## -->
     <div v-if="authStore.userSector === 'frete'" class="row q-col-gutter-lg">
-      
-      <!-- Coluna 1: Mural de Fretes Abertos -->
       <div class="col-12 col-md-6">
         <div class="flex items-center justify-between q-mb-sm">
           <h1 class="text-h5 text-weight-bold q-my-none">Mural de Fretes Abertos</h1>
@@ -29,7 +24,6 @@
         </q-card>
       </div>
 
-      <!-- Coluna 2: Minhas Tarefas -->
       <div class="col-12 col-md-6">
         <div class="flex items-center justify-between q-mb-sm">
           <h1 class="text-h5 text-weight-bold q-my-none">Minhas Tarefas</h1>
@@ -53,14 +47,22 @@
       </div>
     </div>
 
-    <!-- ########################################## -->
-    <!-- ### VISÃO PARA AGRO/SERVIÇOS (ANTIGA) ### -->
-    <!-- ########################################## -->
     <div v-else>
       <div class="flex items-center justify-between q-mb-md">
         <h1 class="text-h5 text-weight-bold q-my-none">{{ terminologyStore.journeyPageTitle }}</h1>
         <q-btn v-if="!journeyStore.currentUserActiveJourney" @click="openStartDialog" color="primary" icon="add_road" :label="terminologyStore.startJourneyButtonLabel" unelevated />
       </div>
+
+      <q-banner v-if="isDemo" inline-actions rounded class="bg-amber-2 text-black q-mb-lg">
+        <template v-slot:avatar>
+          <q-icon name="history_toggle_off" color="amber-8" />
+        </template>
+        <div class="text-weight-medium">
+          No Plano Demo, o histórico de jornadas é limitado aos últimos 7 dias.
+          <q-btn flat dense color="primary" label="Faça o upgrade" @click="showUpgradeDialog" class="q-ml-sm" />
+          para aceder a todos os dados.
+        </div>
+      </q-banner>
       <q-card v-if="journeyStore.currentUserActiveJourney" class="bg-blue-1 q-mb-lg" flat bordered>
         <q-card-section>
           <div class="text-h6">Você tem uma {{ terminologyStore.journeyNoun.toLowerCase() }} em andamento</div>
@@ -69,8 +71,16 @@
         <q-separator />
         <q-card-actions align="right"><q-btn @click="openEndDialog()" color="primary" :label="`Finalizar Minha ${terminologyStore.journeyNoun}`" unelevated /></q-card-actions>
       </q-card>
+      
       <q-card flat bordered>
-        <q-table :title="terminologyStore.journeyHistoryTitle" :rows="journeyStore.journeys" :columns="columns" row-key="id" :loading="journeyStore.isLoading" no-data-label="Nenhuma operação encontrada">
+        <q-table
+          :title="terminologyStore.journeyHistoryTitle"
+          :rows="journeyStore.journeys"
+          :columns="columns"
+          row-key="id"
+          :loading="journeyStore.isLoading"
+          no-data-label="Nenhuma operação encontrada"
+        >
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
               <q-btn v-if="props.row.is_active" @click="openEndDialog(props.row)" flat round dense icon="event_busy" color="primary" :title="`Finalizar ${terminologyStore.journeyNoun}`" />
@@ -81,15 +91,8 @@
       </q-card>
     </div>
 
-    <!-- Diálogos para Fretes -->
-    <q-dialog v-model="isClaimDialogOpen">
-      <ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" />
-    </q-dialog>
-  <q-dialog v-model="isDriverDialogOpen">
-      <DriverFreightDialog :order="freightOrderStore.activeOrderDetails" @close="isDriverDialogOpen = false" />
-    </q-dialog>
-
-    <!-- Diálogos para AGRO/SERVIÇOS -->
+    <q-dialog v-model="isClaimDialogOpen"><ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" /></q-dialog>
+    <q-dialog v-model="isDriverDialogOpen"><DriverFreightDialog :order="freightOrderStore.activeOrderDetails" @close="isDriverDialogOpen = false" /></q-dialog>
     <q-dialog v-model="isStartDialogOpen">
       <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section><div class="text-h6">Iniciar Nova {{ terminologyStore.journeyNoun }}</div></q-card-section>
@@ -143,6 +146,23 @@ const vehicleStore = useVehicleStore();
 const implementStore = useImplementStore();
 const freightOrderStore = useFreightOrderStore();
 
+// --- LÓGICA DE DEMO ADICIONADA ---
+const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
+function showUpgradeDialog() {
+  $q.dialog({
+    title: 'Desbloqueie o Potencial Máximo do TruCar',
+    message: 'Para aceder ao histórico completo e outras funcionalidades premium, entre em contato com nossa equipe comercial.',
+    ok: {
+      label: 'Entendido',
+      color: 'primary',
+      unelevated: true
+    },
+    persistent: true
+  });
+}
+// --- FIM DA ADIÇÃO ---
+
+
 // --- ESTADO COMUM A TODOS OS SETORES ---
 const isSubmitting = ref(false);
 
@@ -166,7 +186,6 @@ function openClaimDialog(order: FreightOrder) {
 function openDriverDialog(order: FreightOrder) {
   void freightOrderStore.fetchOrderDetails(order.id);
   isDriverDialogOpen.value = true;
-
 }
 function refreshFreightData() {
   void freightOrderStore.fetchOpenOrders();

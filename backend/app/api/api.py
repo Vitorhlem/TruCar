@@ -18,13 +18,17 @@ from app.api.v1.endpoints import (
     report_generator,
     telemetry,
     clients,
-    freight_orders
+    freight_orders,
+    admin,
+    dashboard  
 )
 
 api_router = APIRouter()
 
 # Registra todos os roteadores
 api_router.include_router(telemetry.router, prefix="/telemetry", tags=["telemetry"])
+api_router.include_router(admin.router, prefix="/admin", tags=["organizations"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 
 api_router.include_router(login.router, prefix="/login", tags=["Login"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])

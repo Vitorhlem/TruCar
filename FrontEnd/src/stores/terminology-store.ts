@@ -1,29 +1,37 @@
 import { defineStore } from 'pinia';
-import { computed } from 'vue';
-import { useAuthStore } from './auth-store';
-import { AgroStrategy, ServicesStrategy, ConstructionStrategy } from 'src/sector-strategies';
+import { computed, ref } from 'vue'; // Adicionado ref
+import type { UserSector } from 'src/models/auth-models'; // Importamos o tipo
+import { AgroStrategy, ServicesStrategy, ConstructionStrategy, FreightStrategy } from 'src/sector-strategies'; // Adicionada FreightStrategy
 import type { ISectorStrategy } from 'src/sector-strategies/strategy.interface';
 
 export const useTerminologyStore = defineStore('terminology', () => {
-  const authStore = useAuthStore();
+  // 1. Criamos um estado local para o setor
+  const currentSector = ref<UserSector>(null);
 
-  // 1. O PONTO CENTRAL: Escolhe a estratégia correta com base no setor do utilizador
+  // 2. Criamos uma action para definir o setor
+  function setSector(sector: UserSector) {
+    currentSector.value = sector;
+  }
+
+  // 3. O 'computed' agora usa o estado local, que é controlado pela nossa action
   const activeStrategy = computed<ISectorStrategy>(() => {
-    const sector = authStore.userSector;
-    switch (sector) {
+    switch (currentSector.value) {
       case 'agronegocio':
         return AgroStrategy;
       case 'construcao_civil':
         return ConstructionStrategy;
       case 'servicos':
         return ServicesStrategy;
+      // --- CASO 'frete' ADICIONADO ---
+      case 'frete':
+        return FreightStrategy;
       default:
-        return ServicesStrategy; // Retorna a estratégia padrão se o setor for desconhecido
+        // Retorna uma estratégia padrão segura se o setor for nulo ou desconhecido
+        return ServicesStrategy;
     }
   });
 
-  // 2. Todos os getters agora simplesmente "delegam" para a estratégia ativa.
-  //    Não há mais lógica de if/else aqui!
+  // 4. Todos os getters continuam a funcionar da mesma forma
   const vehicleNoun = computed(() => activeStrategy.value.vehicleNoun);
   const vehicleNounPlural = computed(() => activeStrategy.value.vehicleNounPlural);
   const journeyNoun = computed(() => activeStrategy.value.journeyNoun);
@@ -38,10 +46,12 @@ export const useTerminologyStore = defineStore('terminology', () => {
   const journeyPageTitle = computed(() => activeStrategy.value.journeyPageTitle);
   const journeyHistoryTitle = computed(() => activeStrategy.value.journeyHistoryTitle);
   const journeyStartSuccessMessage = computed(() => activeStrategy.value.journeyStartSuccessMessage);
-const journeyEndSuccessMessage = computed(() => activeStrategy.value.journeyEndSuccessMessage);
-
+  const journeyEndSuccessMessage = computed(() => activeStrategy.value.journeyEndSuccessMessage);
 
   return {
+    // A nova action é exportada
+    setSector,
+    // E todos os getters continuam disponíveis
     vehicleNoun,
     vehicleNounPlural,
     journeyNoun,
@@ -49,7 +59,7 @@ const journeyEndSuccessMessage = computed(() => activeStrategy.value.journeyEndS
     distanceUnit,
     plateOrIdentifierLabel,
     journeyStartSuccessMessage,
-      journeyEndSuccessMessage,
+    journeyEndSuccessMessage,
     startJourneyButtonLabel,
     vehiclePageTitle,
     addVehicleButtonLabel,

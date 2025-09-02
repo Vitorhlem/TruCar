@@ -7,45 +7,60 @@ from typing import List
 from app.core.security import get_password_hash, verify_password
 from app.models.user_model import User, UserRole
 from app.models.organization_model import Organization
-from app.models.journey_model import Journey
-from app.models.vehicle_model import Vehicle
-from app.models.maintenance_model import MaintenanceRequest
-# Adicionamos o schema UserRegister que estava faltando
 from app.schemas.user_schema import UserCreate, UserUpdate, UserRegister
+from app.models.journey_model import Journey
+from app.models.vehicle_model import Vehicle # Adicionado para a função de stats
+from app.models.maintenance_model import MaintenanceRequest # Adicionado para a função de stats
 
 
-# ===== FUNÇÃO DE REGISTRO QUE ESTAVA FALTANDO =====
 async def create_new_organization_and_user(db: AsyncSession, *, user_in: UserRegister) -> User:
-    """
-    Cria uma nova organização e o primeiro usuário (gestor ou cliente) para ela
-    em uma única transação atômica.
-    """
-    # Cria o objeto Organization
+    """Cria uma nova organização e o primeiro utilizador (CLIENTE_DEMO) para ela."""
     db_org = Organization(name=user_in.organization_name, sector=user_in.sector)
-    
-    # Determina a role do usuário com base no setor
-    user_role = UserRole.CLIENT if user_in.sector == 'frete' else UserRole.MANAGER
+    user_role = UserRole.CLIENTE_DEMO
 
-    # Cria o objeto User
     hashed_password = get_password_hash(user_in.password)
     db_user = User(
         full_name=user_in.full_name,
         email=user_in.email,
         hashed_password=hashed_password,
         role=user_role,
-        # Associa diretamente o objeto da organização. SQLAlchemy gerencia a Foreign Key.
         organization=db_org 
     )
     
     db.add(db_org)
     db.add(db_user)
-    
-    # Um único commit salva ambos os objetos (Organização e Usuário) de forma segura.
     await db.commit()
-    
     await db.refresh(db_user, ["organization"])
     return db_user
-# ===== FIM DA FUNÇÃO ADICIONADA =====
+
+
+async def activate_user(db: AsyncSession, *, user_to_activate: User) -> User:
+    """Muda o papel de um utilizador de CLIENTE_DEMO para CLIENTE_ATIVO."""
+    user_to_activate.role = UserRole.CLIENTE_ATIVO
+    db.add(user_to_activate)
+    await db.commit()
+    await db.refresh(user_to_activate)
+    return user_to_activate
+
+
+async def get(db: AsyncSession, *, id: int, organization_id: int | None = None) -> User | None:
+    """Busca um utilizador pelo ID, opcionalmente validando a organização."""
+    stmt = select(User).where(User.id == id)
+    if organization_id:
+        stmt = stmt.where(User.organization_id == organization_id)
+    
+    stmt = stmt.options(selectinload(User.organization))
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
+
+async def count_by_org(db: AsyncSession, *, organization_id: int, role: UserRole | None = None) -> int:
+    """Conta utilizadores numa organização, opcionalmente filtrando por papel."""
+    stmt = select(func.count()).select_from(User).where(User.organization_id == organization_id)
+    if role:
+        stmt = stmt.where(User.role == role)
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 
 async def get_user_by_email(db: AsyncSession, *, email: str, load_organization: bool = False) -> User | None:
@@ -56,31 +71,21 @@ async def get_user_by_email(db: AsyncSession, *, email: str, load_organization: 
     return result.scalars().first()
 
 
-async def get_user(db: AsyncSession, *, user_id: int, organization_id: int) -> User | None:
-    stmt = select(User).where(User.id == user_id, User.organization_id == organization_id).options(selectinload(User.organization))
-    result = await db.execute(stmt)
-    return result.scalars().first()
-
-
-async def get_user_with_organization(db: AsyncSession, *, user_id: int) -> User | None:
-    stmt = select(User).where(User.id == user_id).options(selectinload(User.organization))
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
-
-
-async def get_users(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100) -> List[User]:
+async def get_multi_by_org(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100) -> List[User]:
+    """Retorna uma lista de utilizadores de uma organização."""
     stmt = (
         select(User)
         .where(User.organization_id == organization_id)
         .options(selectinload(User.organization))
-        .order_by(User.id)
+        .order_by(User.full_name)
         .offset(skip).limit(limit)
     )
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
-async def create_user(db: AsyncSession, *, user_in: UserCreate, organization_id: int, role: UserRole) -> User:
+async def create(db: AsyncSession, *, user_in: UserCreate, organization_id: int, role: UserRole) -> User:
+    """Cria um novo utilizador (normalmente um DRIVER) numa organização existente."""
     hashed_password = get_password_hash(user_in.password)
     db_user = User(
         full_name=user_in.full_name,
@@ -95,7 +100,7 @@ async def create_user(db: AsyncSession, *, user_in: UserCreate, organization_id:
     return db_user
 
 
-async def update_user(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -> User:
+async def update(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -> User:
     update_data = user_in.model_dump(exclude_unset=True)
     if "password" in update_data and update_data["password"]:
         hashed_password = get_password_hash(update_data["password"])
@@ -111,17 +116,17 @@ async def update_user(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -
     return db_user
 
 
-async def get_users_by_role(db: AsyncSession, *, organization_id: int, role: UserRole) -> List[User]:
+async def get_users_by_role(db: AsyncSession, *, organization_id: int, role: UserRole, skip: int = 0, limit: int = 100) -> List[User]:
     stmt = select(User).where(
         User.role == role,
         User.is_active == True,
         User.organization_id == organization_id
-    )
+    ).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
-async def delete_user(db: AsyncSession, *, db_user: User) -> User:
+async def remove(db: AsyncSession, *, db_user: User) -> User:
     await db.delete(db_user)
     await db.commit()
     return db_user
@@ -138,15 +143,13 @@ async def authenticate(db: AsyncSession, *, email: str, password: str) -> User |
         
     return user
 
+# --- FUNÇÃO RECONSTRUÍDA E CORRIGIDA ---
 async def get_user_stats(db: AsyncSession, *, user_id: int, organization_id: int) -> dict | None:
     """Calcula as estatísticas de um utilizador, adaptando-as ao setor da organização."""
-    
-    # 1. Busca o usuário e sua organização para saber o setor
-    user = await get_user(db, user_id=user_id, organization_id=organization_id)
+    user = await get(db, id=user_id, organization_id=organization_id)
     if not user or not user.organization:
         return None
 
-    # 2. Busca todas as jornadas finalizadas do usuário
     journeys_stmt = select(Journey).where(
         Journey.driver_id == user_id,
         Journey.organization_id == organization_id,
@@ -154,8 +157,50 @@ async def get_user_stats(db: AsyncSession, *, user_id: int, organization_id: int
     )
     journeys_result = await db.execute(journeys_stmt)
     journeys = journeys_result.scalars().all()
-
     total_journeys = len(journeys)
+    
+    stats_payload = {}
+    if user.organization.sector == 'agronegocio':
+        total_value = sum((j.end_engine_hours - j.start_engine_hours) for j in journeys if j.end_engine_hours is not None and j.start_engine_hours is not None)
+        
+        performance_stmt = (
+            select(Vehicle.brand, Vehicle.model, Vehicle.identifier, func.sum(Journey.end_engine_hours - Journey.start_engine_hours).label("total_value"))
+            .join(Journey, Journey.vehicle_id == Vehicle.id).where(Journey.driver_id == user_id, Journey.is_active == False).group_by(Vehicle.id)
+            .order_by(func.sum(Journey.end_engine_hours - Journey.start_engine_hours).desc())
+        )
+        performance_result = (await db.execute(performance_stmt)).all()
+        performance_by_vehicle = [{"vehicle_info": f"{row.brand} {row.model} ({row.identifier})", "value": row.total_value or 0.0} for row in performance_result]
+        
+        stats_payload.update({
+            "primary_metric_label": "Horas Totais Trabalhadas", "primary_metric_value": total_value,
+            "primary_metric_unit": "Horas", "performance_by_vehicle": performance_by_vehicle,
+        })
+    else: # Para 'servicos' e 'frete'
+        total_value = sum((j.end_mileage - j.start_mileage) for j in journeys if j.end_mileage is not None and j.start_mileage is not None)
+        
+        performance_stmt = (
+            select(Vehicle.brand, Vehicle.model, Vehicle.license_plate, func.sum(Journey.end_mileage - Journey.start_mileage).label("total_value"))
+            .join(Journey, Journey.vehicle_id == Vehicle.id).where(Journey.driver_id == user_id, Journey.is_active == False).group_by(Vehicle.id)
+            .order_by(func.sum(Journey.end_mileage - Journey.start_mileage).desc())
+        )
+        performance_result = (await db.execute(performance_stmt)).all()
+        performance_by_vehicle = [{"vehicle_info": f"{row.brand} {row.model} ({row.license_plate})", "value": row.total_value or 0.0} for row in performance_result]
+
+        stats_payload.update({
+            "primary_metric_label": "Distância Total Percorrida", "primary_metric_value": total_value,
+            "primary_metric_unit": "km", "performance_by_vehicle": performance_by_vehicle,
+        })
+
+    maintenance_count_stmt = select(func.count(MaintenanceRequest.id)).where(MaintenanceRequest.reported_by_id == user_id)
+    maintenance_requests_count = (await db.execute(maintenance_count_stmt)).scalar_one_or_none() or 0
+    
+    stats_payload.update({
+        "total_journeys": total_journeys,
+        "maintenance_requests_count": maintenance_requests_count
+    })
+    return stats_payload
+# --- FIM DA CORREÇÃO ---
+
 
 async def get_leaderboard_data(db: AsyncSession, *, organization_id: int) -> dict:
     """
@@ -186,13 +231,9 @@ async def get_leaderboard_data(db: AsyncSession, *, organization_id: int) -> dic
             User.organization_id == organization_id,
             User.role == UserRole.DRIVER,
             Journey.is_active == False
-            # A condição de agregação foi REMOVIDA daqui
         )
         .group_by(User.id)
-        # --- INÍCIO DA CORREÇÃO ---
-        # A condição foi MOVIDA para a cláusula HAVING, que é executada após o GROUP BY
         .having(metric_calculation.is_not(None))
-        # --- FIM DA CORREÇÃO ---
         .order_by(metric_calculation.desc().nullslast())
         .limit(50)
     )
@@ -204,3 +245,4 @@ async def get_leaderboard_data(db: AsyncSession, *, organization_id: int) -> dic
         "leaderboard": leaderboard_users,
         "primary_metric_unit": primary_metric_unit
     }
+
