@@ -1,8 +1,26 @@
 <template>
   <q-page padding>
     <h1 class="text-h5 text-weight-bold q-my-md">Gerador de Relatórios</h1>
-    
-    <q-card flat bordered class="floating-card">
+
+    <div v-if="isDemo" class="column flex-center text-center q-pa-md" style="min-height: 60vh;">
+      <div>
+        <q-icon name="workspace_premium" color="amber" size="100px" />
+        <div class="text-h5 q-mt-sm">Esta é uma funcionalidade do plano completo</div>
+        <div class="text-body1 text-grey-8 q-mt-sm">
+          Faça o upgrade da sua conta para aceder a relatórios detalhados,<br />
+          filtros por data, exportação para PDF e muito mais.
+        </div>
+        <q-btn
+          @click="showUpgradeDialog"
+          color="primary"
+          label="Saber Mais sobre o Plano Completo"
+          unelevated
+          class="q-mt-lg"
+        />
+      </div>
+    </div>
+
+    <q-card v-else flat bordered class="floating-card">
       <q-card-section class="q-gutter-md">
         <q-select
           outlined
@@ -19,15 +37,13 @@
           label="Selecione o Motorista"
           emit-value map-options
         />
-        <!-- Adicione outros seletores de alvo aqui para outros relatórios -->
 
         <q-input outlined v-model="dateRangeText" label="Selecione o Período" readonly>
           <template v-slot:append>
             <q-icon name="event" class="cursor-pointer">
               <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                 <q-date v-model="dateRange" range />
-              </q-popup-proxy>
-            </q-icon>
+              </q-popup-proxy> </q-icon>
           </template>
         </q-input>
       </q-card-section>
@@ -52,10 +68,12 @@ import { ref, computed, onMounted } from 'vue';
 import { useUserStore } from 'stores/user-store';
 import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
+import { useAuthStore } from 'stores/auth-store';
 import type { User } from 'src/models/auth-models';
 
 const userStore = useUserStore();
 const $q = useQuasar();
+const authStore = useAuthStore();
 
 const reportType = ref<string | null>(null);
 const targetId = ref<number | null>(null);
@@ -64,7 +82,6 @@ const isLoading = ref(false);
 
 const reportOptions = [
   { label: 'Relatório de Atividade por Motorista', value: 'activity_by_driver' },
-  // (Outros tipos de relatório viriam aqui)
 ];
 
 const userOptions = computed(() => userStore.users
@@ -80,6 +97,21 @@ const dateRangeText = computed(() => {
 });
 
 const isFormValid = computed(() => reportType.value && targetId.value && dateRange.value);
+
+const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
+
+function showUpgradeDialog() {
+  $q.dialog({
+    title: 'Desbloqueie o Potencial Máximo do TruCar',
+    message: 'Para liberar recursos avançados como relatórios detalhados e cadastro ilimitado de veículos e motoristas, entre em contato com nossa equipe comercial.',
+    ok: {
+      label: 'Entendido',
+      color: 'primary',
+      unelevated: true
+    },
+    persistent: true
+  });
+}
 
 async function generateReport() {
   if (!isFormValid.value) return;

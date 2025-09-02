@@ -18,7 +18,7 @@ async def read_journeys(
     vehicle_id: int | None = None, date_from: date | None = None,
     date_to: date | None = None, current_user: User = Depends(deps.get_current_active_user)
 ):
-    """Lista todas as viagens da organização, com filtros."""
+    """Lista todas as viagens da organização, aplicando limites de demo se necessário."""
     if date_to and date_from and date_to < date_from:
         raise HTTPException(status_code=400, detail="A data final não pode ser anterior à data inicial.")
     
@@ -27,9 +27,15 @@ async def read_journeys(
         final_driver_id_filter = current_user.id
         
     journeys = await crud.journey.get_all_journeys(
-        db, organization_id=current_user.organization_id,
-        skip=skip, limit=limit, driver_id=final_driver_id_filter,
-        vehicle_id=vehicle_id, date_from=date_from, date_to=date_to
+        db, 
+        organization_id=current_user.organization_id,
+        requester_role=current_user.role,  # <-- PASSAMOS O PAPEL DO UTILIZADOR
+        skip=skip, 
+        limit=limit, 
+        driver_id=final_driver_id_filter,
+        vehicle_id=vehicle_id, 
+        date_from=date_from, 
+        date_to=date_to
     )
     return journeys
 
@@ -41,6 +47,19 @@ async def start_journey(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """Inicia uma nova viagem para o utilizador logado."""
+    # --- LÓGICA DE LIMITE DE DEMO ADICIONADA ---
+    # Se o utilizador for um CLIENTE_DEMO, verificamos o limite mensal
+    if current_user.role == UserRole.CLIENTE_DEMO:
+        monthly_journeys = await crud.journey.count_journeys_in_current_month(
+            db, organization_id=current_user.organization_id
+        )
+        if monthly_journeys >= 10:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A sua conta de demonstração permite o registo de 10 jornadas por mês. Faça o upgrade para continuar."
+            )
+    # --- FIM DA LÓGICA DE LIMITE ---
+
     existing_journey = await crud.journey.get_active_journey_by_driver(
         db, driver_id=current_user.id, organization_id=current_user.organization_id
     )
@@ -57,7 +76,6 @@ async def start_journey(
         raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
 @router.put("/{journey_id}/end", response_model=EndJourneyResponse)
 async def end_journey(
     *,

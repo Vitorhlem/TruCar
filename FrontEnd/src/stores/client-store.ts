@@ -1,41 +1,38 @@
-// ARQUIVO: src/stores/client-store.ts
-
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 import type { Client, ClientCreate } from 'src/models/client-models';
 
-export const useClientStore = defineStore('client', () => {
-  const clients = ref<Client[]>([]);
-  const isLoading = ref(false);
+export const useClientStore = defineStore('client', {
+  // 1. As variáveis ('refs') agora vivem dentro do 'state'
+  state: () => ({
+    clients: [] as Client[],
+    isLoading: false,
+  }),
 
-  async function fetchAllClients() {
-    isLoading.value = true;
-    try {
-      const response = await api.get<Client[]>('/clients/');
-      clients.value = response.data;
-    // --- INÍCIO DA CORREÇÃO ---
-    // O comentário vem ANTES da linha com o erro
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-    // --- FIM DA CORREÇÃO ---
-      Notify.create({ type: 'negative', message: 'Falha ao buscar clientes.' });
-    } finally {
-      isLoading.value = false;
-    }
-  }
+  // 2. As funções agora vivem dentro de 'actions'
+  actions: {
+    async fetchAllClients() {
+      this.isLoading = true; // 3. Usamos 'this' em vez de '.value'
+      try {
+        const response = await api.get<Client[]>('/clients/');
+        this.clients = response.data;
+      } catch {
+        Notify.create({ type: 'negative', message: 'Falha ao buscar clientes.' });
+      } finally {
+        this.isLoading = false;
+      }
+    },
 
-  async function addClient(payload: ClientCreate) {
-    try {
-      await api.post('/clients/', payload);
-      Notify.create({ type: 'positive', message: 'Cliente adicionado com sucesso!' });
-      await fetchAllClients();
-    } catch (error) {
-      Notify.create({ type: 'negative', message: 'Erro ao adicionar cliente.' });
-      throw error;
-    }
-  }
-
-  return { clients, isLoading, fetchAllClients, addClient };
+    async addClient(payload: ClientCreate) {
+      try {
+        await api.post('/clients/', payload);
+        Notify.create({ type: 'positive', message: 'Cliente adicionado com sucesso!' });
+        await this.fetchAllClients(); // 3. Usamos 'this' para chamar outra action
+      } catch (error) {
+        Notify.create({ type: 'negative', message: 'Erro ao adicionar cliente.' });
+        throw error;
+      }
+    },
+  },
 });

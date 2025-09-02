@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 import type { Journey, JourneyCreate, JourneyUpdate } from 'src/models/journey-models';
@@ -14,94 +13,89 @@ interface JourneyFilters {
   date_to?: string | null;
 }
 
-export const useJourneyStore = defineStore('journey', () => {
-  const journeys = ref<Journey[]>([]);
-  const isLoading = ref(false);
-  const authStore = useAuthStore();
+const initialState = () => ({
+  journeys: [] as Journey[],
+  isLoading: false,
+});
 
-  const activeJourneys = computed(() => journeys.value.filter((j) => j.is_active));
-  
-  const currentUserActiveJourney = computed(() => {
-    if (!authStore.user) return null;
-    return activeJourneys.value.find((j) => j.driver.id === authStore.user?.id);
-  });
+export const useJourneyStore = defineStore('journey', {
+  state: initialState,
 
-  async function fetchAllJourneys(filters: JourneyFilters = {}) {
-    isLoading.value = true;
-    try {
-      const cleanFilters: Record<string, string | number> = {};
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) { cleanFilters[key] = value; }
-      });
-      const response = await api.get<Journey[]>('/journeys/', { params: cleanFilters });
-      journeys.value = response.data;
-    } catch {
-      Notify.create({ type: 'negative', message: 'Falha ao buscar histórico de operações.' });
-    } finally {
-      isLoading.value = false;
-    }
-  }
+  getters: {
+    activeJourneys: (state) => state.journeys.filter((j) => j.is_active),
+    
+    currentUserActiveJourney(state): Journey | null {
+      const authStore = useAuthStore();
+      if (!authStore.user) return null;
+      // Precisamos de usar o 'this' para aceder a outros getters dentro da mesma store
+      return this.activeJourneys.find((j) => j.driver.id === authStore.user?.id) || null;
+    },
+  },
 
-   async function deleteJourney(journeyId: number) {
-    isLoading.value = true;
-    try {
-      await api.delete(`/journeys/${journeyId}`);
-      // Remove a viagem da lista local para atualização instantânea
-      journeys.value = journeys.value.filter(j => j.id !== journeyId);
-      Notify.create({ type: 'positive', message: 'Operação excluída com sucesso!' });
-
-      // Atualiza a dashboard em tempo real
-      const dashboardStore = useDashboardStore();
-      await dashboardStore.fetchSummary();
-
-    } catch (error: unknown) {
-      console.error('Falha ao excluir operação:', error);
-      Notify.create({ type: 'negative', message: 'Erro ao excluir operação.' });
-      throw error;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  async function startJourney(journeyData: JourneyCreate): Promise<void> {
-    isLoading.value = true;
-    try {
-      const response = await api.post<Journey>('/journeys/start', journeyData);
-      journeys.value.unshift(response.data);
-      const dashboardStore = useDashboardStore();
-      await dashboardStore.fetchSummary();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  async function endJourney(journeyId: number, journeyData: JourneyUpdate): Promise<Vehicle | null> {
-    isLoading.value = true;
-    try {
-      const response = await api.put<{ journey: Journey, vehicle: Vehicle }>(
-        `/journeys/${journeyId}/end`,
-        journeyData
-      );
-      const index = journeys.value.findIndex(j => j.id === journeyId);
-      if (index !== -1) {
-        journeys.value[index] = response.data.journey;
+  actions: {
+    async fetchAllJourneys(filters: JourneyFilters = {}) {
+      this.isLoading = true;
+      try {
+        const cleanFilters: Record<string, string | number> = {};
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) { cleanFilters[key] = value; }
+        });
+        const response = await api.get<Journey[]>('/journeys/', { params: cleanFilters });
+        this.journeys = response.data;
+      } catch {
+        Notify.create({ type: 'negative', message: 'Falha ao buscar histórico de operações.' });
+      } finally {
+        this.isLoading = false;
       }
-      const dashboardStore = useDashboardStore();
-      await dashboardStore.fetchSummary();
-      return response.data.vehicle;
-    } finally {
-      isLoading.value = false;
-    }
-  }
+    },
 
-  return {
-    journeys,
-    isLoading,
-    activeJourneys,
-    currentUserActiveJourney,
-    fetchAllJourneys,
-    startJourney,
-    deleteJourney,
-    endJourney,
-  };
+    async deleteJourney(journeyId: number) {
+      this.isLoading = true;
+      try {
+        await api.delete(`/journeys/${journeyId}`);
+        this.journeys = this.journeys.filter(j => j.id !== journeyId);
+        Notify.create({ type: 'positive', message: 'Operação excluída com sucesso!' });
+        
+        const dashboardStore = useDashboardStore();
+        await dashboardStore.fetchSummary();
+      } catch (error: unknown) {
+        console.error('Falha ao excluir operação:', error);
+        Notify.create({ type: 'negative', message: 'Erro ao excluir operação.' });
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async startJourney(journeyData: JourneyCreate): Promise<void> {
+      this.isLoading = true;
+      try {
+        const response = await api.post<Journey>('/journeys/start', journeyData);
+        this.journeys.unshift(response.data);
+        const dashboardStore = useDashboardStore();
+        await dashboardStore.fetchSummary();
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async endJourney(journeyId: number, journeyData: JourneyUpdate): Promise<Vehicle | null> {
+      this.isLoading = true;
+      try {
+        const response = await api.put<{ journey: Journey, vehicle: Vehicle }>(
+          `/journeys/${journeyId}/end`,
+          journeyData
+        );
+        const index = this.journeys.findIndex(j => j.id === journeyId);
+        if (index !== -1) {
+          this.journeys[index] = response.data.journey;
+        }
+        const dashboardStore = useDashboardStore();
+        await dashboardStore.fetchSummary();
+        return response.data.vehicle;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+  },
 });

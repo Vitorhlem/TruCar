@@ -5,6 +5,47 @@
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
         <q-toolbar-title>TruCar</q-toolbar-title>
         
+        <q-space />
+
+        <q-chip
+          v-if="isDemo"
+          clickable
+          @click="showUpgradeDialog"
+          color="amber"
+          text-color="black"
+          icon="workspace_premium"
+          label="Plano Demo"
+          class="q-mr-sm cursor-pointer"
+          size="sm"
+        >
+          <q-tooltip class="bg-black text-body2" :offset="[10, 10]">
+            <div>
+              <div class="text-weight-bold">Limites do Plano de Demonstração</div>
+              <q-list dense>
+                <q-item class="q-pl-none">
+                  <q-item-section avatar style="min-width: 30px"><q-icon name="local_shipping" /></q-item-section>
+                  <q-item-section>
+                    Veículos: {{ demoStore.stats?.vehicle_count }} / {{ demoStore.stats?.vehicle_limit }}
+                  </q-item-section>
+                </q-item>
+                <q-item class="q-pl-none">
+                  <q-item-section avatar style="min-width: 30px"><q-icon name="engineering" /></q-item-section>
+                  <q-item-section>
+                    Motoristas: {{ demoStore.stats?.driver_count }} / {{ demoStore.stats?.driver_limit }}
+                  </q-item-section>
+                </q-item>
+                <q-item class="q-pl-none">
+                  <q-item-section avatar style="min-width: 30px"><q-icon name="route" /></q-item-section>
+                  <q-item-section>
+                    Jornadas este mês: {{ demoStore.stats?.journey_count }} / {{ demoStore.stats?.journey_limit }}
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div>Clique para saber mais sobre o plano completo.</div>
+            </div>
+          </q-tooltip>
+        </q-chip>
+        
         <q-btn v-if="authStore.isManager" flat round dense icon="notifications" class="q-mr-sm">
           <q-badge v-if="notificationStore.unreadCount > 0" color="red" floating>{{ notificationStore.unreadCount }}</q-badge>
           <q-menu @show="notificationStore.fetchNotifications()" style="width: 350px">
@@ -22,18 +63,6 @@
         </q-btn-dropdown>
       </q-toolbar>
     </q-header>
-
-    <!-- ===== BANNER DO PLANO DEMO ADICIONADO ===== -->
-    <q-banner v-if="isDemoPlan" inline-actions class="bg-primary text-white shadow-2">
-      <template v-slot:avatar>
-        <q-icon name="workspace_premium" color="white" />
-      </template>
-      <div class="text-weight-medium">Você está no Plano Demo.</div>
-      <template v-slot:action>
-        <q-btn flat dense color="white" label="Desbloquear todos os recursos" @click="showUpgradeDialog" />
-      </template>
-    </q-banner>
-    <!-- ===== FIM DA ADIÇÃO ===== -->
 
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
       <q-scroll-area class="fit">
@@ -54,25 +83,26 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar'; // <-- ADICIONADO
+import { useQuasar } from 'quasar';
 import { useAuthStore } from 'stores/auth-store';
 import { useNotificationStore } from 'stores/notification-store';
 import { useTerminologyStore } from 'stores/terminology-store';
+import { useDemoStore } from 'stores/demo-store';
 
 const leftDrawerOpen = ref(false);
 const router = useRouter();
-const $q = useQuasar(); // <-- ADICIONADO
+const $q = useQuasar();
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const terminologyStore = useTerminologyStore();
+const demoStore = useDemoStore();
 
 let pollTimer: number;
 
 function toggleLeftDrawer() { leftDrawerOpen.value = !leftDrawerOpen.value; }
 function handleLogout() { authStore.logout(); void router.push('/auth/login'); }
 
-// --- LÓGICA DO PLANO DEMO ADICIONADA ---
-const isDemoPlan = computed(() => authStore.user?.organization?.plan_status === 'demo');
+const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
 
 function showUpgradeDialog() {
   $q.dialog({
@@ -86,7 +116,6 @@ function showUpgradeDialog() {
     persistent: true
   });
 }
-// --- FIM DA ADIÇÃO ---
 
 const essentialLinks = computed(() => {
   const baseLinks = [
@@ -128,17 +157,21 @@ const essentialLinks = computed(() => {
 
   const managerLinks = [];
   if (isManager) {
-    managerLinks.push({
-      title: 'Gestão de Utilizadores',
-      icon: 'manage_accounts',
-      to: '/users',
-    });
+    managerLinks.push(
+      { title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' },
+      // --- LINK DE RELATÓRIOS ADICIONADO ---
+      { title: 'Relatórios', icon: 'summarize', to: '/reports' }
+    );
   }
 
   return [...baseLinks, ...sectorLinks, ...commonLinks, ...managerLinks];
 });
 
 onMounted(() => {
+  if (isDemo.value) {
+    void demoStore.fetchDemoStats();
+  }
+
   if (authStore.isManager) {
     void notificationStore.fetchUnreadCount();
     pollTimer = window.setInterval(() => { void notificationStore.fetchUnreadCount(); }, 60000);
@@ -149,24 +182,20 @@ onUnmounted(() => { clearInterval(pollTimer); });
 </script>
 
 <style lang="scss" scoped>
-// Seus estilos permanecem os mesmos
 :deep(.q-drawer) {
   background: #1a1616;
 }
-
 .q-drawer .q-list .q-item {
   color: $grey-2;
   .q-item__section--avatar {
     color: $grey-2;
   }
 }
-
 .q-drawer .q-list .q-item.q-router-link--active {
   color: $primary;
   font-weight: 600;
   background-color: rgba($primary, 0.1);
   border-left: 4px solid $primary;
-
   .q-item__section--avatar {
     color: $primary;
   }

@@ -1,4 +1,3 @@
-// --- CORREÇÃO: Adicionamos TODOS os setores possíveis ao tipo ---
 export type UserSector = 'agronegocio' | 'servicos' | 'frete' | 'construcao_civil' | null;
 
 export interface User {
@@ -6,15 +5,16 @@ export interface User {
   email: string;
   full_name: string;
   is_active: boolean;
-  role: 'manager' | 'driver';
+  // --- CORRIGIDO ---
+  // Atualizamos os papéis para refletir a nova lógica de negócio
+  role: 'cliente_ativo' | 'cliente_demo' | 'driver';
+  // --- FIM DA CORREÇÃO ---
   avatar_url: string | null;
   organization: {
     id: number;
     name: string;
     sector: UserSector;
-    // --- ADICIONADO ---
-    // Agora o TypeScript sabe que a propriedade plan_status existe.
-    plan_status: 'demo' | 'active' | 'inactive';
+    // O campo 'plan_status' foi REMOVIDO daqui por ser obsoleto
   };
 }
 

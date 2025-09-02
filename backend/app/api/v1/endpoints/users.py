@@ -4,11 +4,7 @@ from typing import List
 
 from app import crud
 from app.api import deps
-# --- ADICIONADO ---
-# Importamos User, UserRole e PlanStatus para as verificações
 from app.models.user_model import User, UserRole
-from app.models.organization_model import PlanStatus
-# --- FIM DA ADIÇÃO ---
 from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic, UserStats
 
 router = APIRouter()
@@ -22,7 +18,6 @@ async def read_users(
     current_user: User = Depends(deps.get_current_active_manager),
 ):
     """Lista todos os utilizadores da organização do gestor."""
-    # O nome da função no crud foi corrigido para get_multi_by_org para padronização
     users = await crud.user.get_multi_by_org(
         db, organization_id=current_user.organization_id, skip=skip, limit=limit
     )
@@ -37,18 +32,15 @@ async def create_user(
     current_user: User = Depends(deps.get_current_active_manager),
 ):
     """Cria um novo utilizador (motorista) DENTRO da organização do gestor logado."""
-    # --- LÓGICA DE RESTRIÇÃO DO PLANO DEMO ADICIONADA ---
-    if current_user.organization.plan_status == PlanStatus.DEMO:
-        # Contamos quantos motoristas (role='driver') a organização já possui
+    if current_user.role == UserRole.CLIENTE_DEMO:
         driver_count = await crud.user.count_by_org(
             db, organization_id=current_user.organization_id, role=UserRole.DRIVER
         )
         if driver_count >= 2:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Seu Plano Demo permite o cadastro de apenas 2 motoristas. Para adicionar mais, realize o upgrade do seu plano."
+                detail="A sua conta de demonstração permite o cadastro de apenas 2 motoristas."
             )
-    # --- FIM DA LÓGICA DE RESTRIÇÃO ---
 
     user = await crud.user.get_user_by_email(db, email=user_in.email)
     if user:
@@ -57,11 +49,10 @@ async def create_user(
             detail="O e-mail fornecido já está registado no sistema.",
         )
     
-    # A role é definida aqui, no endpoint. Gestores criam motoristas por padrão.
     new_user = await crud.user.create(
         db=db, user_in=user_in, 
         organization_id=current_user.organization_id,
-        role=UserRole.DRIVER
+        role=user_in.role or UserRole.DRIVER # Usa o papel do input ou DRIVER como padrão
     )
     return new_user
 
@@ -73,12 +64,13 @@ async def read_user_by_id(
     user_id: int,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """
-    Busca os dados de um único utilizador da organização do gestor.
-    """
+    """Busca os dados de um único utilizador da organização do gestor."""
+    # --- CORRIGIDO ---
+    # A chamada agora usa a função 'get' padronizada com o parâmetro 'id'
     user = await crud.user.get(
-        db, user_id=user_id, organization_id=current_user.organization_id
+        db, id=user_id, organization_id=current_user.organization_id
     )
+    # --- FIM DA CORREÇÃO ---
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -105,7 +97,7 @@ async def update_user(
 ):
     """Atualiza um utilizador da organização do gestor."""
     user = await crud.user.get(
-        db, user_id=user_id, organization_id=current_user.organization_id
+        db, id=user_id, organization_id=current_user.organization_id
     )
     if not user:
         raise HTTPException(
@@ -131,7 +123,7 @@ async def delete_user(
         )
     
     user_to_delete = await crud.user.get(
-        db, user_id=user_id, organization_id=current_user.organization_id
+        db, id=user_id, organization_id=current_user.organization_id
     )
     if not user_to_delete:
         raise HTTPException(status_code=404, detail="Utilizador não encontrado.")

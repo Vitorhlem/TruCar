@@ -3,11 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.api import deps
-from app.models.user_model import User
+from app.models.user_model import User, UserRole
 # --- ADICIONADO ---
 # Importamos o Enum para verificar o status do plano da organização
-from app.models.organization_model import PlanStatus
 # --- FIM DA ADIÇÃO ---
+from sqlalchemy.exc import IntegrityError
+
 from app.schemas.vehicle_schema import (
     VehicleCreate, 
     VehicleUpdate, 
@@ -47,6 +48,7 @@ async def read_vehicles(
     return {"vehicles": vehicles, "total_items": total_items}
 
 
+
 @router.get("/{vehicle_id}", response_model=VehiclePublic)
 async def read_vehicle_by_id(
     *,
@@ -75,23 +77,29 @@ async def create_vehicle(
     """
     Cria um novo veículo para a organização do gestor logado.
     """
-    # --- LÓGICA DE RESTRIÇÃO DO PLANO DEMO ADICIONADA ---
-    # Verificamos se a organização do usuário está no plano de demonstração
-    if current_user.organization.plan_status == PlanStatus.DEMO:
-        # Se estiver, contamos quantos veículos a organização já possui
+    # --- LÓGICA DE RESTRIÇÃO ATUALIZADA ---
+    # Agora a verificação é feita sobre o PAPEL do utilizador, não sobre a organização.
+    if current_user.role == UserRole.CLIENTE_DEMO:
         vehicle_count = await crud.vehicle.count_by_org(db, organization_id=current_user.organization_id)
-        # Se o número de veículos for 1 ou mais, bloqueamos a criação
         if vehicle_count >= 1:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Seu Plano Demo permite o cadastro de apenas 1 veículo. Para adicionar mais, por favor, realize o upgrade do seu plano."
+                detail="A sua conta de demonstração permite o cadastro de apenas 1 veículo."
             )
-    # --- FIM DA LÓGICA DE RESTRIÇÃO ---
+    # --- FIM DA ATUALIZAÇÃO ---
 
-    vehicle = await crud.vehicle.create_with_owner(
-        db=db, obj_in=vehicle_in, organization_id=current_user.organization_id
-    )
-    return vehicle
+    try:
+        vehicle = await crud.vehicle.create_with_owner(
+            db=db, obj_in=vehicle_in, organization_id=current_user.organization_id
+        )
+        return vehicle
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Um veículo com esta placa ou identificador já existe na sua organização.",
+        )
+
 
 
 @router.put("/{vehicle_id}", response_model=VehiclePublic)

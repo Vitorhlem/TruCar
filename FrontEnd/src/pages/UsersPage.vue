@@ -59,6 +59,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { useUserStore } from 'stores/user-store';
 import { useRouter } from 'vue-router';
+import { isAxiosError } from 'axios';
 import type { User } from 'src/models/auth-models';
 import type { UserCreate, UserUpdate } from 'src/models/user-models';
 
@@ -71,11 +72,16 @@ const isSubmitting = ref(false);
 const editingUserId = ref<number | null>(null);
 
 const isEditing = computed(() => editingUserId.value !== null);
+
+// --- OPÇÕES DE PAPEL ATUALIZADAS ---
 const roleOptions = [
-  { label: 'Gestor', value: 'manager' },
+  { label: 'Cliente Ativo (Gestor)', value: 'cliente_ativo' },
+  { label: 'Cliente Demo (Gestor Limitado)', value: 'cliente_demo' },
   { label: 'Motorista', value: 'driver' }
 ];
+// --- FIM DA ATUALIZAÇÃO ---
 
+// A tipagem aqui agora funciona porque UserCreate e UserUpdate estão corretas
 const formData = ref<Partial<UserCreate & UserUpdate>>({});
 
 const columns: QTableColumn[] = [
@@ -104,6 +110,7 @@ function openCreateDialog() {
 function openEditDialog(user: User) {
   resetForm();
   editingUserId.value = user.id;
+  // O spread agora funciona sem erros de tipo
   formData.value = { ...user, password: '' };
   isFormDialogOpen.value = true;
 }
@@ -115,14 +122,22 @@ async function onFormSubmit() {
     if (isEditing.value && !payload.password) {
       delete payload.password;
     }
+
     if (isEditing.value && editingUserId.value) {
-      await userStore.updateUser(editingUserId.value, payload);
+      await userStore.updateUser(editingUserId.value, payload as UserUpdate);
     } else {
       await userStore.addNewUser(payload as UserCreate);
     }
     isFormDialogOpen.value = false;
-  } catch {
-    console.log('O formulário não fecha pois a operação falhou.');
+    $q.notify({ type: 'positive', message: 'Usuário salvo com sucesso!' });
+  } catch (error) {
+    // --- TRATAMENTO DE ERRO MELHORADO ---
+    let message = 'Erro ao salvar o usuário.';
+    if (isAxiosError(error) && error.response?.data?.detail) {
+      message = error.response.data.detail as string;
+    }
+    $q.notify({ type: 'negative', message });
+    // --- FIM DA MELHORIA ---
   } finally {
     isSubmitting.value = false;
   }
