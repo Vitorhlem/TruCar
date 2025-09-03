@@ -126,6 +126,17 @@ async def update(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -> Use
     return db_user
 
 
+# --- NOVA FUNÇÃO ADICIONADA ---
+async def update_password(db: AsyncSession, *, db_user: User, new_password: str) -> User:
+    """Atualiza a senha de um utilizador."""
+    hashed_password = get_password_hash(new_password)
+    db_user.hashed_password = hashed_password
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+# --- FIM DA ADIÇÃO ---
+
 async def get_users_by_role(
     db: AsyncSession,
     *,

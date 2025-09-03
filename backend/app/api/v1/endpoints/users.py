@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app import crud
+from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic, UserStats, UserPasswordUpdate, UserNotificationPrefsUpdate
+from app.core.security import verify_password # Importamos a verificação de senha
 from app.api import deps
 from app.models.user_model import User, UserRole
 from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic, UserStats
@@ -23,6 +25,24 @@ async def read_users(
     )
     return users
 
+@router.put("/me/preferences", response_model=UserPublic)
+async def update_current_user_preferences(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    prefs_in: UserNotificationPrefsUpdate,
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Atualiza as preferências de notificação do utilizador logado.
+    """
+    # Usamos o schema UserUpdate genérico para passar os dados para a função de update do CRUD
+    update_data = UserUpdate(
+        notify_in_app=prefs_in.notify_in_app,
+        notify_by_email=prefs_in.notify_by_email
+    )
+    
+    updated_user = await crud.user.update(db=db, db_user=current_user, user_in=update_data)
+    return updated_user
 
 @router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 async def create_user(
@@ -56,6 +76,28 @@ async def create_user(
     )
     return new_user
 
+@router.put("/me/password", response_model=UserPublic)
+async def update_current_user_password(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    password_data: UserPasswordUpdate,
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Atualiza a senha do utilizador logado.
+    """
+    # 1. Verifica se a senha atual fornecida está correta
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A senha atual está incorreta."
+        )
+    
+    # 2. Se estiver correta, atualiza para a nova senha
+    updated_user = await crud.user.update_password(
+        db, db_user=current_user, new_password=password_data.new_password
+    )
+    return updated_user
 
 @router.get("/{user_id}", response_model=UserPublic)
 async def read_user_by_id(

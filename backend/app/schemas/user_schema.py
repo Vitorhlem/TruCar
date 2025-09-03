@@ -22,12 +22,27 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     is_active: Optional[bool] = None
     role: Optional[UserRole] = None
+    # Adicionamos as preferências aqui para permitir a edição via admin se necessário
+    notify_in_app: Optional[bool] = None
+    notify_by_email: Optional[bool] = None
+
+class UserPasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
+# --- FIM DA ADIÇÃO ---
+
+class UserNotificationPrefsUpdate(BaseModel):
+    notify_in_app: bool
+    notify_by_email: bool
 
 class UserPublic(UserBase):
     id: int
     organization: OrganizationPublic
     role: UserRole
-    is_superuser: bool # <-- CAMPO ADICIONADO
+    is_superuser: bool
+    # Adicionamos as preferências à resposta principal do utilizador
+    notify_in_app: bool
+    notify_by_email: bool
 
     model_config = { "from_attributes": True }
 
