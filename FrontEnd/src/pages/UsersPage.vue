@@ -30,7 +30,7 @@
     </q-card>
 
     <q-dialog v-model="isFormDialogOpen">
-      <q-card style="width: 500px; max-width: 90vw;">
+      <q-card style="width: 500px; max-width: 90vw;" :dark="$q.dark.isActive">
         <q-card-section>
           <div class="text-h6">{{ isEditing ? 'Editar Usuário' : 'Novo Usuário' }}</div>
         </q-card-section>
@@ -40,7 +40,23 @@
             <q-input outlined v-model="formData.full_name" label="Nome Completo *" :rules="[val => !!val || 'Campo obrigatório']" />
             <q-input outlined v-model="formData.email" type="email" label="E-mail *" :rules="[val => !!val || 'Campo obrigatório']" />
             <q-input outlined v-model="formData.avatar_url" label="URL da Foto do Perfil" />
-            <q-select outlined v-model="formData.role" :options="roleOptions" label="Função *" emit-value map-options />
+            
+            <q-select
+              outlined
+              v-model="formData.role"
+              :options="roleOptions"
+              label="Função *"
+              emit-value
+              map-options
+              :disable="isRoleSelectorDisabled"
+            >
+              <template v-if="isRoleSelectorDisabled" v-slot:append>
+                <q-icon name="admin_panel_settings" color="grey-7">
+                  <q-tooltip>Apenas Super Admins podem alterar papéis.</q-tooltip>
+                </q-icon>
+              </template>
+            </q-select>
+
             <q-input outlined v-model="formData.password" type="password" :label="isEditing ? 'Nova Senha (deixe em branco para não alterar)' : 'Senha *'" :rules="isEditing ? [] : [val => !!val || 'Campo obrigatório']" />
             <q-toggle v-if="isEditing" v-model="formData.is_active" label="Usuário Ativo" />
           </q-card-section>
@@ -58,6 +74,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { useUserStore } from 'stores/user-store';
+import { useAuthStore } from 'stores/auth-store';
 import { useRouter } from 'vue-router';
 import { isAxiosError } from 'axios';
 import type { User } from 'src/models/auth-models';
@@ -66,6 +83,7 @@ import type { UserCreate, UserUpdate } from 'src/models/user-models';
 
 const $q = useQuasar();
 const userStore = useUserStore();
+const authStore = useAuthStore();
 const router = useRouter();
 const isFormDialogOpen = ref(false);
 const isSubmitting = ref(false);
@@ -73,22 +91,23 @@ const editingUserId = ref<number | null>(null);
 
 const isEditing = computed(() => editingUserId.value !== null);
 
-// --- OPÇÕES DE PAPEL ATUALIZADAS ---
 const roleOptions = [
   { label: 'Cliente Ativo (Gestor)', value: 'cliente_ativo' },
   { label: 'Cliente Demo (Gestor Limitado)', value: 'cliente_demo' },
   { label: 'Motorista', value: 'driver' }
 ];
-// --- FIM DA ATUALIZAÇÃO ---
 
-// A tipagem aqui agora funciona porque UserCreate e UserUpdate estão corretas
 const formData = ref<Partial<UserCreate & UserUpdate>>({});
+
+const isRoleSelectorDisabled = computed(() => {
+  return !authStore.isSuperuser;
+});
 
 const columns: QTableColumn[] = [
   { name: 'full_name', label: 'Nome Completo', field: 'full_name', align: 'left', sortable: true },
   { name: 'email', label: 'E-mail', field: 'email', align: 'left', sortable: true },
-  { name: 'role', label: 'Função', field: 'role', align: 'center' },
-  { name: 'is_active', label: 'Status', field: 'is_active', align: 'center' },
+  { name: 'role', label: 'Função', field: 'role', align: 'center', sortable: true, format: (val) => roleOptions.find(r => r.value === val)?.label || val },
+  { name: 'is_active', label: 'Status', field: 'is_active', align: 'center', format: (val) => val ? 'Ativo' : 'Inativo' }, // Corrigido para exibir texto no status
   { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
 ];
 
@@ -110,7 +129,6 @@ function openCreateDialog() {
 function openEditDialog(user: User) {
   resetForm();
   editingUserId.value = user.id;
-  // O spread agora funciona sem erros de tipo
   formData.value = { ...user, password: '' };
   isFormDialogOpen.value = true;
 }
@@ -131,13 +149,11 @@ async function onFormSubmit() {
     isFormDialogOpen.value = false;
     $q.notify({ type: 'positive', message: 'Usuário salvo com sucesso!' });
   } catch (error) {
-    // --- TRATAMENTO DE ERRO MELHORADO ---
     let message = 'Erro ao salvar o usuário.';
     if (isAxiosError(error) && error.response?.data?.detail) {
       message = error.response.data.detail as string;
     }
     $q.notify({ type: 'negative', message });
-    // --- FIM DA MELHORIA ---
   } finally {
     isSubmitting.value = false;
   }

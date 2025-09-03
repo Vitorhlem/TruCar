@@ -21,16 +21,22 @@ const routes: RouteRecordRaw[] = [
       { path: 'live-map', component: () => import('pages/LiveMapPage.vue')},
       { path: 'freight-orders', component: () => import('pages/FreightOrdersPage.vue') },
       { path: 'driver-cockpit', component: () => import('pages/DriverCockpitPage.vue') },
-      { path: 'clients', component: () => import('pages/ClientsPage.vue'),
-
+      { path: 'clients', component: () => import('pages/ClientsPage.vue') },
+      { path: 'settings', name: 'settings', component: () => import('pages/SettingsPage.vue'), 
       
-        
-        meta: { requiresAuth: true, requiredRole: 'manager' } // Apenas gestores
-  },
+      },
+
+      // --- ROTA DO PAINEL ADMIN ADICIONADA ---
+      {
+        path: 'admin',
+        name: 'admin',
+        component: () => import('pages/AdminPage.vue'),
+        // Podemos adicionar uma proteção de rota aqui no futuro se necessário
+      },
     ],
   },
   {
-    path: '/auth', // <-- Agrupamos as rotas de autenticação
+    path: '/auth',
     component: () => import('layouts/BlankLayout.vue'),
     children: [
       { path: 'login', name: 'login', component: () => import('pages/LoginPage.vue') },

@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
+import { isAxiosError } from 'axios';
 import type { Journey } from 'src/models/journey-models';
 import type { FreightOrder, FreightOrderCreate, FreightOrderUpdate, FreightOrderClaim } from 'src/models/freight-order-models';
 
-// O estado inicial da nossa store
 const initialState = () => ({
   freightOrders: [] as FreightOrder[],
   myPendingOrders: [] as FreightOrder[],
@@ -16,34 +16,38 @@ const initialState = () => ({
 
 export const useFreightOrderStore = defineStore('freightOrder', {
   state: initialState,
-
   getters: {
     activeFreightOrder: (state) => 
       state.myPendingOrders.find(o => o.status === 'Em Trânsito') || null,
     claimedFreightOrders: (state) => 
       state.myPendingOrders.filter(o => o.status === 'Atribuída'),
   },
-
   actions: {
     async fetchAllFreightOrders() {
+      // (Esta função já estava correta, mas vou adicionar a melhoria de erro)
       this.isLoading = true;
       try {
         const response = await api.get<FreightOrder[]>('/freight-orders/');
         this.freightOrders = response.data;
       } catch (error) {
-        Notify.create({ type: 'negative', message: 'Falha ao buscar ordens de frete.' });
+        let message = 'Falha ao buscar ordens de frete.';
+        if (isAxiosError(error) && error.response?.data?.detail) message = error.response.data.detail as string;
+        Notify.create({ type: 'negative', message });
       } finally { 
         this.isLoading = false; 
       }
     },
 
-    async fetchOpenOrders() {
+
+     async fetchOpenOrders() {
       this.isLoading = true;
       try {
         const response = await api.get<FreightOrder[]>('/freight-orders/open');
         this.openOrders = response.data;
-      } catch (error) {
-        Notify.create({ type: 'negative', message: 'Falha ao buscar fretes abertos.' });
+      } catch (error) { // <-- CORRIGIDO
+        let message = 'Falha ao buscar fretes abertos.';
+        if (isAxiosError(error) && error.response?.data?.detail) message = error.response.data.detail as string;
+        Notify.create({ type: 'negative', message });
       } finally { 
         this.isLoading = false; 
       }
@@ -54,12 +58,15 @@ export const useFreightOrderStore = defineStore('freightOrder', {
       try {
         const response = await api.get<FreightOrder[]>('/freight-orders/my-pending');
         this.myPendingOrders = response.data;
-      } catch (error) {
-        Notify.create({ type: 'negative', message: 'Falha ao buscar suas tarefas.' });
+      } catch (error) { // <-- CORRIGIDO
+        let message = 'Falha ao buscar suas tarefas.';
+        if (isAxiosError(error) && error.response?.data?.detail) message = error.response.data.detail as string;
+        Notify.create({ type: 'negative', message });
       } finally { 
         this.isLoading = false; 
       }
     },
+    
 
     async fetchOrderDetails(orderId: number) {
       this.isDetailsLoading = true;

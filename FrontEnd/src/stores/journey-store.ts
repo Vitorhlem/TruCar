@@ -5,6 +5,7 @@ import type { Journey, JourneyCreate, JourneyUpdate } from 'src/models/journey-m
 import type { Vehicle } from 'src/models/vehicle-models';
 import { useAuthStore } from './auth-store';
 import { useDashboardStore } from './dashboard-store';
+import { useDemoStore } from './demo-store';
 
 interface JourneyFilters {
   driver_id?: number | null;
@@ -13,21 +14,18 @@ interface JourneyFilters {
   date_to?: string | null;
 }
 
-const initialState = () => ({
-  journeys: [] as Journey[],
-  isLoading: false,
-});
-
 export const useJourneyStore = defineStore('journey', {
-  state: initialState,
+  state: () => ({
+    journeys: [] as Journey[],
+    isLoading: false,
+  }),
 
   getters: {
     activeJourneys: (state) => state.journeys.filter((j) => j.is_active),
     
-    currentUserActiveJourney(state): Journey | null {
+    currentUserActiveJourney(): Journey | null {
       const authStore = useAuthStore();
       if (!authStore.user) return null;
-      // Precisamos de usar o 'this' para aceder a outros getters dentro da mesma store
       return this.activeJourneys.find((j) => j.driver.id === authStore.user?.id) || null;
     },
   },
@@ -56,8 +54,12 @@ export const useJourneyStore = defineStore('journey', {
         this.journeys = this.journeys.filter(j => j.id !== journeyId);
         Notify.create({ type: 'positive', message: 'Operação excluída com sucesso!' });
         
-        const dashboardStore = useDashboardStore();
-        await dashboardStore.fetchSummary();
+        await useDashboardStore().fetchSummary();
+
+        const authStore = useAuthStore();
+        if (authStore.isDemo) {
+          await useDemoStore().fetchDemoStats(true);
+        }
       } catch (error: unknown) {
         console.error('Falha ao excluir operação:', error);
         Notify.create({ type: 'negative', message: 'Erro ao excluir operação.' });
@@ -72,8 +74,12 @@ export const useJourneyStore = defineStore('journey', {
       try {
         const response = await api.post<Journey>('/journeys/start', journeyData);
         this.journeys.unshift(response.data);
-        const dashboardStore = useDashboardStore();
-        await dashboardStore.fetchSummary();
+        await useDashboardStore().fetchSummary();
+
+        const authStore = useAuthStore();
+        if (authStore.isDemo) {
+          await useDemoStore().fetchDemoStats(true);
+        }
       } finally {
         this.isLoading = false;
       }
@@ -90,8 +96,7 @@ export const useJourneyStore = defineStore('journey', {
         if (index !== -1) {
           this.journeys[index] = response.data.journey;
         }
-        const dashboardStore = useDashboardStore();
-        await dashboardStore.fetchSummary();
+        await useDashboardStore().fetchSummary();
         return response.data.vehicle;
       } finally {
         this.isLoading = false;
