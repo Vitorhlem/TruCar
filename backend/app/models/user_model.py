@@ -3,16 +3,12 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SAE
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
+from app.core.config import settings # <-- ADICIONADO
 
-# --- ENUM DE PAPÉIS FINAL ---
 class UserRole(str, enum.Enum):
-    # Representa o "Cliente Ativo" com acesso total de gestor
     CLIENTE_ATIVO = "cliente_ativo"
-    # Representa o "Cliente Demo" com acesso limitado de gestor
     CLIENTE_DEMO = "cliente_demo"
-    # Papel para os motoristas da frota
     DRIVER = "driver"
-# --- FIM DA ALTERAÇÃO ---
 
 
 class User(Base):
@@ -22,12 +18,19 @@ class User(Base):
     full_name = Column(String(100), index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(SAEnum(UserRole), nullable=False) # Usa o Enum final
+    role = Column(SAEnum(UserRole), nullable=False)
     is_active = Column(Boolean(), default=True)
     avatar_url = Column(String(512), nullable=True)
     
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization", back_populates="users")
+
+    # --- NOVA PROPRIEDADE ADICIONADA ---
+    @property
+    def is_superuser(self) -> bool:
+        """Verifica se o e-mail do utilizador está na lista de super admins nas configurações."""
+        return self.email in settings.SUPERUSER_EMAILS
+    # --- FIM DA ADIÇÃO ---
 
     # Relações (permanecem as mesmas)
     freight_orders = relationship("FreightOrder", back_populates="driver")

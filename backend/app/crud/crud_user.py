@@ -71,15 +71,25 @@ async def get_user_by_email(db: AsyncSession, *, email: str, load_organization: 
     return result.scalars().first()
 
 
-async def get_multi_by_org(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100) -> List[User]:
-    """Retorna uma lista de utilizadores de uma organização."""
+async def get_multi_by_org(db: AsyncSession, *, organization_id: int | None = None, skip: int = 0, limit: int = 100) -> List[User]:
+    """
+    Retorna uma lista de utilizadores.
+    Se 'organization_id' for fornecido, filtra por essa organização.
+    Caso contrário, retorna todos os utilizadores da plataforma.
+    """
     stmt = (
         select(User)
-        .where(User.organization_id == organization_id)
         .options(selectinload(User.organization))
         .order_by(User.full_name)
-        .offset(skip).limit(limit)
     )
+    # --- LÓGICA ATUALIZADA ---
+    # Só aplicamos o filtro de organização se um ID for passado
+    if organization_id:
+        stmt = stmt.where(User.organization_id == organization_id)
+    
+    stmt = stmt.offset(skip).limit(limit)
+    # --- FIM DA ATUALIZAÇÃO ---
+    
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -116,12 +126,29 @@ async def update(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -> Use
     return db_user
 
 
-async def get_users_by_role(db: AsyncSession, *, organization_id: int, role: UserRole, skip: int = 0, limit: int = 100) -> List[User]:
+async def get_users_by_role(
+    db: AsyncSession,
+    *,
+    role: UserRole,
+    organization_id: int | None = None, # <-- Tornámos este parâmetro opcional
+    skip: int = 0,
+    limit: int = 100
+) -> List[User]:
+    """
+    Busca utilizadores com um papel específico.
+    Se 'organization_id' for fornecido, filtra por essa organização.
+    Caso contrário, busca em todas as organizações (útil para super admins).
+    """
     stmt = select(User).where(
         User.role == role,
-        User.is_active == True,
-        User.organization_id == organization_id
-    ).offset(skip).limit(limit)
+        User.is_active == True
+    ).options(selectinload(User.organization)) # Carregamos a organização para exibir na tabela
+
+    # Se um ID de organização for passado, adicionamos o filtro
+    if organization_id:
+        stmt = stmt.where(User.organization_id == organization_id)
+    
+    stmt = stmt.order_by(User.id.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
 

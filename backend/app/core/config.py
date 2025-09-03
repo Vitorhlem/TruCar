@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # Coloque aqui o seu e-mail de administrador para ter acesso aos endpoints protegidos.
     # Se tiver mais de um, separe por vírgula dentro das aspas no seu arquivo .env
     # Ex: SUPERUSER_EMAILS="admin1@email.com,admin2@email.com"
-    SUPERUSER_EMAILS: Set[str] = {"gestao1@empresa.com"}
+    SUPERUSER_EMAILS: Set[str] = {"admin@admin.com"}
     # --- FIM DA ADIÇÃO --
 
     SMTP_SERVER: str
