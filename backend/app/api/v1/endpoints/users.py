@@ -96,15 +96,27 @@ async def update_user(
     current_user: User = Depends(deps.get_current_active_manager),
 ):
     """Atualiza um utilizador da organização do gestor."""
-    user = await crud.user.get(
+    user_to_update = await crud.user.get(
         db, id=user_id, organization_id=current_user.organization_id
     )
-    if not user:
+    if not user_to_update:
         raise HTTPException(
             status_code=404,
             detail="O utilizador não foi encontrado nesta organização.",
         )
-    updated_user = await crud.user.update(db=db, db_user=user, user_in=user_in)
+
+    # --- REGRA DE SEGURANÇA ADICIONADA ---
+    # Verificamos se a atualização tenta mudar o 'role'.
+    if user_in.role is not None and user_in.role != user_to_update.role:
+        # Se sim, verificamos se o utilizador que faz o pedido é um super admin.
+        if not current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas administradores do sistema podem alterar o papel de um utilizador."
+            )
+    # --- FIM DA REGRA DE SEGURANÇA ---
+    
+    updated_user = await crud.user.update(db=db, db_user=user_to_update, user_in=user_in)
     return updated_user
 
 

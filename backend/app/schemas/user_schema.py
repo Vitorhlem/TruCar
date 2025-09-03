@@ -1,13 +1,9 @@
-# ARQUIVO: backend/app/schemas/user_schema.py
-
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 
 from app.models.organization_model import Sector
 from app.models.user_model import UserRole
 from .organization_schema import OrganizationPublic
-
-# --- SCHEMAS BASE DE UTILIZADOR ---
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -17,6 +13,8 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    role: Optional[UserRole] = None
+    organization_id: Optional[int] = None
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -29,10 +27,9 @@ class UserPublic(UserBase):
     id: int
     organization: OrganizationPublic
     role: UserRole
+    is_superuser: bool # <-- CAMPO ADICIONADO
 
     model_config = { "from_attributes": True }
-
-# --- SCHEMA PARA REGISTO DE NOVO UTILIZADOR/EMPRESA ---
 
 class UserRegister(BaseModel):
     full_name: str
