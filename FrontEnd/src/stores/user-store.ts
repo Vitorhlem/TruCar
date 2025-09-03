@@ -1,127 +1,128 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 import { isAxiosError } from 'axios';
 import type { User } from 'src/models/auth-models';
 import type { UserCreate, UserUpdate, UserStats } from 'src/models/user-models';
+import { useAuthStore } from './auth-store'; // <-- IMPORTAMOS A AUTH STORE
+import { useDemoStore } from './demo-store'; // <-- IMPORTAMOS A DEMO STORE
 
+const initialState = () => ({
+  users: [] as User[],
+  isLoading: false,
+  selectedUserStats: null as UserStats | null,
+  selectedUser: null as User | null,
+});
 
-export const useUserStore = defineStore('user', () => {
-  const users = ref<User[]>([]);
-  const isLoading = ref(false);
-  const selectedUserStats = ref<UserStats | null>(null);
-  const selectedUser = ref<User | null>(null); // Novo estado para o usuário selecionado
+export const useUserStore = defineStore('user', {
+  state: initialState,
 
-  // --- ACTIONS ---
-
-    async function deleteUser(userId: number) {
-    isLoading.value = true;
-    try {
-      await api.delete(`/users/${userId}`);
-      // Remove o usuário da lista local para atualização instantânea da UI
-      users.value = users.value.filter(u => u.id !== userId);
-      Notify.create({ type: 'positive', message: 'Usuário excluído com sucesso!' });
-    } catch (error: unknown) {
-      console.error('Falha ao excluir usuário:', error);
-      let message = 'Erro ao excluir usuário.';
-      if (isAxiosError(error) && error.response?.data?.detail) {
-        message = error.response.data.detail as string;
+  actions: {
+    async fetchAllUsers() {
+      this.isLoading = true;
+      try {
+        const response = await api.get<User[]>('/users/');
+        this.users = response.data;
+      } catch (error) {
+        Notify.create({ type: 'negative', message: 'Falha ao carregar usuários.' });
+        console.error('Falha ao buscar usuários:', error);
+      } finally {
+        this.isLoading = false;
       }
-      Notify.create({ type: 'negative', message });
-      throw error;
-    } finally {
-      isLoading.value = false;
-    }
-  }
+    },
 
-  async function fetchAllUsers() {
-    isLoading.value = true;
-    try {
-      const response = await api.get<User[]>('/users/');
-      users.value = response.data;
-    } catch (error) {
-      Notify.create({ type: 'negative', message: 'Falha ao carregar usuários.' });
-      console.error('Falha ao buscar usuários:', error);
-    } finally {
-      isLoading.value = false;
-    }
-  }
+    async addNewUser(userData: UserCreate) {
+      this.isLoading = true;
+      try {
+        const response = await api.post<User>('/users/', userData);
+        this.users.unshift(response.data);
+        Notify.create({ type: 'positive', message: 'Usuário adicionado com sucesso!' });
 
-  async function addNewUser(userData: UserCreate) {
-    isLoading.value = true;
-    try {
-      const response = await api.post<User>('/users/', userData);
-      users.value.unshift(response.data);
-      Notify.create({ type: 'positive', message: 'Usuário adicionado com sucesso!' });
-    } catch (error: unknown) {
-      console.error('Falha ao adicionar usuário:', error);
-      let message = 'Erro ao criar usuário.';
-      if (isAxiosError(error) && error.response?.data?.detail) {
-        message = error.response.data.detail as string;
+        // --- ATUALIZAÇÃO AUTOMÁTICA ADICIONADA ---
+        const authStore = useAuthStore();
+        if (authStore.isDemo) {
+        await useDemoStore().fetchDemoStats(true);
+        }
+        // --- FIM DA ADIÇÃO ---
+
+      } catch (error: unknown) {
+        let message = 'Erro ao criar usuário.';
+        if (isAxiosError(error) && error.response?.data?.detail) {
+          message = error.response.data.detail as string;
+        }
+        Notify.create({ type: 'negative', message });
+        throw error;
+      } finally {
+        this.isLoading = false;
       }
-      Notify.create({ type: 'negative', message });
-      throw error;
-    } finally {
-      isLoading.value = false;
-    }
-  }
+    },
 
-  async function updateUser(userId: number, userData: UserUpdate) {
-    isLoading.value = true;
-    try {
-      const response = await api.put<User>(`/users/${userId}`, userData);
-      const index = users.value.findIndex(u => u.id === userId);
-      if (index !== -1) {
-        users.value[index] = response.data;
+    async updateUser(userId: number, userData: UserUpdate) {
+      this.isLoading = true;
+      try {
+        const response = await api.put<User>(`/users/${userId}`, userData);
+        const index = this.users.findIndex(u => u.id === userId);
+        if (index !== -1) {
+          this.users[index] = response.data;
+        }
+        Notify.create({ type: 'positive', message: 'Usuário atualizado com sucesso!' });
+      } catch (error: unknown) {
+        Notify.create({ type: 'negative', message: 'Erro ao atualizar usuário.' });
+        throw error;
+      } finally {
+        this.isLoading = false;
       }
-      Notify.create({ type: 'positive', message: 'Usuário atualizado com sucesso!' });
-    } catch (error: unknown) {
-      console.error('Falha ao atualizar usuário:', error);
-      Notify.create({ type: 'negative', message: 'Erro ao atualizar usuário.' });
-      throw error;
-    } finally {
-      isLoading.value = false;
-    }
-  }
+    },
 
-   async function fetchUserStats(userId: number) {
-    isLoading.value = true;
-    try {
-      const response = await api.get<UserStats>(`/users/${userId}/stats`);
-      selectedUserStats.value = response.data;
-    } catch {
-      Notify.create({ type: 'negative', message: 'Falha ao carregar estatísticas do usuário.' });
-    } finally {
-      isLoading.value = false;
-    }
-  }
+    async deleteUser(userId: number) {
+      this.isLoading = true;
+      try {
+        await api.delete(`/users/${userId}`);
+        this.users = this.users.filter(u => u.id !== userId);
+        Notify.create({ type: 'positive', message: 'Usuário excluído com sucesso!' });
 
-  async function fetchUserById(userId: number) {
-    isLoading.value = true;
-    try {
-      // Assumindo que você tenha um endpoint para buscar um usuário pelo ID
-      // Se não tiver, podemos criá-lo ou usar a lista 'users' se ela já estiver carregada.
-      const response = await api.get<User>(`/users/${userId}`);
-      selectedUser.value = response.data;
-    } catch (error) {
-      Notify.create({ type: 'negative', message: 'Falha ao carregar dados do usuário.' });
-      console.error(`Falha ao buscar usuário ${userId}:`, error);
-    } finally {
-      isLoading.value = false;
-    }
-  }
+        // --- ATUALIZAÇÃO AUTOMÁTICA ADICIONADA ---
+        const authStore = useAuthStore();
+        if (authStore.isDemo) {
+          await useDemoStore().fetchDemoStats(true);
+        }
+        // --- FIM DA ADIÇÃO ---
 
-return {
-    users,
-    isLoading,
-    selectedUserStats,
-    fetchAllUsers,
-    addNewUser,
-    updateUser,
-    deleteUser,
-    selectedUser,
-    fetchUserById,
-    fetchUserStats
-  };
+      } catch (error: unknown) {
+        let message = 'Erro ao excluir usuário.';
+        if (isAxiosError(error) && error.response?.data?.detail) {
+          message = error.response.data.detail as string;
+        }
+        Notify.create({ type: 'negative', message });
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async fetchUserStats(userId: number) {
+      this.isLoading = true;
+      try {
+        const response = await api.get<UserStats>(`/users/${userId}/stats`);
+        this.selectedUserStats = response.data;
+      } catch {
+        Notify.create({ type: 'negative', message: 'Falha ao carregar estatísticas do usuário.' });
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async fetchUserById(userId: number) {
+      this.isLoading = true;
+      try {
+        const response = await api.get<User>(`/users/${userId}`);
+        this.selectedUser = response.data;
+      } catch (error) {
+        Notify.create({ type: 'negative', message: 'Falha ao carregar dados do usuário.' });
+        console.error(`Falha ao buscar usuário ${userId}:`, error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+  },
 });

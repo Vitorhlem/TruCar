@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 
-// A interface é movida para fora para ser usada no 'state'
 export interface DemoStats {
   vehicle_count: number;
   vehicle_limit: number;
@@ -18,16 +17,17 @@ export const useDemoStore = defineStore('demo', {
   }),
 
   actions: {
-    async fetchDemoStats() {
-      // Evita chamadas desnecessárias
-      if (this.stats) return;
+    // Adicionamos um parâmetro 'force'
+    async fetchDemoStats(force = false) {
+      // A verificação agora só acontece se 'force' for falso
+      if (this.stats && !force) return;
 
       this.isLoading = true;
       try {
         const response = await api.get<DemoStats>('/dashboard/demo-stats');
         this.stats = response.data;
-      } catch {
-        console.error('Falha ao buscar as estatísticas da conta demo:', );
+      } catch (error) {
+        console.error('Falha ao buscar as estatísticas da conta demo:', error);
         this.stats = null;
       } finally {
         this.isLoading = false;

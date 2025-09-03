@@ -210,15 +210,4 @@ function promptToDelete(implement: Implement) {
 onMounted(() => {
   void implementStore.fetchAllImplementsForManagement();
 });
-</script>```
-
-### O que Foi Corrigido e Melhorado:
-
-1.  **Erro de Sintaxe no Botão:** Faltava um `"` no `@click="openDialog()"`. Isso foi corrigido.
-2.  **Importação da `authStore`:** Adicionei a linha `import { useAuthStore } from 'stores/auth-store';` para que o componente saiba de onde vem a lógica de autenticação.
-3.  **Instanciação da `authStore`:** Adicionei a linha `const authStore = useAuthStore();` para que a variável `authStore` ficasse disponível para uso no template.
-4.  **Melhoria de UX e Segurança:**
-    *   Adicionei `v-if="authStore.isManager"` também aos botões de "Editar" e "Excluir" dentro do card. Um motorista pode ver a lista, mas não deve poder alterá-la.
-    *   Adicionei um botão "Adicionar Primeiro Implemento" no estado vazio, que também só aparece para gestores, melhorando a experiência do primeiro uso.
-
-Agora, sua página de gerenciamento de implementos está completamente funcional e segura, respeitando as permissões de cada tipo de usuário.
+</script>
