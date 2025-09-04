@@ -87,7 +87,7 @@
                     </q-item-label>
                   </q-item-section>
                   <q-item-section side >
-                     <q-btn-toggle
+                      <q-btn-toggle
                         v-model="settingsStore.darkMode"
                         @update:model-value="updateDarkMode"
                         push
@@ -128,14 +128,13 @@ import { useQuasar } from 'quasar';
 import { isAxiosError } from 'axios';
 import { useAuthStore } from 'stores/auth-store';
 import { useSettingsStore } from 'stores/settings-store';
-import { api } from 'boot/axios'; // Importamos a API para a chamada
+import { api } from 'boot/axios';
 
 const authStore = useAuthStore();
 const settingsStore = useSettingsStore();
 const $q = useQuasar();
 const currentTab = ref('account');
 
-// --- ESTADO E LÓGICA PARA ALTERAÇÃO DE SENHA ---
 const isSubmitting = ref(false);
 const passwordForm = ref({
   current_password: '',
@@ -155,7 +154,6 @@ async function handleChangePassword() {
       type: 'positive',
       message: 'Senha alterada com sucesso!'
     });
-    // Limpa o formulário após o sucesso
     passwordForm.value.current_password = '';
     passwordForm.value.new_password = '';
     passwordForm.value.confirm_password = '';
@@ -169,8 +167,6 @@ async function handleChangePassword() {
     isSubmitting.value = false;
   }
 }
-// --- FIM DA LÓGICA DE SENHA ---
-
 
 const tabs = computed(() => {
   const allTabs = [
@@ -188,5 +184,6 @@ const tabs = computed(() => {
 
 function updateDarkMode(value: boolean | 'auto') {
   settingsStore.setDarkMode(value);
+  $q.dark.set(value);
 }
 </script>

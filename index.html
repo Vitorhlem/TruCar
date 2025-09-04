@@ -8,323 +8,142 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <style>
-        /* --- CSS Reset & Variáveis --- */
-        :root {
-            --primary-color: #0052cc;
-            --secondary-color: #0065ff;
-            --accent-color: #4caffe;
-            --success-color: #28a745;
-            --background-color: #f8f9fa;
-            --surface-color: #ffffff; /* NOVO: Fundo alternativo */
-            --text-color: #343a40;
-            --heading-color: #1d2d35;
-            --white-color: #ffffff;
-            --shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
-            --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.12);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-        body { font-family: 'Poppins', sans-serif; background-color: var(--background-color); color: var(--text-color); line-height: 1.7; }
-
-        /* --- Utilitários --- */
-        .container { max-width: 1140px; margin: 0 auto; padding: 0 20px; }
-        section { padding: 100px 0; overflow: hidden; position: relative;}
-        h1, h2, h3 { color: var(--heading-color); font-weight: 700; line-height: 1.3; }
-        h1 { font-size: 3.2rem; font-weight: 800; margin-bottom: 1rem; }
-        h2 { font-size: 2.5rem; text-align: center; margin-bottom: 4rem; position: relative; }
-        h2::after { content: ''; display: block; width: 60px; height: 4px; background: var(--primary-color); margin: 1rem auto 0; border-radius: 2px;}
-        h3 { font-size: 1.5rem; margin-bottom: 0.75rem; }
-        .btn { display: inline-block; padding: 14px 32px; background: linear-gradient(45deg, var(--secondary-color), var(--primary-color)); color: var(--white-color); border: none; border-radius: 50px; font-weight: 600; text-decoration: none; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--shadow-hover); }
-        .btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 12px 30px rgba(0, 82, 204, 0.3); }
-
-        /* --- Animação de Scroll --- */
-        .scroll-animation { opacity: 0; transform: translateY(40px); transition: opacity 0.8s ease-out, transform 0.8s ease-out; }
-        .scroll-animation.visible { opacity: 1; transform: translateY(0); }
-
-        /* --- Header --- */
-        .main-header { padding: 20px 0; position: fixed; width: 100%; background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); z-index: 1000; border-bottom: 1px solid #eee; }
-        .main-header .container { display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 1.8rem; font-weight: 800; color: var(--primary-color); text-decoration: none; }
-        .main-nav a { margin: 0 12px; text-decoration: none; color: var(--heading-color); font-weight: 600; transition: color 0.3s ease; }
-        .main-nav a:hover { color: var(--primary-color); }
-
-        /* --- Seções com Fundo Alternado --- */
-        #hero, #details, #faq, #cta { background-color: var(--surface-color); }
-
-        /* --- Secção Hero --- */
-        #hero { padding-top: 180px; text-align: center; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%230052cc' fill-opacity='0.04'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 1.4l2.83 2.83 1.41-1.41L1.41 0H0v1.41zM38.59 40l-2.83-2.83 1.41-1.41L40 38.59V40h-1.41zM40 1.41l-2.83 2.83-1.41-1.41L38.59 0H40v1.41z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
-        #hero p { max-width: 600px; margin: 0 auto 2.5rem auto; font-size: 1.1rem; }
-        .dashboard-image { margin-top: 4rem; max-width: 900px; width: 100%; border-radius: 12px; box-shadow: var(--shadow-hover); }
-        .client-logos { margin-top: 4rem; } .client-logos p { font-weight: 600; margin-bottom: 1.5rem; color: #888; }
-        .client-logos img { height: 25px; margin: 0 20px; filter: grayscale(100%); opacity: 0.6; transition: all 0.3s ease; }
-        .client-logos img:hover { filter: grayscale(0%); opacity: 1; }
-        .wave-divider { position: absolute; bottom: -1px; left: 0; width: 100%; height: 100px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23f8f9fa' fill-opacity='1' d='M0,160L48,170.7C96,181,192,203,288,208C384,213,480,203,576,170.7C672,139,768,85,864,85.3C960,85,1056,139,1152,149.3C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E"); background-size: cover; background-repeat: no-repeat;}
-
-        /* --- Secção Estatísticas --- */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; text-align: center; }
-        .stat-box { background: var(--surface-color); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); }
-        .stat-box i { font-size: 3rem; color: var(--success-color); margin-bottom: 1rem; }
-        .stat-box .stat-number { font-size: 3rem; font-weight: 800; color: var(--heading-color); }
-        .stat-box p { font-weight: 600; color: var(--text-color); }
-
-        /* --- Secção Funcionalidades --- */
-        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
-        .feature-card { background: var(--surface-color); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); transition: all 0.3s ease; border-top: 4px solid var(--primary-color); text-align: center; }
-        .feature-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); }
-        .feature-card .icon { font-size: 2.5rem; color: var(--primary-color); margin-bottom: 1rem; }
-        .feature-card h3 { font-size: 1.2rem; }
-
-        /* --- NOVA SECÇÃO: Indústrias --- */
-        .industries-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;}
-        .industry-card { background: var(--surface-color); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); text-align: center; transition: all 0.3s ease; }
-        .industry-card:hover { background-color: var(--primary-color); color: var(--white-color); transform: translateY(-5px); }
-        .industry-card i { font-size: 3rem; margin-bottom: 1rem; color: var(--primary-color); transition: all 0.3s ease;}
-        .industry-card:hover i, .industry-card:hover h3 { color: var(--white-color); }
-        .industry-card h3 { font-size: 1.3rem; color: var(--heading-color); }
-
-        /* --- Secção Detalhes --- */
-        .detail-item { display: flex; align-items: center; gap: 4rem; margin-bottom: 5rem; }
-        .detail-item:last-child { margin-bottom: 0; }
-        .detail-item-image, .detail-item-text { flex: 1; }
-        .detail-item-image img { width: 100%; border-radius: 12px; box-shadow: var(--shadow); }
-        .detail-item-text ul li::before { content: '✓'; color: var(--success-color); }
-
-        /* --- Secção Depoimentos --- */
-        .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; }
-        .testimonial-card { background-color: var(--surface-color); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); border-left: 5px solid var(--accent-color); }
-        .testimonial-card .stars { color: #f0c419; margin-bottom: 1rem; }
-
-        /* --- NOVA SECÇÃO: FAQ --- */
-        .faq-container { max-width: 800px; margin: 0 auto; }
-        .faq-item { background: var(--surface-color); margin-bottom: 1rem; border-radius: 8px; box-shadow: var(--shadow); }
-        .faq-question { width: 100%; background: none; border: none; text-align: left; padding: 1.5rem; font-size: 1.1rem; font-weight: 600; color: var(--heading-color); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .faq-question::after { content: '+'; font-size: 1.5rem; color: var(--primary-color); transition: transform 0.3s ease; }
-        .faq-item.active .faq-question::after { transform: rotate(45deg); }
-        .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.5s ease, padding 0.5s ease; }
-        .faq-answer p { padding: 0 1.5rem 1.5rem; }
-        .faq-item.active .faq-answer { max-height: 300px; } /* Ajuste se a resposta for maior */
-
-        /* --- Secção CTA Final --- */
-        .cta-wrapper { display: flex; gap: 3rem; align-items: center; text-align: left; }
-        .cta-text, .cta-form { flex: 1; }
-        #cta h2 { text-align: left; } #cta h2::after { margin: 1rem 0 0; }
-        .cta-form form { display: flex; flex-direction: column; gap: 1rem; }
-        .cta-form input, .cta-form textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Poppins', sans-serif; }
-        .cta-form .btn { width: 100%; }
-
-        /* --- Footer --- */
-        .main-footer { background-color: var(--heading-color); color: #ccc; padding: 80px 0 30px; }
-        .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; text-align: left; margin-bottom: 3rem;}
-        .footer-col h4 { color: var(--white-color); margin-bottom: 1rem; }
-        .footer-col ul { list-style: none; } .footer-col ul li a { color: #ccc; text-decoration: none; }
-        .footer-bottom { text-align: center; border-top: 1px solid #444; padding-top: 2rem; }
-        
-        /* --- Botão Voltar ao Topo --- */
-        .back-to-top { position: fixed; bottom: 20px; right: 20px; background: var(--primary-color); color: var(--white-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; opacity: 0; visibility: hidden; transition: all 0.4s ease; z-index: 100; }
-        .back-to-top.visible { opacity: 1; visibility: visible; }
-
-        /* --- Media Queries --- */
-        @media (max-width: 992px) {
-            h1 { font-size: 2.5rem; } h2 { font-size: 2rem; }
-            .detail-item, .detail-item:nth-child(even) { flex-direction: column; }
-            .cta-wrapper { flex-direction: column; text-align: center; }
-            #cta h2 { text-align: center; } #cta h2::after { margin-left: auto; margin-right: auto; }
-        }
-        @media (max-width: 768px) {
-             .main-header { padding: 15px 0;} .main-nav { display: none; }
-             section { padding: 60px 0; }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="splash-active">
 
-    <header class="main-header">
-        <div class="container">
-            <a href="#" class="logo">TruCar</a>
-            <nav class="main-nav">
-                <a href="#features">Funcionalidades</a>
-                <a href="#industries">Indústrias</a>
-                <a href="#faq">FAQ</a>
-                <a href="#cta">Contato</a>
-            </nav>
-            <a href="#cta" class="btn">Solicitar Demonstração</a>
+    <div id="splash-screen">
+        <div id="final-logo-container">
+            <span class="logo-letter">T</span><span class="logo-letter">r</span><span class="logo-letter">u</span><span class="logo-letter">C</span><span class="logo-letter">a</span><span class="logo-letter">r</span>
         </div>
-    </header>
+        <div class="loop-wrapper">
+            <div class="mountain"></div>
+            <div class="hill"></div>
+            <div class="tree"></div>
+            <div class="tree"></div>
+            <div class="tree"></div>
+            <div class="rock"></div>
+            <div class="truck"></div>
+            <div class="wheels"></div>
+        </div>
+    </div>
 
-    <main>
-
-        <section id="hero">
+    <div id="main-content" style="visibility: hidden;">
+        <header class="main-header">
             <div class="container">
-                <h1 class="scroll-animation">A plataforma definitiva para a gestão da sua frota.</h1>
-                <p class="scroll-animation">Tome decisões baseadas em dados, otimize rotas, reduza custos e aumente a eficiência dos seus motoristas. Tudo em um só lugar.</p>
-                <a href="#cta" class="btn scroll-animation">Solicitar Demonstração Gratuita</a>
-                <div class="client-logos scroll-animation">
-                    <p>CONFIADO PELAS MELHORES EMPRESAS DO SETOR</p>
-                    <div>
-                        <img src="https://placehold.co/120x40/000000/FFF?text=LogiMax" alt="Logo Cliente 1"><img src="https://placehold.co/120x40/000000/FFF?text=TransFast" alt="Logo Cliente 2"><img src="https://placehold.co/120x40/000000/FFF?text=AgroForte" alt="Logo Cliente 3"><img src="https://placehold.co/120x40/000000/FFF?text=VelozLog" alt="Logo Cliente 4">
+                <a href="index.html" class="logo">TruCar</a>
+                <nav class="main-nav">
+                    <a href="#features">Funcionalidades</a>
+                    <a href="#sectors">Setores</a>
+                    <a href="#faq">FAQ</a>
+                    <a href="#cta">Contato</a>
+                </nav>
+                <a href="#cta" class="btn">Solicitar Demonstração</a>
+            </div>
+        </header>
+
+        <main>
+            <section id="hero">
+                <div class="container">
+                    <h1 class="scroll-animation">A plataforma definitiva para a gestão da sua frota.</h1>
+                    <p class="scroll-animation">Tome decisões baseadas em dados, otimize rotas, reduza custos e aumente a eficiência dos seus motoristas. Tudo em um só lugar.</p>
+                    <a href="#cta" class="btn scroll-animation">Solicitar Demonstração Gratuita</a>
+                    <div class="client-logos scroll-animation">
+                        <p>CONFIADO PELAS MELHORES EMPRESAS DO SETOR</p>
+                        <div>
+                            <img src="https://placehold.co/120x40/000000/FFF?text=LogiMax" alt="Logo Cliente 1"><img src="https://placehold.co/120x40/000000/FFF?text=TransFast" alt="Logo Cliente 2"><img src="https://placehold.co/120x40/000000/FFF?text=AgroForte" alt="Logo Cliente 3"><img src="https://placehold.co/120x40/000000/FFF?text=VelozLog" alt="Logo Cliente 4">
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="wave-divider"></div>
-        </section>
-        
-        <section id="stats">
-            <div class="container">
-                <h2 class="scroll-animation">Resultados que Você Pode Esperar</h2>
-                <div class="stats-grid">
-                    <div class="stat-box scroll-animation"><i class="fas fa-gas-pump"></i><h3 class="stat-number" data-target="25">0</h3><p>Redução de Custos com Combustível</p></div>
-                    <div class="stat-box scroll-animation"><i class="fas fa-tools"></i><h3 class="stat-number" data-target="40">0</h3><p>Menos Gastos com Manutenção Corretiva</p></div>
-                    <div class="stat-box scroll-animation"><i class="fas fa-chart-line"></i><h3 class="stat-number" data-target="30">0</h3><p>Aumento na Produtividade da Frota</p></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="features">
-            <div class="container">
-                <h2 class="scroll-animation">Plataforma Completa, Sem Complicações</h2>
-                <div class="features-grid">
-                    <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-tachometer-alt"></i></div><h3>Dashboard Inteligente</h3></div>
-                    <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-route"></i></div><h3>Controle de Viagens</h3></div>
-                    <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-tools"></i></div><h3>Gestão de Manutenção</h3></div>
-                    <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-gas-pump"></i></div><h3>Controle de Combustível</h3></div>
-                    <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-user-shield"></i></div><h3>Ranking de Motoristas</h3></div>
-                    <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-file-invoice"></i></div><h3>Relatórios Gerenciais</h3></div>
-                    <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-bell"></i></div><h3>Alertas Automáticos</h3></div>
-                    <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-cogs"></i></div><h3>API para Integração</h3></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="industries">
-            <div class="container">
-                <h2 class="scroll-animation">Perfeito para a sua Indústria</h2>
-                <div class="industries-grid">
-                    <div class="industry-card scroll-animation"><i class="fas fa-truck-moving"></i><h3>Logística e Transporte</h3><p>Otimize rotas, controle prazos de entrega e garanta a segurança da sua carga em tempo real.</p></div>
-                    <div class="industry-card scroll-animation"><i class="fas fa-tractor"></i><h3>Agronegócio</h3><p>Monitore o maquinário no campo, controle o consumo de diesel e otimize a logística da colheita.</p></div>
-                    <div class="industry-card scroll-animation"><i class="fas fa-hard-hat"></i><h3>Construção Civil</h3><p>Controle a localização de máquinas pesadas, evite o uso indevido e gerencie o tempo de operação no canteiro.</p></div>
-                    <div class="industry-card scroll-animation"><i class="fas fa-people-carry"></i><h3>Prestadores de Serviço</h3><p>Acompanhe suas equipes em campo, garanta a pontualidade nas visitas e comprove a realização dos serviços.</p></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="details">
-            <div class="container">
-                <h2 class="scroll-animation">Detalhes que Fazem a Diferença</h2>
-                <div class="detail-item">
-                    <div class="detail-item-image scroll-animation"><img src="https://placehold.co/600x450/0052cc/FFF?text=Manutenção+Preditiva" alt="Manutenção Preditiva"></div>
-                    <div class="detail-item-text scroll-animation"><h3>Manutenção Preditiva: Fim das Quebras Inesperadas</h3><p>Troque a manutenção corretiva pela preditiva. O TruCar monitora o hodômetro de cada veículo e avisa automaticamente sobre as próximas revisões.</p></div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-item-text scroll-animation"><h3>Ranking de Motoristas: Segurança e Eficiência</h3><p>Incentive a boa conduta e reduza acidentes e multas. Nosso sistema pontua os motoristas com base em eventos como excesso de velocidade e freadas bruscas.</p></div>
-                    <div class="detail-item-image scroll-animation"><img src="https://placehold.co/600x450/ffc107/000?text=Ranking+de+Motoristas" alt="Ranking de Motoristas"></div>
-                </div>
-            </div>
-        </section>
-        
-        <section id="faq">
-            <div class="container">
-                <h2 class="scroll-animation">Perguntas Frequentes</h2>
-                <div class="faq-container scroll-animation">
-                    <div class="faq-item"><button class="faq-question">Como funciona a instalação do dispositivo?</button><div class="faq-answer"><p>A instalação é simples e rápida, geralmente feita em menos de 30 minutos por um técnico. O dispositivo é conectado de forma segura ao veículo, sem interferir no seu funcionamento original.</p></div></div>
-                    <div class="faq-item"><button class="faq-question">O sistema é compatível com quais tipos de veículos?</button><div class="faq-answer"><p>Nossa solução é compatível com a grande maioria dos veículos leves (carros, vans) e pesados (caminhões, ônibus, máquinas agrícolas), nacionais e importados.</p></div></div>
-                    <div class="faq-item"><button class="faq-question">Os dados da minha frota estão seguros?</button><div class="faq-answer"><p>Sim. Utilizamos criptografia de ponta e servidores seguros para garantir que todas as informações da sua operação estejam protegidas e acessíveis apenas para usuários autorizados.</p></div></div>
-                    <div class="faq-item"><button class="faq-question">Existe algum tipo de fidelidade ou contrato de permanência?</button><div class="faq-answer"><p>Oferecemos planos flexíveis que se adaptam às suas necessidades. Entre em contato para conhecer nossas condições comerciais sem compromisso de longo prazo.</p></div></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="cta">
-            <div class="container">
-                <div class="cta-wrapper scroll-animation">
-                    <div class="cta-text"><h2>Pronto para Transformar sua Gestão de Frota?</h2><p>Preencha o formulário ao lado e um de nossos especialistas entrará em contato para agendar uma demonstração gratuita e sem compromisso. Veja na prática todo o poder do TruCar!</p></div>
-                    <div class="cta-form">
-                        <form>
-                            <input type="text" name="name" placeholder="Seu nome completo" required>
-                            <input type="email" name="email" placeholder="Seu melhor e-mail" required>
-                            <input type="text" name="company" placeholder="Nome da sua empresa">
-                            <textarea name="message" rows="4" placeholder="Deixe uma mensagem (opcional)"></textarea>
-                            <button type="submit" class="btn">Solicitar Demonstração Agora</button>
-                        </form>
+                <div class="wave-divider"></div>
+            </section>
+            
+            <section id="stats">
+                <div class="container">
+                    <h2 class="scroll-animation">Resultados que Você Pode Esperar</h2>
+                    <div class="stats-grid">
+                        <div class="stat-box scroll-animation"><i class="fas fa-gas-pump"></i><h3 class="stat-number" data-target="25">0</h3><p>Redução de Custos com Combustível</p></div>
+                        <div class="stat-box scroll-animation"><i class="fas fa-tools"></i><h3 class="stat-number" data-target="40">0</h3><p>Menos Gastos com Manutenção Corretiva</p></div>
+                        <div class="stat-box scroll-animation"><i class="fas fa-chart-line"></i><h3 class="stat-number" data-target="30">0</h3><p>Aumento na Produtividade da Frota</p></div>
                     </div>
                 </div>
+            </section>
+
+            <section id="features">
+                <div class="container">
+                    <h2 class="scroll-animation">Plataforma Completa, Sem Complicações</h2>
+                    <div class="features-grid">
+                        <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-tachometer-alt"></i></div><h3>Dashboard Inteligente</h3></div>
+                        <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-route"></i></div><h3>Controle de Viagens</h3></div>
+                        <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-tools"></i></div><h3>Gestão de Manutenção</h3></div>
+                        <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-gas-pump"></i></div><h3>Controle de Combustível</h3></div>
+                        <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-user-shield"></i></div><h3>Ranking de Motoristas</h3></div>
+                        <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-file-invoice"></i></div><h3>Relatórios Gerenciais</h3></div>
+                        <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-bell"></i></div><h3>Alertas Automáticos</h3></div>
+                        <div class="feature-card scroll-animation"><div class="icon"><i class="fas fa-cogs"></i></div><h3>API para Integração</h3></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sectors">
+                <div class="container">
+                    <h2 class="scroll-animation">Uma Solução Sob Medida para o Seu Negócio</h2>
+                    <div class="sector-tabs scroll-animation">
+                        <a href="agronegocio.html" class="sector-tab" data-sector="agronegocio"><i class="fas fa-tractor"></i> Agronegócio</a>
+                        <a href="fretes.html" class="sector-tab" data-sector="fretes"><i class="fas fa-truck-moving"></i> Fretes</a>
+                        <a href="servicos.html" class="sector-tab" data-sector="servicos"><i class="fas fa-people-carry"></i> Serviços</a>
+                        <a href="construcao.html" class="sector-tab" data-sector="construcao"><i class="fas fa-hard-hat"></i> Construção Civil</a>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="faq">
+                <div class="container">
+                    <h2 class="scroll-animation">Perguntas Frequentes</h2>
+                    <div class="faq-container scroll-animation">
+                        <div class="faq-item"><button class="faq-question">Como funciona a instalação do dispositivo?</button><div class="faq-answer"><p>A instalação é simples e rápida, geralmente feita em menos de 30 minutos por um técnico.</p></div></div>
+                        <div class="faq-item"><button class="faq-question">O sistema é compatível com quais tipos de veículos?</button><div class="faq-answer"><p>Nossa solução é compatível com a grande maioria dos veículos leves (carros, vans) e pesados (caminhões, ônibus, máquinas agrícolas).</p></div></div>
+                        <div class="faq-item"><button class="faq-question">Os dados da minha frota estão seguros?</button><div class="faq-answer"><p>Sim. Utilizamos criptografia de ponta e servidores seguros para garantir que todas as informações da sua operação estejam protegidas.</p></div></div>
+                        <div class="faq-item"><button class="faq-question">Existe algum tipo de fidelidade ou contrato de permanência?</button><div class="faq-answer"><p>Oferecemos planos flexíveis que se adaptam às suas necessidades. Entre em contato para conhecer as nossas condições.</p></div></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="cta">
+                <div class="container">
+                    <div class="cta-wrapper scroll-animation">
+                        <div class="cta-text"><h2>Pronto para Transformar sua Gestão de Frota?</h2><p>Preencha o formulário ao lado e um de nossos especialistas entrará em contato para agendar uma demonstração gratuita e sem compromisso.</p></div>
+                        <div class="cta-form">
+                            <form>
+                                <input type="text" name="name" placeholder="Seu nome completo" required>
+                                <input type="email" name="email" placeholder="Seu melhor e-mail" required>
+                                <input type="text" name="company" placeholder="Nome da sua empresa">
+                                <textarea name="message" rows="4" placeholder="Deixe uma mensagem (opcional)"></textarea>
+                                <button type="submit" class="btn">Solicitar Demonstração Agora</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="main-footer">
+            <div class="container">
+                <div class="footer-grid">
+                    <div class="footer-col"><a href="index.html" class="logo" style="color: var(--white-color);">TruCar</a><p>A solução inteligente para a gestão da sua frota.</p></div>
+                    <div class="footer-col"><h4>Produto</h4><ul><li><a href="#features">Funcionalidades</a></li><li><a href="#sectors">Setores</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+                    <div class="footer-col"><h4>Empresa</h4><ul><li><a href="#">Sobre Nós</a></li><li><a href="#">Carreiras</a></li><li><a href="#">Imprensa</a></li></ul></div>
+                    <div class="footer-col"><h4>Contato</h4><ul><li><a href="#">contato@trucar.com</a></li><li><a href="#">+55 (16) 99999-9999</a></li></ul></div>
+                </div>
+                <div class="footer-bottom">&copy; 2025 TruCar. Todos os direitos reservados.</div>
             </div>
-        </section>
+        </footer>
 
-    </main>
+        <a href="#" class="back-to-top"><i class="fas fa-arrow-up"></i></a>
+    </div>
 
-    <footer class="main-footer">
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-col"><a href="#" class="logo" style="color: var(--white-color);">TruCar</a><p>A solução inteligente para a gestão da sua frota.</p></div>
-                <div class="footer-col"><h4>Produto</h4><ul><li><a href="#features">Funcionalidades</a></li><li><a href="#industries">Indústrias</a></li><li><a href="#faq">FAQ</a></li></ul></div>
-                <div class="footer-col"><h4>Empresa</h4><ul><li><a href="#">Sobre Nós</a></li><li><a href="#">Carreiras</a></li><li><a href="#">Imprensa</a></li></ul></div>
-                <div class="footer-col"><h4>Contato</h4><ul><li><a href="#">contato@trucar.com</a></li><li><a href="#">+55 (16) 99999-9999</a></li></ul></div>
-            </div>
-            <div class="footer-bottom">&copy; 2025 TruCar. Todos os direitos reservados.</div>
-        </div>
-    </footer>
-
-    <a href="#" class="back-to-top"><i class="fas fa-arrow-up"></i></a>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- Animação de Scroll ---
-            const scrollObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) entry.target.classList.add('visible');
-                    else entry.target.classList.remove('visible');
-                });
-            }, { threshold: 0.1 });
-            document.querySelectorAll('.scroll-animation').forEach(el => scrollObserver.observe(el));
-
-            // --- Animação de Contagem dos Números ---
-            const statsObserver = new IntersectionObserver((entries, observer) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const counter = entry.target;
-                        const target = +counter.getAttribute('data-target');
-                        const duration = 1500;
-                        const stepTime = Math.abs(Math.floor(duration / target));
-                        let current = 0;
-                        const timer = setInterval(() => {
-                            current += 1;
-                            counter.innerText = current + '%';
-                            if (current >= target) clearInterval(timer);
-                        }, stepTime);
-                        observer.unobserve(counter);
-                    }
-                });
-            }, { threshold: 0.5 });
-            document.querySelectorAll('.stat-number').forEach(stat => statsObserver.observe(stat));
-
-            // --- Funcionalidade do Acordeão FAQ ---
-            const faqItems = document.querySelectorAll('.faq-item');
-            faqItems.forEach(item => {
-                const question = item.querySelector('.faq-question');
-                question.addEventListener('click', () => {
-                    const currentlyActive = document.querySelector('.faq-item.active');
-                    if (currentlyActive && currentlyActive !== item) {
-                        currentlyActive.classList.remove('active');
-                    }
-                    item.classList.toggle('active');
-                });
-            });
-
-            // --- Botão Voltar ao Topo ---
-            const backToTopButton = document.querySelector('.back-to-top');
-            window.addEventListener('scroll', () => {
-                if (window.scrollY > 300) {
-                    backToTopButton.classList.add('visible');
-                } else {
-                    backToTopButton.classList.remove('visible');
-                }
-            });
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
