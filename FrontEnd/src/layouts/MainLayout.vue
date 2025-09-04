@@ -1,10 +1,11 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header elevated>
+    <!-- CABEÇALHO PRINCIPAL COM DUAS BARRAS -->
+    <q-header elevated class="main-header">
+      <!-- Barra Superior: Logo e Controles do Usuário -->
       <q-toolbar>
-        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
+        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" class="lt-md toolbar-icon-btn" />
         <q-toolbar-title>TruCar</q-toolbar-title>
-        
         <q-space />
 
         <q-chip
@@ -27,11 +28,11 @@
           </q-tooltip>
         </q-chip>
 
-        <q-btn flat round dense icon="settings" to="/settings" class="q-mr-xs">
+        <q-btn flat round dense icon="settings" to="/settings" class="q-mr-xs toolbar-icon-btn">
           <q-tooltip>Configurações</q-tooltip>
         </q-btn>
         
-        <q-btn v-if="authStore.isManager" flat round dense icon="notifications" class="q-mr-sm">
+        <q-btn v-if="authStore.isManager" flat round dense icon="notifications" class="q-mr-sm toolbar-icon-btn">
           <q-badge v-if="notificationStore.unreadCount > 0" color="red" floating>{{ notificationStore.unreadCount }}</q-badge>
           <q-menu @show="notificationStore.fetchNotifications()" style="width: 350px">
             <q-list bordered separator><q-item-label header>Notificações</q-item-label></q-list>
@@ -48,7 +49,33 @@
         </q-btn-dropdown>
       </q-toolbar>
 
-      <q-banner v-if="authStore.isImpersonating" inline-actions class="bg-deep-orange text-white text-center shadow-2">
+      <!-- Barra de Navegação Principal (Visível em telas grandes) -->
+      <div class="navigation-bar gt-sm">
+        <q-btn
+          v-for="link in essentialLinks"
+          :key="link.title"
+          :to="link.to"
+          :icon="link.icon"
+          :label="link.title"
+          no-caps
+          flat
+          class="nav-button"
+          active-class="nav-button--active"
+        />
+        <!-- Link de Admin separado -->
+         <q-btn
+          v-if="authStore.isSuperuser"
+          to="/admin"
+          icon="admin_panel_settings"
+          label="Painel Admin"
+          no-caps
+          flat
+          class="nav-button"
+          active-class="nav-button--active"
+        />
+      </div>
+
+       <q-banner v-if="authStore.isImpersonating" inline-actions class="bg-deep-orange text-white text-center shadow-2">
         <template v-slot:avatar>
           <q-icon name="visibility_off" color="white" />
         </template>
@@ -62,7 +89,8 @@
 
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
+    <!-- MENU LATERAL (Corrigido: sem 'show-if-above' para não aparecer em telas grandes) -->
+    <q-drawer v-model="leftDrawerOpen" bordered class="lt-md">
       <q-scroll-area class="fit">
         <q-list padding>
           <q-item-label header>Menu Principal</q-item-label>
@@ -82,7 +110,15 @@
       </q-scroll-area>
     </q-drawer>
 
-    <q-page-container><router-view /></q-page-container>
+    <!-- CONTAINER DA PÁGINA (O conteúdo começa abaixo do header) -->
+    <q-page-container>
+       <!-- IDEIA 3: Animações de Entrada -->
+      <router-view v-slot="{ Component }">
+        <transition name="route-transition" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+    </q-page-container>
   </q-layout>
 </template>
 
@@ -192,6 +228,71 @@ onUnmounted(() => { clearInterval(pollTimer); });
 
 
 <style lang="scss" scoped>
+.main-header {
+  background: linear-gradient(to right, $primary, lighten($primary, 8%));
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); // Sombra mais suave e moderna
+}
+
+.navigation-bar {
+  padding: 0 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+// IDEIA 4 e 5: Novo Estilo de Botão e Microinterações
+.nav-button {
+  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  margin: 4px 0;
+  border-radius: 8px;
+  position: relative; // Necessário para o pseudo-elemento ::after
+
+  // Remove o sublinhado ao passar o rato, agora o fundo muda
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  // O novo estilo do botão ativo
+  &.nav-button--active {
+    color: white;
+    font-weight: 700;
+
+    // A linha colorida por baixo
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 10%;
+      right: 10%;
+      height: 3px;
+      background-color: $accent; // Usando a cor de acento (verde)
+      border-radius: 2px;
+      animation: grow-underline 0.3s ease-out;
+    }
+  }
+}
+
+// Animação para a linha do botão ativo
+@keyframes grow-underline {
+  from { width: 0; left: 50%; }
+  to { width: 80%; left: 10%; }
+}
+
+
+// IDEIA 5: Microinterações para os ícones da barra de ferramentas
+.toolbar-icon-btn {
+  transition: transform 0.2s ease, color 0.2s ease;
+  &:hover {
+    transform: scale(1.15);
+  }
+}
+
+
+// Estilo original do seu drawer (agora para mobile)
 :deep(.q-drawer) {
   background: #1a1616;
 }
@@ -210,4 +311,16 @@ onUnmounted(() => { clearInterval(pollTimer); });
     color: $primary;
   }
 }
+
+// IDEIA 3: Estilos para a animação de transição de página
+.route-transition-enter-active,
+.route-transition-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.route-transition-enter-from,
+.route-transition-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
 </style>
+
