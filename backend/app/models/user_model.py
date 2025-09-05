@@ -10,7 +10,6 @@ class UserRole(str, enum.Enum):
     CLIENTE_DEMO = "cliente_demo"
     DRIVER = "driver"
 
-
 class User(Base):
     __tablename__ = "users"
 
@@ -24,10 +23,7 @@ class User(Base):
     
     notify_in_app = Column(Boolean(), default=True, nullable=False)
     notify_by_email = Column(Boolean(), default=True, nullable=False)
-    # --- NOVO CAMPO ADICIONADO ---
-    # Guarda o e-mail específico para notificações; pode ser nulo.
     notification_email = Column(String(100), nullable=True)
-    # --- FIM DA ADIÇÃO ---
     
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization", back_populates="users")
@@ -36,7 +32,7 @@ class User(Base):
     def is_superuser(self) -> bool:
         return self.email in settings.SUPERUSER_EMAILS
 
-    # Relações
+    # Relações existentes
     freight_orders = relationship("FreightOrder", back_populates="driver")
     journeys = relationship("Journey", back_populates="driver", cascade="all, delete-orphan")
     reported_requests = relationship(
@@ -44,3 +40,8 @@ class User(Base):
         foreign_keys="MaintenanceRequest.reported_by_id", 
         back_populates="reporter"
     )
+
+    # --- NOVAS RELAÇÕES ADICIONADAS ---
+    alerts = relationship("Alert", back_populates="driver")
+    achievements = relationship("UserAchievement", back_populates="user", cascade="all, delete-orphan")
+    # --- FIM DA ADIÇÃO ---

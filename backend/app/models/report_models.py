@@ -2,18 +2,22 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 
-# Nota: Estes não são modelos de base de dados (SQLAlchemy),
-# são "schemas" Pydantic para definir a estrutura da resposta da API.
+# --- NOVO SCHEMA ADICIONADO ---
+# Define a estrutura para cada motorista no mini pódio do dashboard
+class DashboardPodiumDriver(BaseModel):
+    full_name: str
+    avatar_url: Optional[str] = None
+    primary_metric_value: float
 
-# --- ADICIONADO ---
-# Schema para os KPIs principais do dashboard
+class CostByCategory(BaseModel):
+    cost_type: str
+    total_amount: float
+
 class DashboardKPIs(BaseModel):
     total_vehicles: int
     available_vehicles: int
     in_use_vehicles: int
     maintenance_vehicles: int
-# --- FIM DA ADIÇÃO ---
-
 
 class KmPerDay(BaseModel):
     date: date
@@ -26,4 +30,3 @@ class UpcomingMaintenance(BaseModel):
 
     class Config:
         from_attributes = True
-
