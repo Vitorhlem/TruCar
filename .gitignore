@@ -1,33 +1,42 @@
-# Ficheiro .gitignore para o projeto TruCar
 
-# Segredos e Ambiente
+# Segredos e Ficheiros de Ambiente
+# Nunca devem ser enviados para o repositório.
 .env
 *.env
 .env.*
+.env.local*
 
-# Dependências do Python (Back-end)
+# Python / Back-end
+# -------------------------------------------------------------------
+# e ficheiro .pyc em qualquer lugar dentro da pasta 'backend'.
+/backend/**/__pycache__/
+/backend/**/*.pyc
+
+# Ambientes virtuais do Python
 /backend/venv/
-/backend/__pycache__/
-/backend/app/__pycache__/
-/backend/app/*/__pycache__/
-/backend/app/*/*/__pycache__/
-# Python cache
-__pycache__/
-*.pyc
-
-# Virtual Environment
 venv/
 .venv/
 env/
 
-# Dependências do Node.js (Front-end)
+
+# Node.js / Front-end (Quasar)
+# -------------------------------------------------------------------
+# Dependências e ficheiros de build do front-end.
+# Os caminhos começam com / para garantir que são relativos à raiz.
 /FrontEnd/node_modules/
 /FrontEnd/dist/
 /FrontEnd/.quasar/
 /FrontEnd/.quasar-testing/
 /FrontEnd/test/
+/FrontEnd/src-cordova/
+/FrontEnd/src-capacitor/
 
-# Ficheiros de IDE e Sistema Operacional
+# Ficheiros temporários do Quasar
+/quasar.config.*.temporary.compiled*
+
+
+# Ficheiros de IDE, Editores e Sistema Operacional
+# -------------------------------------------------------------------
 .vscode/
 .idea/
 *.suo
@@ -37,3 +46,11 @@ env/
 *.sw?
 *~
 .DS_Store
+.thumbs.db
+
+
+# Logs de Erro
+# -------------------------------------------------------------------
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
