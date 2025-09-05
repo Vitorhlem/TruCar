@@ -10,3 +10,5 @@ from .implement_model import Implement
 from .client_model import Client
 from .freight_order_model import FreightOrder
 from .stop_point_model import StopPoint
+# --- LINHAS DE CORREÇÃO ADICIONADAS ---
+from .achievement_model import Achievement, UserAchievement

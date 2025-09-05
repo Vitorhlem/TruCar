@@ -1,20 +1,22 @@
 from datetime import datetime
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import List, TYPE_CHECKING, Optional
 
 from app.core.security import get_password_hash, verify_password
-from app.models.alert_model import Alert
-from app.models.achievement_model import Achievement, UserAchievement
-from app.schemas.dashboard_schema import DriverMetrics, DriverRankEntry, AchievementStatus
 from app.models.user_model import User, UserRole
 from app.models.organization_model import Organization
-from app.schemas.user_schema import UserCreate, UserUpdate, UserRegister
-from app.models.journey_model import Journey
-from app.models.maintenance_model import MaintenanceRequest
-from app.models.vehicle_model import Vehicle
+
+if TYPE_CHECKING:
+    from app.schemas.user_schema import UserCreate, UserUpdate, UserRegister
+    from app.models.journey_model import Journey
+    from app.models.maintenance_model import MaintenanceRequest
+    from app.models.vehicle_model import Vehicle
+    from app.models.alert_model import Alert
+    from app.models.achievement_model import Achievement, UserAchievement
+    from app.schemas.dashboard_schema import DriverMetrics, DriverRankEntry, AchievementStatus
 
 
 async def get(db: AsyncSession, *, id: int, organization_id: int | None = None) -> User | None:
@@ -55,7 +57,8 @@ async def get_users_by_role(
 ) -> List[User]:
     stmt = select(User).where(
         User.role == role,
-        User.is_active == True
+        User.is_active == True,
+        User.organization_id.is_not(None) # <-- CORREÇÃO APLICADA AQUI
     ).options(selectinload(User.organization))
 
     if organization_id:
@@ -66,7 +69,8 @@ async def get_users_by_role(
     return result.scalars().all()
 
 
-async def create(db: AsyncSession, *, user_in: UserCreate, organization_id: int, role: UserRole) -> User:
+async def create(db: AsyncSession, *, user_in: "UserCreate", organization_id: int, role: UserRole) -> User:
+    from app.schemas.user_schema import UserCreate
     hashed_password = get_password_hash(user_in.password)
     db_user = User(
         full_name=user_in.full_name,
@@ -80,8 +84,9 @@ async def create(db: AsyncSession, *, user_in: UserCreate, organization_id: int,
     await db.refresh(db_user, ["organization"])
     return db_user
 
-async def create_new_organization_and_user(db: AsyncSession, *, user_in: UserRegister) -> User:
+async def create_new_organization_and_user(db: AsyncSession, *, user_in: "UserRegister") -> User:
     """Cria uma nova organização e o primeiro utilizador (CLIENTE_DEMO) para ela."""
+    from app.schemas.user_schema import UserRegister
     db_org = Organization(name=user_in.organization_name, sector=user_in.sector)
     user_role = UserRole.CLIENTE_DEMO
 
@@ -101,7 +106,8 @@ async def create_new_organization_and_user(db: AsyncSession, *, user_in: UserReg
     return db_user
 
 
-async def update(db: AsyncSession, *, db_user: User, user_in: UserUpdate) -> User:
+async def update(db: AsyncSession, *, db_user: User, user_in: "UserUpdate") -> User:
+    from app.schemas.user_schema import UserUpdate
     update_data = user_in.model_dump(exclude_unset=True)
     if "password" in update_data and update_data["password"]:
         hashed_password = get_password_hash(update_data["password"])
@@ -135,6 +141,7 @@ async def authenticate(db: AsyncSession, *, email: str, password: str) -> User |
     return user
 
 async def get_leaderboard_data(db: AsyncSession, *, organization_id: int) -> dict:
+    from app.models.journey_model import Journey
     org = await db.get(Organization, organization_id)
     if not org:
         return {"leaderboard": [], "primary_metric_unit": "N/A"}
@@ -167,7 +174,11 @@ async def get_leaderboard_data(db: AsyncSession, *, organization_id: int) -> dic
     leaderboard_users = result.all()
     return { "leaderboard": leaderboard_users, "primary_metric_unit": primary_metric_unit }
 
-async def get_driver_metrics(db: AsyncSession, *, user: User) -> DriverMetrics:
+async def get_driver_metrics(db: AsyncSession, *, user: User) -> "DriverMetrics":
+    from app.models.journey_model import Journey
+    from app.models.alert_model import Alert
+    from app.schemas.dashboard_schema import DriverMetrics
+
     today = datetime.utcnow()
     start_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     org = user.organization
@@ -198,7 +209,8 @@ async def get_driver_metrics(db: AsyncSession, *, user: User) -> DriverMetrics:
         alerts=alert_count
     )
 
-async def get_driver_ranking_context(db: AsyncSession, *, user: User) -> List[DriverRankEntry]:
+async def get_driver_ranking_context(db: AsyncSession, *, user: User) -> List["DriverRankEntry"]:
+    from app.schemas.dashboard_schema import DriverRankEntry
     leaderboard_data = await get_leaderboard_data(db, organization_id=user.organization_id)
     full_leaderboard = leaderboard_data.get("leaderboard", [])
 
@@ -221,7 +233,10 @@ async def get_driver_ranking_context(db: AsyncSession, *, user: User) -> List[Dr
         ))
     return context_list
 
-async def get_driver_achievements(db: AsyncSession, *, user: User) -> List[AchievementStatus]:
+async def get_driver_achievements(db: AsyncSession, *, user: User) -> List["AchievementStatus"]:
+    from app.models.achievement_model import Achievement, UserAchievement
+    from app.schemas.dashboard_schema import AchievementStatus
+
     all_achievements_stmt = select(Achievement)
     all_achievements = (await db.execute(all_achievements_stmt)).scalars().all()
 
@@ -260,6 +275,10 @@ async def count_by_org(db: AsyncSession, *, organization_id: int, role: UserRole
 
 async def get_user_stats(db: AsyncSession, *, user_id: int, organization_id: int) -> dict | None:
     """Calcula as estatísticas de um utilizador, adaptando-as ao setor da organização."""
+    from app.models.journey_model import Journey
+    from app.models.maintenance_model import MaintenanceRequest
+    from app.models.vehicle_model import Vehicle
+
     user = await get(db, id=user_id, organization_id=organization_id)
     if not user or not user.organization:
         return None
