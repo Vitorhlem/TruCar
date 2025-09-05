@@ -31,7 +31,7 @@
     <!-- VEHICLE CARDS -->
     <div v-else-if="vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-        <q-card class="vehicle-card column no-wrap full-height" @click="goToVehicleDetails(vehicle)">
+        <q-card class="vehicle-card column no-wrap full-height" @click="goToVehicleDetails(vehicle, 'details')">
           <q-img :src="vehicle.photo_url ?? undefined" height="160px" fit="cover" class="bg-grey-3">
             <template v-slot:error>
               <div class="absolute-full flex flex-center bg-primary text-white">
@@ -47,10 +47,14 @@
                 <div class="text-subtitle1 text-weight-bold ellipsis">{{ vehicle.brand }} {{ vehicle.model }}</div>
                 <div class="text-caption text-grey-8">{{ vehicle.license_plate || vehicle.identifier }} &bull; {{ vehicle.year }}</div>
               </div>
-              <div v-if="authStore.isManager" class="col-auto">
+              <div v-if="authStore.isManager" class="col-auto no-wrap">
                 <q-icon v-if="vehicle.telemetry_device_id" name="sensors" color="positive" size="20px" class="q-mr-xs">
                   <q-tooltip>Telemetria Ativa</q-tooltip>
                 </q-icon>
+                <!-- NOVO BOTÃO DE CUSTOS -->
+                <q-btn @click.stop="goToVehicleDetails(vehicle, 'costs')" flat round dense icon="receipt_long">
+                  <q-tooltip>Ver Custos</q-tooltip>
+                </q-btn>
                 <q-btn @click.stop="openEditDialog(vehicle)" flat round dense icon="edit"><q-tooltip>Editar</q-tooltip></q-btn>
                 <q-btn @click.stop="promptToDelete(vehicle)" flat round dense icon="delete" color="negative"><q-tooltip>Excluir</q-tooltip></q-btn>
               </div>
@@ -62,7 +66,7 @@
 
           <q-card-section class="q-py-sm">
             <div class="flex justify-between items-center text-caption text-grey-8">
-              <span>{{ terminologyStore.distanceUnit === 'km' ? 'Odômetro' : 'Horímetro' }}</span>
+              <span>{{ terminologyStore.distanceUnit === 'km' ? 'Odómetro' : 'Horímetro' }}</span>
               <span class="text-weight-bold text-black">{{
                 formatDistance(
                   terminologyStore.distanceUnit === 'km' ? vehicle.current_km : vehicle.current_engine_hours,
@@ -168,8 +172,12 @@ const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
 const photoFile = ref<File | null>(null);
 
-function goToVehicleDetails(vehicle: Vehicle) {
-  void router.push({ name: 'vehicle-details', params: { id: vehicle.id } });
+function goToVehicleDetails(vehicle: Vehicle, tab = 'details') {
+  void router.push({ 
+    name: 'vehicle-details', 
+    params: { id: vehicle.id },
+    query: { tab: tab }
+  });
 }
 
 function resetForm() {
