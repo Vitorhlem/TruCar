@@ -53,13 +53,14 @@
       <div class="navigation-bar gt-sm">
         <template v-for="category in menuStructure" :key="category.label">
           <!-- Se a categoria só tiver um item, mostra um botão simples -->
-          <q-btn
-            v-if="category.children.length === 1"
-            :to="category.children[0].to"
-            :icon="category.children[0].icon"
-            :label="category.children[0].title"
-            no-caps flat class="nav-button" active-class="nav-button--active"
-          />
+          
+<q-btn
+  v-if="category.children.length === 1"
+  :to="category.children[0]!.to"
+  :icon="category.children[0]!.icon"
+  :label="category.children[0]!.title"
+  no-caps flat class="nav-button" active-class="nav-button--active"
+/>
           <!-- Se tiver múltiplos itens, mostra um menu expansível -->
           <q-btn-dropdown
             v-else
@@ -162,6 +163,12 @@ const demoStore = useDemoStore();
 
 let pollTimer: number;
 
+interface MenuItem {
+  title: string;
+  icon: string;
+  to: string;
+} 
+
 function toggleLeftDrawer() { leftDrawerOpen.value = !leftDrawerOpen.value; }
 function handleLogout() {
   if (authStore.isImpersonating) {
@@ -200,7 +207,7 @@ const menuStructure = computed(() => {
   menu.push(general);
 
   // --- Categoria: Operações (Condicional) ---
-  const operations = { label: 'Operações', icon: 'alt_route', children: [] as any[] };
+const operations = { label: 'Operações', icon: 'alt_route', children: [] as MenuItem[] };
   if (sector === 'agronegocio' || sector === 'servicos') {
     operations.children.push({ title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' });
   }
@@ -216,7 +223,7 @@ const menuStructure = computed(() => {
 
   // --- Categoria: Gestão (Apenas Gestores) ---
   if (isManager) {
-    const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as any[] };
+const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as MenuItem[] };
     if (sector === 'agronegocio' || sector === 'servicos' || sector === 'frete') {
       management.children.push({ title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' });
     }
@@ -268,6 +275,22 @@ onUnmounted(() => { clearInterval(pollTimer); });
 </script>
 
 <style lang="scss" scoped>
+.nav-dropdown-item {
+  // A cor do texto agora é branca, com uma leve transparência para o estado normal
+  color: rgba(168, 86, 86, 0.8);
+
+  &.q-router-link--active,
+  &:hover {
+    color: rgb(56, 20, 20); // Cor sólida no hover e quando ativo
+    background-color: rgba(rgb(121, 37, 37), 0.1);
+    font-weight: 600;
+  }
+}
+// O fundo do menu continua escuro em ambos os temas para garantir o contraste
+.bg-primary-dark-menu {
+  background-color: #2c3e50;
+}
+
 .main-header {
   background: linear-gradient(to right, $primary, lighten($primary, 8%));
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
@@ -283,7 +306,7 @@ onUnmounted(() => { clearInterval(pollTimer); });
 
 .nav-button {
   transition: all 0.3s ease;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgb(255, 254, 254);
   font-weight: 500;
   margin: 4px 0;
   border-radius: 8px;
@@ -298,25 +321,44 @@ onUnmounted(() => { clearInterval(pollTimer); });
   &.q-btn-dropdown--current { // Para o dropdown ficar ativo
     color: white;
     font-weight: 700;
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(0, 0, 0, 0.15);
   }
 }
 
 .nav-dropdown-item {
-  color: $grey-4;
+  // Cor padrão para o TEMA CLARO (texto escuro)
+  color: $grey-9;
+
+  // Estilo para o link ATIVO (página atual)
   &.q-router-link--active {
-    color: white;
-    background-color: rgba(white, 0.1);
+    color: $primary;
+    background-color: rgba($primary, 0.1);
     font-weight: 600;
   }
+
+  // Estilo para o HOVER (mouse sobre o item)
   &:hover {
-    background-color: rgba(white, 0.05);
+    background-color: rgba(0, 0, 0, 0.05);
   }
 }
-.bg-primary-dark-menu {
-  background-color: #2c3e50;
+
+// --- REGRAS PARA O TEMA ESCURO ---
+.body--dark {
+  .nav-dropdown-item {
+    // Cor do texto para o TEMA ESCURO (texto claro)
+    color: $grey-3;
+
+    // Ajuste do hover para o tema escuro
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+  }
 }
 
+
+.bg-primary-dark-menu {
+  background-color: #3f658a;
+}
 
 .toolbar-icon-btn {
   transition: transform 0.2s ease, color 0.2s ease;

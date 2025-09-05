@@ -14,6 +14,22 @@ interface JourneyFilters {
   date_to?: string | null;
 }
 
+// --- FUNÇÃO AUXILIAR PARA CORRIGIR O PROBLEMA ---
+// Esta função encapsula a lógica de qual dashboard recarregar.
+async function refreshDashboardData() {
+  const dashboardStore = useDashboardStore();
+  const authStore = useAuthStore();
+
+  if (authStore.isManager) {
+    // Para gestores, buscamos o dashboard de gestão.
+    await dashboardStore.fetchManagerDashboard();
+  } else if (authStore.isDriver) {
+    // Para motoristas, buscamos o dashboard de motorista.
+    await dashboardStore.fetchDriverDashboard();
+  }
+}
+
+
 export const useJourneyStore = defineStore('journey', {
   state: () => ({
     journeys: [] as Journey[],
@@ -22,7 +38,7 @@ export const useJourneyStore = defineStore('journey', {
 
   getters: {
     activeJourneys: (state) => state.journeys.filter((j) => j.is_active),
-    
+
     currentUserActiveJourney(): Journey | null {
       const authStore = useAuthStore();
       if (!authStore.user) return null;
@@ -53,8 +69,8 @@ export const useJourneyStore = defineStore('journey', {
         await api.delete(`/journeys/${journeyId}`);
         this.journeys = this.journeys.filter(j => j.id !== journeyId);
         Notify.create({ type: 'positive', message: 'Operação excluída com sucesso!' });
-        
-        await useDashboardStore().fetchSummary();
+
+        await refreshDashboardData();
 
         const authStore = useAuthStore();
         if (authStore.isDemo) {
@@ -74,7 +90,7 @@ export const useJourneyStore = defineStore('journey', {
       try {
         const response = await api.post<Journey>('/journeys/start', journeyData);
         this.journeys.unshift(response.data);
-        await useDashboardStore().fetchSummary();
+        await refreshDashboardData();
 
         const authStore = useAuthStore();
         if (authStore.isDemo) {
@@ -96,7 +112,7 @@ export const useJourneyStore = defineStore('journey', {
         if (index !== -1) {
           this.journeys[index] = response.data.journey;
         }
-        await useDashboardStore().fetchSummary();
+        await refreshDashboardData();
         return response.data.vehicle;
       } finally {
         this.isLoading = false;
@@ -104,3 +120,4 @@ export const useJourneyStore = defineStore('journey', {
     },
   },
 });
+

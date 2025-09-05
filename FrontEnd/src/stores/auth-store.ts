@@ -1,15 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
-import { Notify } from 'quasar'; // <-- 1. IMPORTAMOS O 'Notify'
-import type { UserNotificationPrefsUpdate } from 'src/models/user-models'; // <-- 2. IMPORTAMOS O TIPO
+import { Notify } from 'quasar';
+import type { UserNotificationPrefsUpdate } from 'src/models/user-models';
 import type { LoginForm, TokenData, User, UserSector } from 'src/models/auth-models';
-
-// Importamos TODAS as outras stores que precisam de ser reiniciadas
 import { useTerminologyStore } from './terminology-store';
-// ... e assim por diante para todas as suas storesimport { useUserStore } from './user-store';
-// (etc...)
-
 
 function getFromLocalStorage<T>(key: string): T | null {
   const itemString = localStorage.getItem(key);
@@ -27,17 +22,18 @@ export const useAuthStore = defineStore('auth', () => {
   // --- ESTADO PRINCIPAL ---
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'));
   const user = ref<User | null>(getFromLocalStorage<User>('user'));
-  
+
   // --- ESTADO PARA O LOGIN SOMBRA ---
   const originalUser = ref<User | null>(getFromLocalStorage<User>('original_user'));
 
   // --- PROPRIEDADES COMPUTADAS (GETTERS) ---
   const isAuthenticated = computed(() => !!accessToken.value);
   const isManager = computed(() => ['cliente_ativo', 'cliente_demo'].includes(user.value?.role ?? ''));
+  const isDriver = computed(() => user.value?.role === 'driver'); // <-- ADICIONADO E CORRIGIDO
   const userSector = computed((): UserSector => user.value?.organization?.sector ?? null);
   const isSuperuser = computed(() => user.value?.is_superuser === true);
   const isDemo = computed(() => user.value?.role === 'cliente_demo');
-  const isImpersonating = computed(() => !!originalUser.value); // <-- Chave para a barra de aviso
+  const isImpersonating = computed(() => !!originalUser.value);
 
   // --- AÇÕES ---
   async function login(loginForm: LoginForm): Promise<boolean> {
@@ -55,11 +51,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-    // --- NOVA AÇÃO ADICIONADA ---
   async function updateMyPreferences(payload: UserNotificationPrefsUpdate) {
     try {
       const response = await api.put<User>('/users/me/preferences', payload);
-      // Atualiza os dados do utilizador na store com a resposta da API
       user.value = response.data;
       localStorage.setItem('user', JSON.stringify(response.data));
       Notify.create({ type: 'positive', message: 'Preferências salvas.' });
@@ -71,16 +65,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     console.log('Iniciando processo de logout e reset de todas as stores...');
-    
-    // O seu código de reset mestre (chamar $reset em todas as stores) vai aqui...
+    // A sua lógica de reset de outras stores viria aqui.
 
-    // Limpa a própria store de autenticação e o localStorage
     accessToken.value = null;
     user.value = null;
-    originalUser.value = null; // Limpa também o utilizador original
+    originalUser.value = null;
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
-    localStorage.removeItem('original_accessToken'); // Garante limpeza total
+    localStorage.removeItem('original_accessToken');
     localStorage.removeItem('original_user');
     delete api.defaults.headers.common['Authorization'];
     console.log('Logout concluído.');
@@ -92,15 +84,11 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Não é possível iniciar a personificação sem um utilizador admin logado.');
       return;
     }
-    // 1. Guarda a sessão original do admin
     localStorage.setItem('original_accessToken', accessToken.value);
     localStorage.setItem('original_user', JSON.stringify(user.value));
     originalUser.value = user.value;
 
-    // 2. Define a nova sessão (do utilizador-alvo)
     _setSession(newToken, targetUser);
-
-    // 3. Recarrega a página para que todas as stores sejam reiniciadas com os novos dados
     window.location.href = '/dashboard';
   }
 
@@ -115,18 +103,13 @@ export const useAuthStore = defineStore('auth', () => {
       return;
     }
 
-    // 1. Restaura a sessão original do admin
     _setSession(originalToken, originalAdminUser);
-
-    // 2. Limpa os dados da sessão de personificação
     localStorage.removeItem('original_accessToken');
     localStorage.removeItem('original_user');
     originalUser.value = null;
-
-    // 3. Recarrega a página, voltando para o painel de admin
     window.location.href = '/admin';
   }
-  
+
   // --- FUNÇÕES AUXILIARES ---
   function _setSession(token: string, userData: User) {
     accessToken.value = token;
@@ -144,7 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
     useTerminologyStore().setSector(user.value?.organization?.sector ?? null);
   }
-  
+
   init();
 
   return {
@@ -152,16 +135,17 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     isManager,
+    isDriver, // <-- EXPORTADO
     userSector,
     isSuperuser,
     isDemo,
     login,
     logout,
-    // Exportamos as novas funcionalidades
     isImpersonating,
     originalUser,
     startImpersonation,
     stopImpersonation,
-    updateMyPreferences 
+    updateMyPreferences
   };
 });
+
