@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
+import { Notify } from 'quasar'; // <-- 1. IMPORTAMOS O 'Notify'
+import type { UserNotificationPrefsUpdate } from 'src/models/user-models'; // <-- 2. IMPORTAMOS O TIPO
 import type { LoginForm, TokenData, User, UserSector } from 'src/models/auth-models';
 
 // Importamos TODAS as outras stores que precisam de ser reiniciadas
@@ -50,6 +52,20 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Falha no login:');
       logout();
       return false;
+    }
+  }
+
+    // --- NOVA AÇÃO ADICIONADA ---
+  async function updateMyPreferences(payload: UserNotificationPrefsUpdate) {
+    try {
+      const response = await api.put<User>('/users/me/preferences', payload);
+      // Atualiza os dados do utilizador na store com a resposta da API
+      user.value = response.data;
+      localStorage.setItem('user', JSON.stringify(response.data));
+      Notify.create({ type: 'positive', message: 'Preferências salvas.' });
+    } catch (error) {
+      Notify.create({ type: 'negative', message: 'Erro ao salvar preferências.' });
+      throw error;
     }
   }
 
@@ -146,5 +162,6 @@ export const useAuthStore = defineStore('auth', () => {
     originalUser,
     startImpersonation,
     stopImpersonation,
+    updateMyPreferences 
   };
 });

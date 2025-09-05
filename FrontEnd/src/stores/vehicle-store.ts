@@ -18,13 +18,15 @@ interface PaginatedVehiclesResponse {
 
 const initialState = () => ({
   vehicles: [] as Vehicle[],
+  selectedVehicle: null as Vehicle | null, // <-- NOVO ESTADO ADICIONADO
   isLoading: false,
   totalItems: 0,
 });
 
+
+
 export const useVehicleStore = defineStore('vehicle', {
   state: initialState,
-
   getters: {
     availableVehicles: (state) =>
       state.vehicles.filter(v => v.status === VehicleStatus.AVAILABLE),
@@ -45,6 +47,18 @@ export const useVehicleStore = defineStore('vehicle', {
       } catch (error) {
         console.error('Falha ao buscar veículos:', error);
         Notify.create({ type: 'negative', message: 'Falha ao buscar veículos.' });
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    async fetchVehicleById(vehicleId: number) {
+      this.isLoading = true;
+      try {
+        const response = await api.get<Vehicle>(`/vehicles/${vehicleId}`);
+        this.selectedVehicle = response.data;
+      } catch (error) {
+        Notify.create({ type: 'negative', message: 'Falha ao carregar dados do veículo.' });
+        console.error(`Falha ao buscar veículo ${vehicleId}:`, error);
       } finally {
         this.isLoading = false;
       }

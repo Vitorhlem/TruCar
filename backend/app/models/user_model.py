@@ -21,10 +21,12 @@ class User(Base):
     role = Column(SAEnum(UserRole), nullable=False)
     is_active = Column(Boolean(), default=True)
     avatar_url = Column(String(512), nullable=True)
-
-    # --- PREFERÊNCIAS DE NOTIFICAÇÃO ADICIONADAS ---
+    
     notify_in_app = Column(Boolean(), default=True, nullable=False)
     notify_by_email = Column(Boolean(), default=True, nullable=False)
+    # --- NOVO CAMPO ADICIONADO ---
+    # Guarda o e-mail específico para notificações; pode ser nulo.
+    notification_email = Column(String(100), nullable=True)
     # --- FIM DA ADIÇÃO ---
     
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
@@ -32,10 +34,9 @@ class User(Base):
 
     @property
     def is_superuser(self) -> bool:
-        """Verifica se o e-mail do utilizador está na lista de super admins nas configurações."""
         return self.email in settings.SUPERUSER_EMAILS
 
-    # Relações (permanecem as mesmas)
+    # Relações
     freight_orders = relationship("FreightOrder", back_populates="driver")
     journeys = relationship("Journey", back_populates="driver", cascade="all, delete-orphan")
     reported_requests = relationship(

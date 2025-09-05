@@ -1,7 +1,5 @@
-# ARQUIVO: backend/app/models/vehicle_model.py
-
 import enum
-from sqlalchemy import Column, Integer, String, Date, Text, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, Text, Float, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -21,23 +19,26 @@ class Vehicle(Base):
     identifier = Column(String(50), nullable=True)
     year = Column(Integer, nullable=False)
     photo_url = Column(String(512), nullable=True)
-    status = Column(String(50), nullable=False, default=VehicleStatus.AVAILABLE.value)
+    status = Column(SAEnum(VehicleStatus), nullable=False, default=VehicleStatus.AVAILABLE)
     current_km = Column(Integer, nullable=False, default=0)
     current_engine_hours = Column(Float, nullable=True, default=0)
-    freight_orders = relationship("FreightOrder", back_populates="vehicle")
-
-    # --- INÍCIO DAS COLUNAS DE TELEMETRIA (VERIFIQUE SE ELAS ESTÃO AQUI) ---
+    
     telemetry_device_id = Column(String(100), unique=True, index=True, nullable=True)
     last_latitude = Column(Float, nullable=True)
     last_longitude = Column(Float, nullable=True)
-    # --- FIM DAS COLUNAS DE TELEMETRIA ---
 
     next_maintenance_date = Column(Date, nullable=True)
     next_maintenance_km = Column(Integer, nullable=True)
     maintenance_notes = Column(Text, nullable=True)
+    
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
-
     organization = relationship("Organization", back_populates="vehicles")
+
     journeys = relationship("Journey", back_populates="vehicle", cascade="all, delete-orphan")
     fuel_logs = relationship("FuelLog", back_populates="vehicle", cascade="all, delete-orphan")
     maintenance_requests = relationship("MaintenanceRequest", back_populates="vehicle", cascade="all, delete-orphan")
+    freight_orders = relationship("FreightOrder", back_populates="vehicle")
+
+    # --- NOVA RELAÇÃO ADICIONADA ---
+    costs = relationship("VehicleCost", back_populates="vehicle", cascade="all, delete-orphan")
+    # --- FIM DA ADIÇÃO ---

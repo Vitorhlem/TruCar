@@ -4,10 +4,9 @@ from typing import List
 
 from app import crud
 from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic, UserStats, UserPasswordUpdate, UserNotificationPrefsUpdate
-from app.core.security import verify_password # Importamos a verificação de senha
+from app.core.security import verify_password
 from app.api import deps
 from app.models.user_model import User, UserRole
-from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic, UserStats
 
 router = APIRouter()
 
@@ -25,24 +24,6 @@ async def read_users(
     )
     return users
 
-@router.put("/me/preferences", response_model=UserPublic)
-async def update_current_user_preferences(
-    *,
-    db: AsyncSession = Depends(deps.get_db),
-    prefs_in: UserNotificationPrefsUpdate,
-    current_user: User = Depends(deps.get_current_active_user),
-):
-    """
-    Atualiza as preferências de notificação do utilizador logado.
-    """
-    # Usamos o schema UserUpdate genérico para passar os dados para a função de update do CRUD
-    update_data = UserUpdate(
-        notify_in_app=prefs_in.notify_in_app,
-        notify_by_email=prefs_in.notify_by_email
-    )
-    
-    updated_user = await crud.user.update(db=db, db_user=current_user, user_in=update_data)
-    return updated_user
 
 @router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 async def create_user(
@@ -72,7 +53,7 @@ async def create_user(
     new_user = await crud.user.create(
         db=db, user_in=user_in, 
         organization_id=current_user.organization_id,
-        role=user_in.role or UserRole.DRIVER # Usa o papel do input ou DRIVER como padrão
+        role=user_in.role or UserRole.DRIVER
     )
     return new_user
 
@@ -83,21 +64,33 @@ async def update_current_user_password(
     password_data: UserPasswordUpdate,
     current_user: User = Depends(deps.get_current_active_user),
 ):
-    """
-    Atualiza a senha do utilizador logado.
-    """
-    # 1. Verifica se a senha atual fornecida está correta
+    """Atualiza a senha do utilizador logado."""
     if not verify_password(password_data.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A senha atual está incorreta."
         )
     
-    # 2. Se estiver correta, atualiza para a nova senha
     updated_user = await crud.user.update_password(
         db, db_user=current_user, new_password=password_data.new_password
     )
     return updated_user
+
+# --- NOVO ENDPOINT ADICIONADO ---
+@router.put("/me/preferences", response_model=UserPublic)
+async def update_current_user_preferences(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    prefs_in: UserNotificationPrefsUpdate,
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Atualiza as preferências de notificação do utilizador logado.
+    """
+    update_data = UserUpdate(**prefs_in.model_dump())
+    updated_user = await crud.user.update(db=db, db_user=current_user, user_in=update_data)
+    return updated_user
+# --- FIM DA ADIÇÃO ---
 
 @router.get("/{user_id}", response_model=UserPublic)
 async def read_user_by_id(
@@ -107,12 +100,9 @@ async def read_user_by_id(
     current_user: User = Depends(deps.get_current_active_manager),
 ):
     """Busca os dados de um único utilizador da organização do gestor."""
-    # --- CORRIGIDO ---
-    # A chamada agora usa a função 'get' padronizada com o parâmetro 'id'
     user = await crud.user.get(
         db, id=user_id, organization_id=current_user.organization_id
     )
-    # --- FIM DA CORREÇÃO ---
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -147,16 +137,12 @@ async def update_user(
             detail="O utilizador não foi encontrado nesta organização.",
         )
 
-    # --- REGRA DE SEGURANÇA ADICIONADA ---
-    # Verificamos se a atualização tenta mudar o 'role'.
     if user_in.role is not None and user_in.role != user_to_update.role:
-        # Se sim, verificamos se o utilizador que faz o pedido é um super admin.
         if not current_user.is_superuser:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Apenas administradores do sistema podem alterar o papel de um utilizador."
             )
-    # --- FIM DA REGRA DE SEGURANÇA ---
     
     updated_user = await crud.user.update(db=db, db_user=user_to_update, user_in=user_in)
     return updated_user
