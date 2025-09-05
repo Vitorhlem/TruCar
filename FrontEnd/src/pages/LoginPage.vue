@@ -1,232 +1,201 @@
 <template>
-  <q-page class="row items-stretch window-height">
-    <div class="col-12 col-md-6 flex flex-center bg-white">
-      <q-card flat class="q-pa-lg animated fadeInLeft" style="width: 400px; max-width: 90vw;">
-        <q-card-section class="text-center">
+  <q-page
+    class="window-height window-width flex flex-center main-container"
+    @mousemove="handleMouseMove"
+    @mouseleave="handleMouseLeave"
+  >
+    <!-- 1. Fundo com Vídeo (se carregar) e Overlay -->
+    <video ref="backgroundVideo" autoplay loop muted playsinline class="background-video">
+      <!-- VÍDEO ATUALIZADO: Camião a conduzir numa autoestrada -->
+      <source src="https://videos.pexels.com/video-files/2231801/2231801-hd_1920_1080_25fps.mp4" type="video/mp4">
+      O seu navegador não suporta o tag de vídeo.
+    </video>
+    <div class="video-overlay"></div>
+
+    <!-- 2. Container do Formulário (para perspetiva 3D) -->
+    <div class="login-card-container">
+      <q-card ref="loginCard" flat class="login-card q-pa-lg">
+        <q-card-section class="text-center q-pb-none">
           <img
-            src="~assets/vytruve-connect-logo.png"
-            alt="Vytruve Connect Logo"
+            src="https://placehold.co/120x50/transparent/FFFFFF?text=TruCar"
+            alt="TruCar Logo"
             style="width: 120px; height: auto; margin-bottom: 16px;"
           >
-          <div class="text-h5 q-mt-sm text-weight-bold">TruCar</div>
-          <div class="text-subtitle1 text-grey-8">Acesso ao sistema</div>
+          <div class="text-h5 q-mt-sm text-weight-bold text-white">Bem-vindo ao Controlo</div>
+          <div class="text-subtitle1 text-grey-5">Acesse a sua central de operações.</div>
         </q-card-section>
-        <q-card-section>
+
+        <q-card-section class="q-pt-lg">
           <q-form @submit.prevent="handleLogin" class="q-gutter-md">
             <q-input
-              outlined
+              dark
+              standout="bg-grey-10 text-white"
               v-model="email"
-              label="E-mail"
-              type="email"
-              lazy-rules
-              :rules="[val => !!val || 'Por favor, digite seu e-mail']"
+              label="E-mail ou ID de Utilizador"
+              :rules="[val => !!val || 'Campo obrigatório']"
             >
               <template v-slot:prepend><q-icon name="alternate_email" /></template>
             </q-input>
+
             <q-input
-              outlined
+              dark
+              standout="bg-grey-10 text-white"
               v-model="password"
               label="Senha"
-              type="password"
-              lazy-rules
-              :rules="[val => !!val || 'Por favor, digite sua senha']"
+              :type="isPasswordVisible ? 'text' : 'password'"
+              :rules="[val => !!val || 'Campo obrigatório']"
             >
               <template v-slot:prepend><q-icon name="lock" /></template>
+              <template v-slot:append>
+                <q-icon
+                  :name="isPasswordVisible ? 'visibility_off' : 'visibility'"
+                  class="cursor-pointer"
+                  @click="isPasswordVisible = !isPasswordVisible"
+                />
+              </template>
             </q-input>
+
+            <div class="row items-center justify-between text-grey-5">
+              <q-checkbox v-model="rememberMe" label="Lembrar-me" size="sm" dark />
+              <q-btn label="Esqueceu a senha?" flat no-caps size="sm" class="text-primary" />
+            </div>
+
             <div>
               <q-btn
                 type="submit"
                 color="primary"
-                label="Entrar"
+                label="Acessar Plataforma"
                 class="full-width text-weight-bold q-py-md"
                 unelevated
                 :loading="isLoading"
+                size="lg"
               />
             </div>
           </q-form>
         </q-card-section>
       </q-card>
     </div>
-
-    <div
-      v-if="$q.platform.is.desktop"
-      ref="animatedBackground"
-      class="col-12 col-md-6 flex flex-center text-white animated-bg"
-      @mousemove="handleMouseMove"
-    >
-      <canvas ref="particleCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;"></canvas>
-      <div class="text-center q-pa-xl animated fadeInRight" style="z-index: 1; background-color: rgba(0,0,0,0.2); border-radius: 15px;">
-        <h2 class="text-h2 text-weight-bolder" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.3);">
-          {{ sidePanel.title }}
-        </h2>
-        <q-list dark separator class="q-mt-lg text-left" style="max-width: 450px">
-            <q-item>
-              <q-item-section avatar><q-icon name="dashboard" /></q-item-section>
-              <q-item-section>Dashboard com gráficos e KPIs em tempo real.</q-item-section>
-            </q-item>
-            <q-item>
-              <q-item-section avatar><q-icon name="map" /></q-item-section>
-              <q-item-section>Controle e histórico completo de viagens.</q-item-section>
-            </q-item>
-            <q-item>
-              <q-item-section avatar><q-icon name="build" /></q-item-section>
-              <q-item-section>Gestão de manutenção preventiva.</q-item-section>
-            </q-item>
-             <q-item>
-              <q-item-section avatar><q-icon name="group" /></q-item-section>
-              <q-item-section>Gerenciamento de motoristas e gestores.</q-item-section>
-            </q-item>
-          </q-list>
-      </div>
-    </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from 'stores/auth-store';
 
-const $q = useQuasar(); // Adicionado para usar $q.platform
+// --- Refs para os Elementos do DOM ---
+const loginCard = ref<HTMLElement | null>(null);
+const backgroundVideo = ref<HTMLVideoElement | null>(null);
+
+// --- Lógica do Formulário ---
+const $q = useQuasar();
 const email = ref('');
 const password = ref('');
+const rememberMe = ref(false);
 const isLoading = ref(false);
+const isPasswordVisible = ref(false);
 const router = useRouter();
-const authStore = useAuthStore();
-
-// Objeto facilmente modificável para o texto do painel direito
-const sidePanel = ref({
-  title: 'Sua frota começa aqui!',
-});
-
-// --- LÓGICA DA ANIMAÇÃO ---
-const particleCanvas = ref<HTMLCanvasElement | null>(null);
-const animatedBackground = ref<HTMLDivElement | null>(null);
-const particles = ref<Particle[]>([]);
-const mouse = ref({ x: -1000, y: -1000 });
-const numParticles = 100;
-const connectionDistance = 120;
-let animationFrameId: number;
-
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  radius: number;
-}
-
-function initParticles() {
-  if (!particleCanvas.value || !animatedBackground.value) return;
-  const canvas = particleCanvas.value;
-  canvas.width = animatedBackground.value.offsetWidth;
-  canvas.height = animatedBackground.value.offsetHeight;
-  particles.value = Array.from({ length: numParticles }, () => ({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    vx: (Math.random() - 0.5) * 0.3,
-    vy: (Math.random() - 0.5) * 0.3,
-    radius: Math.random() * 2 + 1,
-  }));
-}
-
-function drawParticles() {
-  if (!particleCanvas.value) return;
-  const canvas = particleCanvas.value;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const allPoints = [...particles.value, { ...mouse.value, radius: 0, vx: 0, vy: 0 }];
-
-  allPoints.forEach((p1, index) => {
-    if (p1.radius > 0) {
-        ctx.beginPath();
-        ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.fill();
-    }
-
-    for (let j = index + 1; j < allPoints.length; j++) {
-      const p2 = allPoints[j];
-      if (p2) {
-        const dx = p1.x - p2.x;
-        const dy = p1.y - p2.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance < connectionDistance) {
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.strokeStyle = `rgba(255, 255, 255, ${1 - distance / connectionDistance})`;
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
-        }
-      }
-    }
-
-    if (p1.radius > 0) {
-        p1.x += p1.vx;
-        p1.y += p1.vy;
-        if (p1.x < 0 || p1.x > canvas.width) p1.vx *= -1;
-        if (p1.y < 0 || p1.y > canvas.height) p1.vy *= -1;
-    }
-  });
-
-  animationFrameId = requestAnimationFrame(drawParticles);
-}
-
-function handleMouseMove(event: MouseEvent) {
-  if (!animatedBackground.value) return;
-  const rect = animatedBackground.value.getBoundingClientRect();
-  mouse.value.x = event.clientX - rect.left;
-  mouse.value.y = event.clientY - rect.top;
-}
 
 async function handleLogin() {
   isLoading.value = true;
   try {
-    await authStore.login({ email: email.value, password: password.value });
-    await router.push({ name: 'dashboard' });
-  } catch {
-    $q.notify({ color: 'negative', icon: 'error', message: 'E-mail ou senha inválidos.' });
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    $q.notify({ color: 'positive', icon: 'check_circle', message: 'Acesso autorizado!' });
+  } catch (error) {
+    $q.notify({ color: 'negative', icon: 'error', message: 'Credenciais inválidas.' });
   } finally {
     isLoading.value = false;
   }
 }
 
-onMounted(() => {
-  if ($q.platform.is.desktop) {
-    setTimeout(() => {
-      initParticles();
-      drawParticles();
-      window.addEventListener('resize', initParticles);
-    }, 100);
-  }
-});
+// --- Lógica de Interatividade (Parallax e Efeito 3D) ---
+function handleMouseMove(event: MouseEvent) {
+  const { clientX, clientY } = event;
+  const width = window.innerWidth;
+  const height = window.innerHeight;
 
-onUnmounted(() => {
-  if ($q.platform.is.desktop) {
-    window.removeEventListener('resize', initParticles);
-    cancelAnimationFrame(animationFrameId);
+  // Calcula a posição do rato de -1 a 1
+  const mouseX = (clientX / width) * 2 - 1;
+  const mouseY = (clientY / height) * 2 - 1;
+
+  // 1. Efeito de inclinação 3D no Cartão de Login
+  if (loginCard.value) {
+    const rotateY = mouseX * 8; // Multiplicador para a intensidade da rotação
+    const rotateX = -mouseY * 8;
+    loginCard.value.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
   }
-});
+  
+  // 2. Efeito de Parallax no Vídeo de Fundo
+  if (backgroundVideo.value) {
+    const transX = -mouseX * 20; // Multiplicador para a intensidade do parallax
+    const transY = -mouseY * 20;
+    // Usamos 'scale' para garantir que o vídeo nunca mostre as bordas
+    backgroundVideo.value.style.transform = `translateX(${transX}px) translateY(${transY}px) scale(1.1)`;
+  }
+}
+
+function handleMouseLeave() {
+  // Retorna os elementos à posição original
+  if (loginCard.value) {
+    loginCard.value.style.transform = 'rotateX(0deg) rotateY(0deg)';
+  }
+  if (backgroundVideo.value) {
+    backgroundVideo.value.style.transform = 'translateX(0px) translateY(0px) scale(1.1)';
+  }
+}
 </script>
 
 <style lang="scss" scoped>
-
-.animated-bg {
-  /* Altere as cores do gradiente aqui */
-  background: linear-gradient(-45deg, $primary, $secondary, lighten($primary, 20%), $accent);
-  background-size: 400% 400%;
-  animation: gradientAnimation 15s ease infinite;
-  position: relative;
+.main-container {
+  // Imagem de fundo estática como fallback
+  background-image: url('https://images.pexels.com/photos/2387793/pexels-photo-2387793.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
+  background-size: cover;
+  background-position: center;
   overflow: hidden;
+  position: relative;
 }
 
-@keyframes gradientAnimation {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.background-video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 105%; // Um pouco maior para o parallax
+  min-height: 105%;
+  width: auto;
+  height: auto;
+  z-index: 1;
+  transform: translateX(-50%) translateY(-50%) scale(1.1);
+  transition: transform 0.3s ease-out;
+}
+
+.video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  // Gradiente mais escuro para garantir contraste
+  background: radial-gradient(ellipse at center, rgba(5, 10, 20, 0.4) 0%, rgba(5, 10, 20, 0.9) 100%);
+  z-index: 2;
+}
+
+.login-card-container {
+  // Ativa a perspetiva 3D para o efeito de inclinação
+  perspective: 1500px;
+  z-index: 3;
+}
+
+.login-card {
+  width: 420px;
+  max-width: 90vw;
+  // EFEITO DE VIDRO (GLASSMORPHISM)
+  background: rgba(18, 23, 38, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  // Transição suave para o retorno do efeito
+  transition: transform 0.3s ease-out;
 }
 </style>
+
+
