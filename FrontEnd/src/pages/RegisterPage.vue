@@ -1,14 +1,14 @@
 <template>
   <q-page>
     <div class="row window-height">
-      <!-- Coluna Esquerda: O Formulário com Fundo e Cores Corrigidas -->
+      <!-- Coluna Esquerda: REFORMULADA com tema escuro e glassmorphism -->
       <div class="col-12 col-md-6 flex flex-center form-panel">
-        <q-card flat class="register-card" style="width: 500px; max-width: 90vw;">
+        <q-card flat class="register-card q-pa-md">
           
           <q-card-section class="text-center q-pb-none">
-            <img src="https://placehold.co/150x40/1E3A8A/FFF?text=TruCar" alt="TruCar Logo" style="height: 40px; margin-bottom: 1rem;">
-            <div class="text-h5 text-weight-bold">Crie a sua Conta Gratuita</div>
-            <div class="text-subtitle1 text-grey-7">Comece a otimizar a sua frota hoje mesmo.</div>
+            <img src="https://placehold.co/150x40/transparent/FFFFFF?text=TruCar" alt="TruCar Logo" style="height: 40px; margin-bottom: 1rem;">
+            <div class="text-h5 text-weight-bold text-white">Crie a sua Conta Gratuita</div>
+            <div class="text-subtitle1 text-grey-5">Comece a otimizar a sua frota hoje mesmo.</div>
           </q-card-section>
           
           <q-stepper
@@ -17,8 +17,9 @@
             color="primary"
             animated
             flat
+            dark
             header-nav
-            class="q-mt-md"
+            class="q-mt-md transparent-stepper"
           >
             <!-- Etapa 1: Empresa -->
             <q-step
@@ -28,7 +29,8 @@
               :done="step > 1"
             >
               <q-input 
-                outlined 
+                dark
+                standout="bg-grey-10"
                 v-model="formData.organization_name" 
                 label="Nome da Empresa *" 
                 :rules="[val => !!val || 'Campo obrigatório']"
@@ -38,7 +40,8 @@
               </q-input>
 
               <q-select
-                outlined
+                dark
+                standout="bg-grey-10"
                 v-model="formData.sector"
                 :options="sectorOptions"
                 label="Setor da Empresa *"
@@ -62,32 +65,32 @@
               title="Seus Dados"
               icon="account_circle"
             >
-              <q-input outlined v-model="formData.full_name" label="Seu Nome Completo *" :rules="[val => !!val || 'Campo obrigatório']" class="q-mb-md">
-                 <template v-slot:prepend><q-icon name="person" /></template>
+              <q-input dark standout="bg-grey-10" v-model="formData.full_name" label="Seu Nome Completo *" :rules="[val => !!val || 'Campo obrigatório']" class="q-mb-md">
+                  <template v-slot:prepend><q-icon name="person" /></template>
               </q-input>
-              <q-input outlined v-model="formData.email" type="email" label="Seu E-mail *" :rules="[val => !!val || 'Campo obrigatório']" class="q-mb-md">
-                 <template v-slot:prepend><q-icon name="alternate_email" /></template>
+              <q-input dark standout="bg-grey-10" v-model="formData.email" type="email" label="Seu E-mail *" :rules="[val => !!val || 'Campo obrigatório']" class="q-mb-md">
+                  <template v-slot:prepend><q-icon name="alternate_email" /></template>
               </q-input>
-              <q-input outlined v-model="formData.password" type="password" label="Sua Senha *" :rules="[val => !!val || 'Campo obrigatório']">
-                 <template v-slot:prepend><q-icon name="lock" /></template>
+              <q-input dark standout="bg-grey-10" v-model="formData.password" type="password" label="Sua Senha *" :rules="[val => !!val || 'Campo obrigatório']">
+                  <template v-slot:prepend><q-icon name="lock" /></template>
               </q-input>
               
               <q-stepper-navigation class="q-mt-lg row q-col-gutter-sm">
                 <div class="col-6">
-                   <q-btn flat @click="() => stepper?.previous()" color="primary" label="Voltar" class="full-width" />
+                    <q-btn flat @click="() => stepper?.previous()" color="primary" label="Voltar" class="full-width" />
                 </div>
-                 <div class="col-6">
-                   <q-btn @click="onSubmit" color="primary" label="Criar Minha Conta" class="full-width" unelevated :loading="isLoading" />
-                </div>
+                  <div class="col-6">
+                    <q-btn @click="onSubmit" color="primary" label="Criar Minha Conta" class="full-width" unelevated :loading="isLoading" />
+                  </div>
               </q-stepper-navigation>
             </q-step>
           </q-stepper>
           
-           <div class="text-center q-mt-md">
-             <q-btn to="/auth/login" label="Já tenho uma conta" flat no-caps />
-           </div>
+            <div class="text-center q-mt-md">
+               <span>Já tem uma conta? <q-btn to="/auth/login" label="Faça o login" flat no-caps dense class="text-primary text-weight-bold"/></span>
+            </div>
 
-            <q-separator class="q-my-lg" />
+            <q-separator dark class="q-my-lg" />
 
             <!-- Selos de Segurança -->
             <div class="security-seals text-center">
@@ -108,9 +111,9 @@
         </q-card>
       </div>
 
-      <!-- Coluna Direita: A Área Visual com 4 Faixas -->
+      <!-- Coluna Direita: A Área Visual (Mantida) -->
       <div class="col-md-6 register-visual-container gt-sm">
-       <div class="image-strip" style="background-image: url('https://pixabay.com/get/g6ba7cef8f76b1143adfb7b616c5b6cb37f1e875e876dc2a418932132003a62312bc9f5251a229d808ea70aee8c98f936.jpg');"></div>
+        <div class="image-strip" style="background-image: url('https://pixabay.com/get/g6ba7cef8f76b1143adfb7b616c5b6cb37f1e875e876dc2a418932132003a62312bc9f5251a229d808ea70aee8c98f936.jpg');"></div>
         <div class="image-strip" style="background-image: url('https://pixabay.com/get/ga28d055e275545ea851c344afb5807456ec4125f23bbb6676a7a17d9c6d1f0f77fdbb5e8725168576d693207f0afbe3c.jpg');"></div>
         <div class="image-strip" style="background-image: url('https://pixabay.com/get/gce582312228bc092a57a25c6580c3077261faff6162d4f012f2b9080c43a7b6f511f1a39a4ee31df085cb2f999de2ee5.jpg');"></div>
         <div class="image-strip" style="background-image: url('https://pixabay.com/get/g0f13585a69a8dc2b46af7d7227418e566c9e56a350f8211bab68859228b0b6c6a677eabf131839fd28155342fa679a96.jpg');"></div>
@@ -211,33 +214,24 @@ async function onSubmit() {
 
 <style lang="scss" scoped>
 .form-panel {
-  // NOVO: Fundo com padrão profissional e adaptativo
-  background-color: $grey-2;
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23dce2e8' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  transition: background-color 0.3s ease;
-
-  .body--dark & {
-    background-color: $dark-page;
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23374151' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  }
+  background-color: #050a14; // Fundo escuro sólido
 }
 
 .register-card {
-  border-radius: $generic-border-radius;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.07);
-  // O background será herdado do tema, garantindo a adaptabilidade
-  
-  .body--dark & {
-    // Garante que o texto dentro do card se torne claro no modo escuro
-    .text-weight-bold {
-      color: white; // Corrige o título principal
-    }
-    .text-grey-7 {
-      color: $grey-5 !important; // Corrige o subtítulo
-    }
-  }
+  width: 500px;
+  max-width: 90vw;
+  // EFEITO DE VIDRO (GLASSMORPHISM)
+  background: rgba(18, 23, 38, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
 }
 
+.transparent-stepper {
+  background-color: transparent !important;
+}
+
+// Estilos para o painel visual direito (mantidos)
 .register-visual-container {
   position: relative;
   display: flex;
@@ -293,29 +287,23 @@ async function onSubmit() {
 .benefits-list {
   background-color: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(5px);
-  border-radius: $generic-border-radius;
+  border-radius: 8px;
   margin-top: 3rem;
   border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.q-stepper--flat {
-  border: none !important;
-  background-color: transparent; // Deixa o stepper transparente sobre o card
 }
 
 .security-seals {
   display: flex;
   justify-content: space-around;
-  align-items: center;
   color: $positive;
   font-size: 0.8rem;
-  font-weight: 600;
-  opacity: 0.8;
+  font-weight: 500;
+  opacity: 0.9;
   padding: 0 1rem;
 }
 .seal-item {
   display: flex;
-  align-items: center;
+  align-items: baseline; // Alinhamento corrigido
   gap: 8px;
 }
 
