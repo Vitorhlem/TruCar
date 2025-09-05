@@ -4,11 +4,11 @@ from typing import List, Optional
 
 from app import crud
 from app.api import deps
-from app.core import auth  # <-- Importamos o módulo de autenticação
+from app.core import auth 
 from app.models.user_model import User, UserRole
 from app.schemas.user_schema import UserPublic
 from app.schemas.organization_schema import OrganizationPublic, OrganizationUpdate
-from app.schemas.token_schema import Token # <-- Importamos o schema do Token
+from app.schemas.token_schema import Token 
 
 router = APIRouter()
 
@@ -69,10 +69,7 @@ async def read_all_users_as_admin(
     current_user: User = Depends(deps.get_current_super_admin)
 ):
     """(Super Admin) Retorna a lista de TODOS os utilizadores da plataforma."""
-    # --- CHAMADA CORRIGIDA ---
-    # Chamamos a função sem o organization_id para obter a lista global
     all_users = await crud.user.get_multi_by_org(db)
-    # --- FIM DA CORREÇÃO ---
     return all_users
 
 
@@ -134,4 +131,3 @@ async def impersonate_user(
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
-

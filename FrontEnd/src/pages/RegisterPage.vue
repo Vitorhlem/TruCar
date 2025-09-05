@@ -1,14 +1,27 @@
 <template>
   <q-page>
     <div class="row window-height">
-      <!-- Coluna Esquerda: REFORMULADA com tema escuro e glassmorphism -->
-      <div class="col-12 col-md-6 flex flex-center form-panel">
-        <q-card flat class="register-card q-pa-md">
+      <!-- Coluna Esquerda: REFORMULADA com tema escuro, glassmorphism e novas animações -->
+      <div 
+        ref="formPanel"
+        class="col-12 col-md-6 flex flex-center form-panel"
+        @mousemove="handleMouseMove"
+        @mouseleave="handleMouseLeave"
+      >
+        <q-card ref="registerCard" flat class="register-card q-pa-md">
+          <!-- EFEITO DE BRILHO ADICIONADO -->
+          <div class="card-shine"></div>
           
           <q-card-section class="text-center q-pb-none">
-            <img src="https://placehold.co/150x40/transparent/FFFFFF?text=TruCar" alt="TruCar Logo" style="height: 40px; margin-bottom: 1rem;">
-            <div class="text-h5 text-weight-bold text-white">Crie a sua Conta Gratuita</div>
-            <div class="text-subtitle1 text-grey-5">Comece a otimizar a sua frota hoje mesmo.</div>
+            <!-- ANIMAÇÕES SEQUENCIAIS ADICIONADAS -->
+            <img 
+              src="~assets/trucar-logo-white.png" 
+              alt="TruCar Logo" 
+              class="animated-form-element"
+              style="height: 40px; margin-bottom: 1rem; animation-delay: 0.1s;"
+            >
+            <div class="text-h5 text-weight-bold text-white animated-form-element" style="animation-delay: 0.2s;">Crie a sua Conta Gratuita</div>
+            <div class="text-subtitle1 text-grey-5 animated-form-element" style="animation-delay: 0.3s;">Comece a otimizar a sua frota hoje mesmo.</div>
           </q-card-section>
           
           <q-stepper
@@ -19,7 +32,8 @@
             flat
             dark
             header-nav
-            class="q-mt-md transparent-stepper"
+            class="q-mt-md transparent-stepper animated-form-element"
+            style="animation-delay: 0.4s;"
           >
             <!-- Etapa 1: Empresa -->
             <q-step
@@ -80,20 +94,33 @@
                     <q-btn flat @click="() => stepper?.previous()" color="primary" label="Voltar" class="full-width" />
                 </div>
                   <div class="col-6">
-                    <q-btn @click="onSubmit" color="primary" label="Criar Minha Conta" class="full-width" unelevated :loading="isLoading" />
+                    <!-- BOTÃO COM MICRO-INTERAÇÃO -->
+                    <q-btn 
+                      @click="onSubmit" 
+                      :color="getButtonColor" 
+                      class="full-width register-btn" 
+                      unelevated 
+                      :loading="isLoading"
+                    >
+                      <transition name="fade" mode="out-in">
+                        <span v-if="!isLoading && registerStatus === 'idle'">Criar Minha Conta</span>
+                        <q-icon v-else-if="!isLoading && registerStatus === 'success'" name="check" />
+                        <q-icon v-else-if="!isLoading && registerStatus === 'error'" name="close" />
+                      </transition>
+                    </q-btn>
                   </div>
               </q-stepper-navigation>
             </q-step>
           </q-stepper>
           
-            <div class="text-center q-mt-md">
+            <div class="text-center q-mt-md animated-form-element" style="animation-delay: 0.5s;">
                <span>Já tem uma conta? <q-btn to="/auth/login" label="Faça o login" flat no-caps dense class="text-primary text-weight-bold"/></span>
             </div>
 
-            <q-separator dark class="q-my-lg" />
+            <q-separator dark class="q-my-lg animated-form-element" style="animation-delay: 0.6s;" />
 
             <!-- Selos de Segurança -->
-            <div class="security-seals text-center">
+            <div class="security-seals text-center animated-form-element" style="animation-delay: 0.7s;">
               <div class="seal-item">
                 <q-icon name="verified_user" color="positive" />
                 <span>SSL Criptografado</span>
@@ -111,12 +138,12 @@
         </q-card>
       </div>
 
-      <!-- Coluna Direita: A Área Visual (Mantida) -->
+      <!-- Coluna Direita: A Área Visual com ficheiros de imagem locais -->
       <div class="col-md-6 register-visual-container gt-sm">
-        <div class="image-strip" style="background-image: url('https://pixabay.com/get/g6ba7cef8f76b1143adfb7b616c5b6cb37f1e875e876dc2a418932132003a62312bc9f5251a229d808ea70aee8c98f936.jpg');"></div>
-        <div class="image-strip" style="background-image: url('https://pixabay.com/get/ga28d055e275545ea851c344afb5807456ec4125f23bbb6676a7a17d9c6d1f0f77fdbb5e8725168576d693207f0afbe3c.jpg');"></div>
-        <div class="image-strip" style="background-image: url('https://pixabay.com/get/gce582312228bc092a57a25c6580c3077261faff6162d4f012f2b9080c43a7b6f511f1a39a4ee31df085cb2f999de2ee5.jpg');"></div>
-        <div class="image-strip" style="background-image: url('https://pixabay.com/get/g0f13585a69a8dc2b46af7d7227418e566c9e56a350f8211bab68859228b0b6c6a677eabf131839fd28155342fa679a96.jpg');"></div>
+        <div class="image-strip" :style="{ backgroundImage: `url(${visual1})` }"></div>
+        <div class="image-strip" :style="{ backgroundImage: `url(${visual2})` }"></div>
+        <div class="image-strip" :style="{ backgroundImage: `url(${visual3})` }"></div>
+        <div class="image-strip" :style="{ backgroundImage: `url(${visual4})` }"></div>
         <div class="visual-content text-white">
             <h2 class="text-h2 text-weight-bolder">TruCar</h2>
             <h5 class="text-h5 text-weight-light q-mb-xl">A solução completa para a sua frota, seja qual for o seu setor.</h5>
@@ -155,9 +182,17 @@ import { api } from 'boot/axios';
 import axios from 'axios';
 import type { UserRegister, UserSector } from 'src/models/auth-models';
 
+import visual1 from 'assets/register-visual-1.jpg';
+import visual2 from 'assets/register-visual-2.jpg';
+import visual3 from 'assets/register-visual-3.jpg';
+import visual4 from 'assets/register-visual-4.jpg';
+
+const formPanel = ref<HTMLElement | null>(null);
+const registerCard = ref<HTMLElement | null>(null);
 const router = useRouter();
 const $q = useQuasar();
 const isLoading = ref(false);
+const registerStatus = ref<'idle' | 'success' | 'error'>('idle');
 
 const step = ref(1);
 const stepper = ref<QStepper | null>(null);
@@ -168,6 +203,12 @@ const formData = ref<UserRegister>({
   full_name: '',
   email: '',
   password: '',
+});
+
+const getButtonColor = computed(() => {
+  if (registerStatus.value === 'success') return 'positive';
+  if (registerStatus.value === 'error') return 'negative';
+  return 'primary';
 });
 
 const sectorOptions: { label: string, value: UserSector }[] = [
@@ -188,47 +229,113 @@ const sectorIcon = computed(() => {
 });
 
 async function onSubmit() {
+  if (isLoading.value) return;
   isLoading.value = true;
+  registerStatus.value = 'idle';
+
   try {
     await api.post('/login/register', formData.value);
+    registerStatus.value = 'success';
+    isLoading.value = false;
     
     $q.notify({
       type: 'positive',
-      message: 'Conta criada com sucesso! Por favor, faça o login para continuar.',
-      timeout: 5000
+      message: 'Conta criada com sucesso! Redirecionando para o login...',
     });
     
-    await router.push('/auth/login');
+    setTimeout(() => {
+      router.push('/auth/login');
+    }, 1200);
 
   } catch (error) {
+    registerStatus.value = 'error'
+    isLoading.value = false;
     let errorMessage = 'Erro ao criar conta. Tente novamente.';
     if (axios.isAxiosError(error) && error.response?.data?.detail) {
       errorMessage = error.response.data.detail as string;
     }
     $q.notify({ type: 'negative', message: errorMessage });
-  } finally {
-    isLoading.value = false;
+    setTimeout(() => {
+      registerStatus.value = 'idle';
+    }, 2500);
+  }
+}
+
+function handleMouseMove(event: MouseEvent) {
+  if (registerCard.value) {
+    const rect = registerCard.value.getBoundingClientRect();
+    const shineX = event.clientX - rect.left;
+    const shineY = event.clientY - rect.top;
+    registerCard.value.style.setProperty('--shine-x', `${shineX}px`);
+    registerCard.value.style.setProperty('--shine-y', `${shineY}px`);
+    registerCard.value.style.setProperty('--shine-opacity', '1');
+  }
+}
+
+function handleMouseLeave() {
+  if (registerCard.value) {
+    registerCard.value.style.setProperty('--shine-opacity', '0');
   }
 }
 </script>
 
 <style lang="scss" scoped>
 .form-panel {
-  background-color: #050a14; // Fundo escuro sólido
+  background-color: #050a14;
 }
 
 .register-card {
   width: 500px;
   max-width: 90vw;
-  // EFEITO DE VIDRO (GLASSMORPHISM)
   background: rgba(18, 23, 38, 0.5);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine {
+  position: absolute;
+  top: var(--shine-y, 0);
+  left: var(--shine-x, 0);
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 60%);
+  opacity: var(--shine-opacity, 0);
+  transition: opacity 0.3s ease-out;
+  pointer-events: none;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animated-form-element {
+  opacity: 0;
+  animation: fadeInUp 0.5s ease-out forwards;
 }
 
 .transparent-stepper {
   background-color: transparent !important;
+}
+
+:deep(.q-field--standout.q-field--focused .q-field__control) {
+  box-shadow: 0 0 10px rgba(var(--q-color-primary-rgb), 0.5);
+}
+:deep(.q-field--standout .q-field__control) {
+  transition: box-shadow 0.3s ease;
+}
+
+.register-btn {
+  transition: background-color 0.3s ease;
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 
 // Estilos para o painel visual direito (mantidos)
@@ -281,7 +388,6 @@ async function onSubmit() {
   max-width: 500px;
   z-index: 3;
   text-align: center;
-  animation: fadeIn 1s ease-out;
 }
 
 .benefits-list {
@@ -303,13 +409,8 @@ async function onSubmit() {
 }
 .seal-item {
   display: flex;
-  align-items: baseline; // Alinhamento corrigido
+  align-items: baseline;
   gap: 8px;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translate(-50%, -40%); }
-  to { opacity: 1; transform: translate(-50%, -50%); }
 }
 </style>
 
