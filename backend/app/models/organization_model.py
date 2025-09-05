@@ -20,8 +20,10 @@ class Organization(Base):
     implements = relationship("Implement", back_populates="organization")
     clients = relationship("Client", back_populates="organization")
     freight_orders = relationship("FreightOrder", back_populates="organization")
-
-    # --- NOVAS RELAÇÕES ADICIONADAS ---
     alerts = relationship("Alert", back_populates="organization")
     goals = relationship("Goal", back_populates="organization")
+
+    # --- RELAÇÃO FALTANTE ADICIONADA ---
+    documents = relationship("Document", back_populates="organization")
     # --- FIM DA ADIÇÃO ---
+

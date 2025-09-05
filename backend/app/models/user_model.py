@@ -40,8 +40,8 @@ class User(Base):
         foreign_keys="MaintenanceRequest.reported_by_id", 
         back_populates="reporter"
     )
-
-    # --- NOVAS RELAÇÕES ADICIONADAS ---
     alerts = relationship("Alert", back_populates="driver")
     achievements = relationship("UserAchievement", back_populates="user", cascade="all, delete-orphan")
-    # --- FIM DA ADIÇÃO ---
+
+    # --- Relação com Documentos adicionada ---
+    documents = relationship("Document", back_populates="driver", cascade="all, delete-orphan")

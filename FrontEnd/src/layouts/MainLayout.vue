@@ -392,4 +392,3 @@ onUnmounted(() => { clearInterval(pollTimer); });
   transform: translateY(10px);
 }
 </style>
-

@@ -20,7 +20,8 @@ from app.api.v1.endpoints import (
     telemetry,
     users,
     vehicles,
-    vehicle_costs, # <-- 1. NOVA IMPORTAÇÃO ADICIONADA
+    documents,
+    vehicle_costs # <-- 1. NOVA IMPORTAÇÃO ADICIONADA
 )
 
 api_router = APIRouter()
@@ -48,4 +49,6 @@ api_router.include_router(leaderboard.router, prefix="/leaderboard", tags=["Lead
 api_router.include_router(clients.router, prefix="/clients", tags=["Clients"])
 api_router.include_router(freight_orders.router, prefix="/freight-orders", tags=["Freight Orders"])
 api_router.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetry"])
+api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
+
 
