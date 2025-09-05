@@ -5,6 +5,13 @@ from app.models.organization_model import Sector
 from app.models.user_model import UserRole
 from .organization_schema import OrganizationPublic
 
+class OrganizationNestedInUser(BaseModel):
+    id: int
+    name: str
+    sector: Sector
+
+    model_config = { "from_attributes": True }
+
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
@@ -22,27 +29,28 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     is_active: Optional[bool] = None
     role: Optional[UserRole] = None
-    # Adicionamos as preferências aqui para permitir a edição via admin se necessário
     notify_in_app: Optional[bool] = None
     notify_by_email: Optional[bool] = None
+    notification_email: Optional[EmailStr] = None
 
 class UserPasswordUpdate(BaseModel):
     current_password: str
     new_password: str
-# --- FIM DA ADIÇÃO ---
 
 class UserNotificationPrefsUpdate(BaseModel):
     notify_in_app: bool
     notify_by_email: bool
+    notification_email: Optional[EmailStr] = None
 
 class UserPublic(UserBase):
     id: int
-    organization: OrganizationPublic
+    # Agora usa o schema mínimo, quebrando o ciclo de importação
+    organization: OrganizationNestedInUser
     role: UserRole
     is_superuser: bool
-    # Adicionamos as preferências à resposta principal do utilizador
     notify_in_app: bool
     notify_by_email: bool
+    notification_email: Optional[EmailStr] = None
 
     model_config = { "from_attributes": True }
 
@@ -52,8 +60,6 @@ class UserRegister(BaseModel):
     password: str
     organization_name: str
     sector: Sector
-
-# --- SCHEMAS DE ESTATÍSTICAS (GENÉRICOS) ---
 
 class PerformanceByVehicle(BaseModel):
     vehicle_info: str
@@ -70,19 +76,14 @@ class UserStats(BaseModel):
     avg_cost_per_km: Optional[float] = None
     fleet_avg_km_per_liter: Optional[float] = None
 
-# --- SCHEMAS DE PLACAR DE LÍDERES ---
-
 class LeaderboardUser(BaseModel):
-    # O conteúdo desta classe PRECISA estar indentado
     id: int
     full_name: str
     avatar_url: Optional[str] = None
     primary_metric_value: float
     total_journeys: int
-
     model_config = { "from_attributes": True }
 
 class LeaderboardResponse(BaseModel):
-    # O conteúdo desta classe PRECISA estar indentado
     leaderboard: List[LeaderboardUser]
     primary_metric_unit: str

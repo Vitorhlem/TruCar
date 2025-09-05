@@ -7,7 +7,10 @@ export interface User {
   is_active: boolean;
   role: 'cliente_ativo' | 'cliente_demo' | 'driver';
   avatar_url: string | null;
-  is_superuser: boolean; // <-- CAMPO ADICIONADO
+  is_superuser: boolean;
+  notify_in_app: boolean;
+  notify_by_email: boolean;
+  notification_email: string | null; // <-- CAMPO ADICIONADO
   organization: {
     id: number;
     name: string;

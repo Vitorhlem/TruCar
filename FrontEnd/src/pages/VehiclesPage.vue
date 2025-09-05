@@ -17,7 +17,8 @@
       </div>
     </div>
 
-    <div v-if="vehicleStore.isLoading" class="row q-col-gutter-md">
+    <!-- SKELETON LOADING -->
+    <div v-if="vehicleStore.isLoading && vehicleStore.vehicles.length === 0" class="row q-col-gutter-md">
       <div v-for="n in 8" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card flat bordered>
           <q-skeleton height="160px" square />
@@ -27,9 +28,10 @@
       </div>
     </div>
 
-    <div v-else-if="vehicleStore.vehicles && vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
+    <!-- VEHICLE CARDS -->
+    <div v-else-if="vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-        <q-card class="vehicle-card column no-wrap full-height">
+        <q-card class="vehicle-card column no-wrap full-height" @click="goToVehicleDetails(vehicle)">
           <q-img :src="vehicle.photo_url ?? undefined" height="160px" fit="cover" class="bg-grey-3">
             <template v-slot:error>
               <div class="absolute-full flex flex-center bg-primary text-white">
@@ -81,18 +83,21 @@
       </div>
     </div>
 
+    <!-- EMPTY STATE -->
     <div v-else class="full-width row flex-center text-primary q-gutter-sm q-pa-xl">
       <q-icon name="add_circle_outline" size="3em" />
       <span class="text-h6">Nenhum {{ terminologyStore.vehicleNoun.toLowerCase() }} encontrado</span>
       <q-btn @click="openCreateDialog" v-if="authStore.isManager" unelevated color="primary" :label="`Adicionar primeiro ${terminologyStore.vehicleNoun.toLowerCase()}`" class="q-ml-lg" />
     </div>
 
+    <!-- PAGINATION -->
     <div class="flex flex-center q-mt-lg" v-if="pagination.rowsNumber > pagination.rowsPerPage">
       <q-pagination v-model="pagination.page" :max="Math.ceil(pagination.rowsNumber / pagination.rowsPerPage)" @update:model-value="onPageChange" direction-links boundary-links icon-first="skip_previous" icon-last="skip_next" icon-prev="fast_rewind" icon-next="fast_forward" />
     </div>
 
+    <!-- FORM DIALOG -->
     <q-dialog v-model="isFormDialogOpen">
-        <q-card style="width: 500px; max-width: 90vw;">
+        <q-card style="width: 500px; max-width: 90vw;" :dark="$q.dark.isActive">
           <q-card-section>
             <div class="text-h6">{{ isEditing ? terminologyStore.editButtonLabel : terminologyStore.newButtonLabel }}</div>
           </q-card-section>
@@ -140,18 +145,20 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
 import { VehicleStatus, type Vehicle, type VehicleCreate, type VehicleUpdate } from 'src/models/vehicle-models';
 import api from 'src/services/api';
-import axios from 'axios'; // <--- ADICIONADO
+import axios from 'axios';
 
 const $q = useQuasar();
 const vehicleStore = useVehicleStore();
 const authStore = useAuthStore();
 const terminologyStore = useTerminologyStore();
+const router = useRouter();
 
 const isFormDialogOpen = ref(false);
 const isSubmitting = ref(false);
@@ -160,6 +167,10 @@ const isEditing = computed(() => editingVehicleId.value !== null);
 const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
 const photoFile = ref<File | null>(null);
+
+function goToVehicleDetails(vehicle: Vehicle) {
+  void router.push({ name: 'vehicle-details', params: { id: vehicle.id } });
+}
 
 function resetForm() {
   editingVehicleId.value = null;
@@ -235,9 +246,8 @@ async function onFormSubmit() {
     }
 
     isFormDialogOpen.value = false;
-  } catch (error) { // <--- BLOCO CATCH CORRIGIDO
+  } catch (error) {
     let errorMessage = 'Falha ao salvar o veículo. Verifique os dados.';
-    // Verificamos se o erro é do Axios e se contém a mensagem 'detail' do nosso backend
     if (axios.isAxiosError(error) && error.response?.data?.detail) {
       errorMessage = error.response.data.detail;
     }
@@ -269,7 +279,6 @@ onMounted(() => {
   void fetchFromServer(pagination.value.page, pagination.value.rowsPerPage, searchTerm.value);
 });
 
-// O resto das suas funções (formatDistance, getVehicleIcon, etc) permanecem as mesmas
 function formatDistance(value: number | null | undefined, unit: 'km' | 'Horas'): string {
   const numValue = value ?? 0;
   const formattedValue = numValue.toLocaleString('pt-BR', {

@@ -1,15 +1,13 @@
 from . import crud_user as user
 from . import crud_vehicle as vehicle
 from . import crud_journey as journey
-from . import crud_user as user
-from . import crud_report as report # <-- ADICIONE ESTA LINHA
+from . import crud_report as report
 from . import crud_notification as notification
 from . import crud_maintenance as maintenance
 from . import crud_maintenance_comment as maintenance_comment
-from . import crud_vehicle as vehicle
 from . import crud_fuel_log as fuel_log
 from . import crud_organization as organization
 from . import crud_implement as implement
-from .crud_vehicle import vehicle
-from .crud_client import client
-from .crud_freight_order import freight_order
+from . import crud_client as client
+from . import crud_freight_order as freight_order
+from . import crud_vehicle_cost as vehicle_cost

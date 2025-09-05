@@ -24,7 +24,9 @@ export const useAdminStore = defineStore('admin', {
         const response = await api.get<User[]>('/admin/users/demo');
         this.demoUsers = response.data;
       } catch (error) {
-        Notify.create({ type: 'negative', message: 'Falha ao carregar utilizadores demo.' });
+        let message = 'Falha ao carregar utilizadores demo.';
+        if (isAxiosError(error) && error.response?.data?.detail) message = error.response.data.detail as string;
+        Notify.create({ type: 'negative', message });
       } finally {
         this.isLoading = false;
       }
@@ -37,7 +39,9 @@ export const useAdminStore = defineStore('admin', {
         const response = await api.get<User[]>('/admin/users/all');
         this.allUsers = response.data;
       } catch (error) {
-        Notify.create({ type: 'negative', message: 'Falha ao carregar a lista de todos os utilizadores.' });
+        let message = 'Falha ao carregar a lista de todos os utilizadores.';
+        if (isAxiosError(error) && error.response?.data?.detail) message = error.response.data.detail as string;
+        Notify.create({ type: 'negative', message });
       } finally {
         this.isLoading = false;
       }

@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
+  <q-layout view="lHh LpR lFf">
     <!-- CABEÇALHO PRINCIPAL COM DUAS BARRAS -->
     <q-header elevated class="main-header">
       <!-- Barra Superior: Logo e Controles do Usuário -->
@@ -49,55 +49,78 @@
         </q-btn-dropdown>
       </q-toolbar>
 
-      <!-- Barra de Navegação Principal (Visível em telas grandes) -->
+      <!-- ===== NOVA BARRA DE NAVEGAÇÃO COM MENUS EXPANSÍVEIS ===== -->
       <div class="navigation-bar gt-sm">
-        <q-btn
-          v-for="link in essentialLinks"
-          :key="link.title"
-          :to="link.to"
-          :icon="link.icon"
-          :label="link.title"
-          no-caps
-          flat
-          class="nav-button"
-          active-class="nav-button--active"
-        />
+        <template v-for="category in menuStructure" :key="category.label">
+          <!-- Se a categoria só tiver um item, mostra um botão simples -->
+          <q-btn
+            v-if="category.children.length === 1"
+            :to="category.children[0].to"
+            :icon="category.children[0].icon"
+            :label="category.children[0].title"
+            no-caps flat class="nav-button" active-class="nav-button--active"
+          />
+          <!-- Se tiver múltiplos itens, mostra um menu expansível -->
+          <q-btn-dropdown
+            v-else
+            :label="category.label"
+            :icon="category.icon"
+            no-caps flat
+            class="nav-button"
+            content-class="bg-primary-dark-menu"
+          >
+            <q-list dense>
+              <q-item
+                v-for="link in category.children"
+                :key="link.title"
+                :to="link.to"
+                clickable v-close-popup
+                class="nav-dropdown-item"
+              >
+                <q-item-section avatar><q-icon :name="link.icon" size="xs" /></q-item-section>
+                <q-item-section><q-item-label>{{ link.title }}</q-item-label></q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+        </template>
+        
         <!-- Link de Admin separado -->
-         <q-btn
-          v-if="authStore.isSuperuser"
-          to="/admin"
-          icon="admin_panel_settings"
-          label="Painel Admin"
-          no-caps
-          flat
-          class="nav-button"
-          active-class="nav-button--active"
-        />
+         <q-btn v-if="authStore.isSuperuser" to="/admin" icon="admin_panel_settings" label="Painel Admin" no-caps flat class="nav-button" active-class="nav-button--active" />
       </div>
 
        <q-banner v-if="authStore.isImpersonating" inline-actions class="bg-deep-orange text-white text-center shadow-2">
-        <template v-slot:avatar>
-          <q-icon name="visibility_off" color="white" />
-        </template>
-        <div class="text-weight-medium">
-          A visualizar como {{ authStore.user?.full_name }}. (Sessão de Administrador em pausa)
-        </div>
-        <template v-slot:action>
-          <q-btn flat dense color="white" label="Voltar à minha conta" @click="authStore.stopImpersonation()" />
-        </template>
-      </q-banner>
+         <template v-slot:avatar>
+           <q-icon name="visibility_off" color="white" />
+         </template>
+         <div class="text-weight-medium">
+           A visualizar como {{ authStore.user?.full_name }}. (Sessão de Administrador em pausa)
+         </div>
+         <template v-slot:action>
+           <q-btn flat dense color="white" label="Voltar à minha conta" @click="authStore.stopImpersonation()" />
+         </template>
+       </q-banner>
 
     </q-header>
 
-    <!-- MENU LATERAL (Corrigido: sem 'show-if-above' para não aparecer em telas grandes) -->
+    <!-- MENU LATERAL PARA TELAS PEQUENAS (lt-md) -->
     <q-drawer v-model="leftDrawerOpen" bordered class="lt-md">
       <q-scroll-area class="fit">
         <q-list padding>
-          <q-item-label header>Menu Principal</q-item-label>
-          <q-item v-for="link in essentialLinks" :key="link.title" clickable :to="link.to" exact v-ripple>
-            <q-item-section avatar><q-icon :name="link.icon" /></q-item-section>
-            <q-item-section><q-item-label>{{ link.title }}</q-item-label></q-item-section>
-          </q-item>
+          <q-item-label header>Menu</q-item-label>
+          <!-- O menu lateral agora usa a nova estrutura de dados também -->
+          <template v-for="category in menuStructure" :key="category.label + '-mobile'">
+            <q-expansion-item
+              :icon="category.icon"
+              :label="category.label"
+              expand-separator
+              default-opened
+            >
+              <q-item v-for="link in category.children" :key="link.title" clickable :to="link.to" exact v-ripple class="q-pl-lg">
+                <q-item-section avatar><q-icon :name="link.icon" /></q-item-section>
+                <q-item-section><q-item-label>{{ link.title }}</q-item-label></q-item-section>
+              </q-item>
+            </q-expansion-item>
+          </template>
           <div v-if="authStore.isSuperuser">
             <q-separator class="q-my-md" />
             <q-item-label header>Administração</q-item-label>
@@ -110,9 +133,7 @@
       </q-scroll-area>
     </q-drawer>
 
-    <!-- CONTAINER DA PÁGINA (O conteúdo começa abaixo do header) -->
     <q-page-container>
-       <!-- IDEIA 3: Animações de Entrada -->
       <router-view v-slot="{ Component }">
         <transition name="route-transition" mode="out-in">
           <component :is="Component" />
@@ -151,7 +172,7 @@ function handleLogout() {
   }
 }
 
-const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
+const isDemo = computed(() => authStore.isDemo);
 
 function showUpgradeDialog() {
   $q.dialog({
@@ -162,55 +183,75 @@ function showUpgradeDialog() {
   });
 }
 
-const essentialLinks = computed(() => {
-  const baseLinks = [
-    { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
-    { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' },
-  ];
-
-  const sectorLinks = [];
+// --- NOVA ESTRUTURA DE MENU ORGANIZADA ---
+const menuStructure = computed(() => {
   const sector = authStore.userSector;
   const isManager = authStore.isManager;
+  const menu = [];
 
+  // --- Categoria: Geral ---
+  const general = {
+    label: 'Geral', icon: 'home',
+    children: [
+      { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
+      { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' },
+    ]
+  };
+  menu.push(general);
+
+  // --- Categoria: Operações (Condicional) ---
+  const operations = { label: 'Operações', icon: 'alt_route', children: [] as any[] };
   if (sector === 'agronegocio' || sector === 'servicos') {
-    sectorLinks.push(
-      { title: terminologyStore.vehiclePageTitle, icon: sector === 'agronegocio' ? 'agriculture' : 'local_shipping', to: '/vehicles' },
-      { title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' }
-    );
-    if (sector === 'agronegocio') {
-      sectorLinks.push({ title: 'Implementos', icon: 'precision_manufacturing', to: '/implements' });
-    }
-  } 
-  else if (sector === 'frete') {
-    if (isManager) {
-      sectorLinks.push(
-        { title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' },
-        { title: 'Gerenciamento de Frota', icon: 'local_shipping', to: '/vehicles' },
-        { title: 'Clientes', icon: 'groups', to: '/clients' }
-      );
-    } else {
-      sectorLinks.push(
-        { title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' }
-      );
-    }
+    operations.children.push({ title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' });
+  }
+  if (sector === 'frete' && isManager) {
+    operations.children.push({ title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' });
+  }
+  if (sector === 'frete' && !isManager) { // Este é o 'driver'
+    operations.children.push({ title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' });
+  }
+  if (operations.children.length > 0) {
+    menu.push(operations);
   }
 
-  const commonLinks = [
-    { title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' },
-    { title: 'Relatórios', icon: 'summarize', to: '/reports' },
-    { title: 'Manutenções', icon: 'build', to: '/maintenance' },
-  ];
-
-  const managerLinks = [];
+  // --- Categoria: Gestão (Apenas Gestores) ---
   if (isManager) {
-    managerLinks.push({
-      title: 'Gestão de Utilizadores',
-      icon: 'manage_accounts',
-      to: '/users',
-    });
+    const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as any[] };
+    if (sector === 'agronegocio' || sector === 'servicos' || sector === 'frete') {
+      management.children.push({ title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' });
+    }
+    if (sector === 'agronegocio') {
+      management.children.push({ title: 'Implementos', icon: 'precision_manufacturing', to: '/implements' });
+    }
+    if (sector === 'frete') {
+      management.children.push({ title: 'Clientes', icon: 'groups', to: '/clients' });
+    }
+    management.children.push({ title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' });
+    
+    // --- NOVOS LINKS ADICIONADOS ---
+    management.children.push({ title: 'Gestão de Custos', icon: 'monetization_on', to: '/costs' });
+    management.children.push({ title: 'Gestão de Documentos', icon: 'folder_shared', to: '/documents' });
+    // --- FIM DA ADIÇÃO ---
+
+    if (management.children.length > 0) {
+      menu.push(management);
+    }
   }
 
-  return [...baseLinks, ...sectorLinks, ...commonLinks, ...managerLinks];
+  // --- Categoria: Análise (Apenas Gestores) ---
+  if (isManager) {
+    const analysis = {
+      label: 'Análise', icon: 'analytics',
+      children: [
+        { title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' },
+        { title: 'Relatórios', icon: 'summarize', to: '/reports' },
+        { title: 'Manutenções', icon: 'build', to: '/maintenance' },
+      ]
+    };
+    menu.push(analysis);
+  }
+  
+  return menu;
 });
 
 onMounted(() => {
@@ -226,11 +267,10 @@ onMounted(() => {
 onUnmounted(() => { clearInterval(pollTimer); });
 </script>
 
-
 <style lang="scss" scoped>
 .main-header {
   background: linear-gradient(to right, $primary, lighten($primary, 8%));
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); // Sombra mais suave e moderna
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
 .navigation-bar {
@@ -241,49 +281,43 @@ onUnmounted(() => { clearInterval(pollTimer); });
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-// IDEIA 4 e 5: Novo Estilo de Botão e Microinterações
 .nav-button {
   transition: all 0.3s ease;
   color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
   margin: 4px 0;
   border-radius: 8px;
-  position: relative; // Necessário para o pseudo-elemento ::after
+  position: relative;
 
-  // Remove o sublinhado ao passar o rato, agora o fundo muda
   &:hover {
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
   }
 
-  // O novo estilo do botão ativo
-  &.nav-button--active {
+  &.nav-button--active,
+  &.q-btn-dropdown--current { // Para o dropdown ficar ativo
     color: white;
     font-weight: 700;
-
-    // A linha colorida por baixo
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 10%;
-      right: 10%;
-      height: 3px;
-      background-color: $accent; // Usando a cor de acento (verde)
-      border-radius: 2px;
-      animation: grow-underline 0.3s ease-out;
-    }
+    background-color: rgba(255, 255, 255, 0.15);
   }
 }
 
-// Animação para a linha do botão ativo
-@keyframes grow-underline {
-  from { width: 0; left: 50%; }
-  to { width: 80%; left: 10%; }
+.nav-dropdown-item {
+  color: $grey-4;
+  &.q-router-link--active {
+    color: white;
+    background-color: rgba(white, 0.1);
+    font-weight: 600;
+  }
+  &:hover {
+    background-color: rgba(white, 0.05);
+  }
+}
+.bg-primary-dark-menu {
+  background-color: #2c3e50;
 }
 
 
-// IDEIA 5: Microinterações para os ícones da barra de ferramentas
 .toolbar-icon-btn {
   transition: transform 0.2s ease, color 0.2s ease;
   &:hover {
@@ -291,28 +325,21 @@ onUnmounted(() => { clearInterval(pollTimer); });
   }
 }
 
-
-// Estilo original do seu drawer (agora para mobile)
-:deep(.q-drawer) {
+.q-drawer {
   background: #1a1616;
 }
 .q-drawer .q-list .q-item {
   color: $grey-2;
-  .q-item__section--avatar {
-    color: $grey-2;
-  }
+  .q-item__section--avatar { color: $grey-2; }
 }
 .q-drawer .q-list .q-item.q-router-link--active {
   color: $primary;
   font-weight: 600;
   background-color: rgba($primary, 0.1);
   border-left: 4px solid $primary;
-  .q-item__section--avatar {
-    color: $primary;
-  }
+  .q-item__section--avatar { color: $primary; }
 }
 
-// IDEIA 3: Estilos para a animação de transição de página
 .route-transition-enter-active,
 .route-transition-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;

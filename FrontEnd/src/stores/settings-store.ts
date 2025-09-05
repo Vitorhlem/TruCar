@@ -1,42 +1,35 @@
 import { defineStore } from 'pinia';
 import { Dark } from 'quasar';
 
-// Define o tipo do estado para ajudar o TypeScript
 interface SettingsState {
   darkMode: boolean | 'auto';
 }
 
+// Função auxiliar para ler e converter o valor do localStorage
+function getInitialDarkMode(): boolean | 'auto' {
+  const storedValue = localStorage.getItem('darkMode');
+  if (storedValue === 'true') return true;
+  if (storedValue === 'false') return false;
+  return 'auto'; // Padrão
+}
+
 export const useSettingsStore = defineStore('settings', {
   state: (): SettingsState => ({
-    // Tenta ler a preferência do localStorage, ou usa 'auto' como padrão
-    darkMode: localStorage.getItem('darkMode') || 'auto',
+    // Usamos a função auxiliar para definir o estado inicial corretamente
+    darkMode: getInitialDarkMode(),
   }),
 
   actions: {
-    /**
-     * Define o estado do modo escuro e aplica-o globalmente com o Quasar.
-     * Também guarda a preferência no localStorage para persistir entre sessões.
-     * @param mode O estado desejado: true (escuro), false (claro), ou 'auto'.
-     */
     setDarkMode(mode: boolean | 'auto') {
       this.darkMode = mode;
-      Dark.set(mode); // Comando do Quasar para aplicar o tema
-      
-      // Guarda a preferência
-      if (typeof mode === 'boolean') {
-        localStorage.setItem('darkMode', mode.toString());
-      } else {
-        localStorage.setItem('darkMode', 'auto');
-      }
+      Dark.set(mode);
+      // Salvamos como string, que é como o localStorage funciona
+      localStorage.setItem('darkMode', String(mode));
     },
 
-    /**
-     * Função de inicialização para ser chamada quando a aplicação arranca.
-     * Garante que a preferência de tema do utilizador seja aplicada.
-     */
+    // A função init agora lê o estado e aplica-o
     init() {
-      // Usamos 'isActive' para lidar com o caso 'auto' na primeira vez
-      Dark.set(Dark.isActive);
+      Dark.set(this.darkMode);
     }
   },
 });
