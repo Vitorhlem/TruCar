@@ -11,3 +11,4 @@ from . import crud_implement as implement
 from . import crud_client as client
 from . import crud_freight_order as freight_order
 from . import crud_vehicle_cost as vehicle_cost
+from . import crud_document as document 

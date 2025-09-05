@@ -39,7 +39,7 @@ class Vehicle(Base):
     maintenance_requests = relationship("MaintenanceRequest", back_populates="vehicle", cascade="all, delete-orphan")
     freight_orders = relationship("FreightOrder", back_populates="vehicle")
     costs = relationship("VehicleCost", back_populates="vehicle", cascade="all, delete-orphan")
-
-    # --- NOVA RELAÇÃO ADICIONADA ---
     alerts = relationship("Alert", back_populates="vehicle")
-    # --- FIM DA ADIÇÃO ---
+
+    # --- Relação com Documentos adicionada ---
+    documents = relationship("Document", back_populates="vehicle", cascade="all, delete-orphan")

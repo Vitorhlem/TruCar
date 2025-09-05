@@ -11,6 +11,14 @@
 /backend/app/__pycache__/
 /backend/app/*/__pycache__/
 /backend/app/*/*/__pycache__/
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual Environment
+venv/
+.venv/
+env/
 
 # Dependências do Node.js (Front-end)
 /FrontEnd/node_modules/
