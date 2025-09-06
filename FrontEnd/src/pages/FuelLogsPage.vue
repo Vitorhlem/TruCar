@@ -1,8 +1,29 @@
 <template>
   <q-page padding>
     <div class="flex items-center justify-between q-mb-md">
-      <h1 class="text-h5 text-weight-bold q-my-none">Registros de Abastecimento</h1>
-      <q-btn @click="openCreateDialog" color="primary" icon="add" label="Registrar Abastecimento" unelevated />
+      <div>
+        <h1 class="text-h5 text-weight-bold q-my-none">Registros de Abastecimento</h1>
+        <div class="text-subtitle1 text-grey-7">Gerencie abastecimentos manuais e integrados.</div>
+      </div>
+      <div class="q-gutter-sm">
+        <q-btn
+          @click="handleSync"
+          color="secondary"
+          icon="sync"
+          label="Sincronizar com Provedor"
+          :loading="fuelLogStore.isLoading"
+          unelevated
+        >
+          <q-tooltip>Buscar novos abastecimentos do provedor do cartão</q-tooltip>
+        </q-btn>
+        <q-btn
+          @click="openCreateDialog"
+          color="primary"
+          icon="add"
+          label="Registrar Manualmente"
+          unelevated
+        />
+      </div>
     </div>
 
     <q-card flat bordered>
@@ -13,9 +34,38 @@
         :loading="fuelLogStore.isLoading"
         no-data-label="Nenhum abastecimento registrado"
       >
-        </q-table>
+        <!-- Template para a coluna de Status da Verificação -->
+        <template v-slot:body-cell-verification_status="props">
+          <q-td :props="props">
+            <q-chip
+              :color="getVerificationStatusProps(props.row.verification_status).color"
+              :icon="getVerificationStatusProps(props.row.verification_status).icon"
+              :label="getVerificationStatusProps(props.row.verification_status).label"
+              text-color="white"
+              square
+              size="sm"
+              class="text-weight-bold"
+            />
+          </q-td>
+        </template>
+
+        <!-- Template para a coluna de Fonte -->
+        <template v-slot:body-cell-source="props">
+          <q-td :props="props">
+            <q-chip
+              :label="props.row.source === 'INTEGRATION' ? 'Integração' : 'Manual'"
+              :icon="props.row.source === 'INTEGRATION' ? 'cloud_sync' : 'edit'"
+              size="sm"
+              outline
+              :color="props.row.source === 'INTEGRATION' ? 'blue-7' : 'grey-7'"
+            />
+          </q-td>
+        </template>
+
+      </q-table>
     </q-card>
 
+    <!-- Diálogo para registro manual (sem alterações) -->
     <q-dialog v-model="isCreateDialogOpen">
       <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
@@ -49,7 +99,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useFuelLogStore } from 'stores/fuel-log-store';
 import { useVehicleStore } from 'stores/vehicle-store';
-import type { QTableColumn } from 'quasar';
+import type { QTableProps } from 'quasar';
 import type { FuelLog, FuelLogCreate } from 'src/models/fuel-log-models';
 
 const fuelLogStore = useFuelLogStore();
@@ -68,17 +118,33 @@ const vehicleOptions = computed(() => vehicleStore.vehicles.map(v => ({
   value: v.id
 })));
 
-const columns: QTableColumn[] = [
+const columns: QTableProps['columns'] = [
+  { name: 'verification_status', label: 'Status', field: 'verification_status', align: 'center', sortable: true },
   { name: 'date', label: 'Data', field: 'timestamp', format: (val) => new Date(val).toLocaleDateString('pt-BR'), align: 'left', sortable: true },
   { name: 'vehicle', label: 'Veículo', field: (row: FuelLog) => `${row.vehicle.brand} ${row.vehicle.model}`, align: 'left', sortable: true },
-  { name: 'odometer', label: 'Odômetro (KM)', field: 'odometer', align: 'center', sortable: true },
   { name: 'liters', label: 'Litros', field: 'liters', align: 'right', format: (val) => val.toFixed(2), sortable: true },
   { name: 'cost', label: 'Custo Total', field: 'total_cost', align: 'right', format: (val) => `R$ ${val.toFixed(2)}`, sortable: true },
   { name: 'user', label: 'Registrado por', field: (row: FuelLog) => row.user.full_name, align: 'left', sortable: true },
+  { name: 'source', label: 'Fonte', field: 'source', align: 'center', sortable: true },
 ];
 
+// Função auxiliar para estilizar o status da verificação
+function getVerificationStatusProps(status: FuelLog['verification_status']) {
+  switch (status) {
+    case 'VERIFIED':
+      return { color: 'positive', icon: 'check_circle', label: 'Verificado' };
+    case 'SUSPICIOUS':
+      return { color: 'negative', icon: 'warning', label: 'Suspeito' };
+    case 'PENDING':
+      return { color: 'grey-7', icon: 'hourglass_empty', label: 'Pendente' };
+    case 'UNVERIFIED':
+      return { color: 'info', icon: 'info', label: 'Não Verificado' };
+    default:
+      return { color: 'grey', icon: 'help', label: 'Desconhecido' };
+  }
+}
+
 function openCreateDialog() {
-  // Limpa o formulário
   formData.value = { vehicle_id: 0, odometer: 0, liters: 0, total_cost: 0 };
   isCreateDialogOpen.value = true;
 }
@@ -92,8 +158,12 @@ async function handleSubmit() {
   }
 }
 
+// Nova função para acionar a sincronização
+async function handleSync() {
+  await fuelLogStore.syncWithProvider();
+}
+
 onMounted(() => {
-  // Carrega os dados necessários para a página
   void fuelLogStore.fetchFuelLogs();
   if (vehicleStore.vehicles.length === 0) {
     void vehicleStore.fetchAllVehicles();

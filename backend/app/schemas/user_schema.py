@@ -13,7 +13,7 @@ class OrganizationNestedInUser(BaseModel):
     model_config = { "from_attributes": True }
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str
     full_name: str
     is_active: bool = True
     avatar_url: Optional[str] = None
@@ -22,16 +22,18 @@ class UserCreate(UserBase):
     password: str
     role: Optional[UserRole] = None
     organization_id: Optional[int] = None
+    email: str
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
     role: Optional[UserRole] = None
     notify_in_app: Optional[bool] = None
     notify_by_email: Optional[bool] = None
-    notification_email: Optional[EmailStr] = None
+    notification_email: Optional[str] = None
+    employee_id: Optional[str] = None # Permite a edição do ID se necessário
 
 class UserPasswordUpdate(BaseModel):
     current_password: str
@@ -40,17 +42,20 @@ class UserPasswordUpdate(BaseModel):
 class UserNotificationPrefsUpdate(BaseModel):
     notify_in_app: bool
     notify_by_email: bool
-    notification_email: Optional[EmailStr] = None
+    notification_email: Optional[str] = None
 
 class UserPublic(UserBase):
     id: int
-    # Agora usa o schema mínimo, quebrando o ciclo de importação
-    organization: OrganizationNestedInUser
+    organization: Optional[OrganizationNestedInUser] = None
     role: UserRole
     is_superuser: bool
     notify_in_app: bool
     notify_by_email: bool
-    notification_email: Optional[EmailStr] = None
+    notification_email: Optional[str] = None
+    
+    # --- CAMPO ADICIONADO PARA EXIBIÇÃO ---
+    employee_id: Optional[str] = None
+    # --- FIM DA ADIÇÃO ---
 
     model_config = { "from_attributes": True }
 
@@ -87,3 +92,4 @@ class LeaderboardUser(BaseModel):
 class LeaderboardResponse(BaseModel):
     leaderboard: List[LeaderboardUser]
     primary_metric_unit: str
+

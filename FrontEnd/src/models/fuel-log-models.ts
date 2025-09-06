@@ -10,6 +10,14 @@ export interface FuelLog {
   user_id: number;
   receipt_photo_url: string | null;
   timestamp: string;
+
+  // --- Novos campos para a integração ---
+  verification_status: 'PENDING' | 'VERIFIED' | 'SUSPICIOUS' | 'UNVERIFIED';
+  provider_name: string | null;
+  gas_station_name: string | null;
+  source: 'MANUAL' | 'INTEGRATION';
+
+  // --- Relações aninhadas ---
   user: User;
   vehicle: Vehicle;
 }
@@ -21,3 +29,4 @@ export interface FuelLogCreate {
   total_cost: number;
   receipt_photo_url?: string | null;
 }
+
