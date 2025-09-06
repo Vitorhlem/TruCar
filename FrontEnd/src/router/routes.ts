@@ -28,12 +28,12 @@ const routes: RouteRecordRaw[] = [
         name: 'costs',
         component: () => import('pages/CostsPage.vue'),
       },
-       {
-  path: '/documents',
-  component: () => import('layouts/MainLayout.vue'),
-  children: [{ path: '', component: () => import('pages/DocumentPage.vue') }],
-  meta: { requiresAuth: true, roles: ['cliente_ativo', 'cliente_demo'] } // Protege a rota
-},
+        {
+        path: 'documents',
+        name: 'documents',
+        component: () => import('pages/DocumentPage.vue'),
+        meta: { requiresAuth: true, roles: ['cliente_ativo', 'cliente_demo'] }
+      },
 
     
       { path: 'settings', name: 'settings', component: () => import('pages/SettingsPage.vue'), 

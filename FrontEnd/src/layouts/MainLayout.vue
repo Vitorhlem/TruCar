@@ -237,6 +237,8 @@ const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as
     
     // --- NOVOS LINKS ADICIONADOS ---
     management.children.push({ title: 'Gestão de Custos', icon: 'monetization_on', to: '/costs' });
+    // --- LINK PARA ABASTECIMENTOS ADICIONADO AQUI ---
+    management.children.push({ title: 'Registros de Abastecimento', icon: 'local_gas_station', to: '/fuel-logs' });
     management.children.push({ title: 'Gestão de Documentos', icon: 'folder_shared', to: '/documents' });
     // --- FIM DA ADIÇÃO ---
 
@@ -392,3 +394,4 @@ onUnmounted(() => { clearInterval(pollTimer); });
   transform: translateY(10px);
 }
 </style>
+

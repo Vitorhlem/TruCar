@@ -23,7 +23,7 @@ export const useFuelLogStore = defineStore('fuelLog', {
     },
 
     async createFuelLog(payload: FuelLogCreate) {
-      this.isLoading = true; // Corrigido para this.isLoading
+      this.isLoading = true;
       try {
         const response = await api.post<FuelLog>('/fuel-logs/', payload);
         this.fuelLogs.unshift(response.data);
@@ -31,6 +31,32 @@ export const useFuelLogStore = defineStore('fuelLog', {
       } catch (error) {
         Notify.create({ type: 'negative', message: 'Erro ao registrar abastecimento.' });
         throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    /**
+     * [NOVA AÇÃO] Inicia a sincronização com o provedor de combustível.
+     */
+    async syncWithProvider() {
+      this.isLoading = true;
+      try {
+        // Chama o endpoint de sincronização que criamos no backend
+        const response = await api.post<{ message: string }>('/fuel-logs/sync');
+        
+        Notify.create({
+          type: 'positive',
+          message: response.data.message || 'Sincronização iniciada.',
+          timeout: 4000 // Aumenta o tempo para o usuário ler a mensagem
+        });
+
+        // Após a sincronização, busca a lista atualizada de abastecimentos
+        await this.fetchFuelLogs();
+
+      } catch (error) {
+        Notify.create({ type: 'negative', message: 'Falha ao sincronizar com o provedor.' });
+        console.error('Erro na sincronização:', error);
       } finally {
         this.isLoading = false;
       }

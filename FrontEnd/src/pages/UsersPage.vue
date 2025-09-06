@@ -39,6 +39,10 @@
           <q-card-section class="q-gutter-y-md">
             <q-input outlined v-model="formData.full_name" label="Nome Completo *" :rules="[val => !!val || 'Campo obrigatório']" />
             <q-input outlined v-model="formData.email" type="email" label="E-mail *" :rules="[val => !!val || 'Campo obrigatório']" />
+            
+            <!-- CAMPO EMPLOYEE_ID ADICIONADO AO FORMULÁRIO -->
+            <q-input outlined v-model="formData.employee_id" label="ID de Funcionário" hint="Ex: TRC-a1b2c3d4" />
+            
             <q-input outlined v-model="formData.avatar_url" label="URL da Foto do Perfil" />
             
             <q-select
@@ -104,10 +108,12 @@ const isRoleSelectorDisabled = computed(() => {
 });
 
 const columns: QTableColumn[] = [
+  // --- COLUNA EMPLOYEE_ID ADICIONADA À TABELA ---
+  { name: 'employee_id', label: 'ID Funcionário', field: 'employee_id', align: 'left', sortable: true },
   { name: 'full_name', label: 'Nome Completo', field: 'full_name', align: 'left', sortable: true },
   { name: 'email', label: 'E-mail', field: 'email', align: 'left', sortable: true },
   { name: 'role', label: 'Função', field: 'role', align: 'center', sortable: true, format: (val) => roleOptions.find(r => r.value === val)?.label || val },
-  { name: 'is_active', label: 'Status', field: 'is_active', align: 'center', format: (val) => val ? 'Ativo' : 'Inativo' }, // Corrigido para exibir texto no status
+  { name: 'is_active', label: 'Status', field: 'is_active', align: 'center', format: (val) => val ? 'Ativo' : 'Inativo' },
   { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
 ];
 
@@ -118,7 +124,7 @@ function goToUserDetails(evt: Event, row: User) {
 
 function resetForm() {
   editingUserId.value = null;
-  formData.value = { full_name: '', email: '', role: 'driver', password: '', is_active: true };
+  formData.value = { full_name: '', email: '', role: 'driver', password: '', is_active: true, employee_id: '' };
 }
 
 function openCreateDialog() {

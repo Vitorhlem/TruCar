@@ -22,8 +22,9 @@ class Organization(Base):
     freight_orders = relationship("FreightOrder", back_populates="organization")
     alerts = relationship("Alert", back_populates="organization")
     goals = relationship("Goal", back_populates="organization")
-
-    # --- RELAÇÃO FALTANTE ADICIONADA ---
     documents = relationship("Document", back_populates="organization")
+
+    # --- NOVA RELAÇÃO ADICIONADA ---
+    fuel_logs = relationship("FuelLog", back_populates="organization")
     # --- FIM DA ADIÇÃO ---
 
