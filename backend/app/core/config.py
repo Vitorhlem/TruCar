@@ -7,19 +7,13 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "TruCar"
     API_V1_STR: str = "/api/v1"
 
-    # --- ADICIONADO ---
-    # Coloque aqui o seu e-mail de administrador para ter acesso aos endpoints protegidos.
-    # Se tiver mais de um, separe por vírgula dentro das aspas no seu arquivo .env
-    # Ex: SUPERUSER_EMAILS="admin1@email.com,admin2@email.com"
     SUPERUSER_EMAILS: Set[str] = {"admin@admin.com"}
-    # --- FIM DA ADIÇÃO --
-
+    
     SMTP_SERVER: str
     SMTP_PORT: int
     SMTP_USER: str
     SMTP_PASSWORD: str
     EMAILS_FROM_EMAIL: str
-
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_SERVER: str
@@ -40,5 +34,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
 
     ALGORITHM: str = "HS256"
+
+    # --- CHAVE DE CRIPTOGRAFIA ADICIONADA AQUI ---
+    # Esta linha faz com que a sua aplicação leia a variável FERNET_KEY do arquivo .env
+    FERNET_KEY: str
+    # --- FIM DA ADIÇÃO ---
 
 settings = Settings()

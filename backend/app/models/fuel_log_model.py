@@ -4,13 +4,18 @@ from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
 
-# --- NOVO ENUM ADICIONADO ---
-# Define os possíveis status de uma transação de combustível
 class VerificationStatus(str, enum.Enum):
-    VERIFIED = "Verificado"      # Localização do veículo e do posto coincidem
-    SUSPICIOUS = "Suspeito"      # Discrepância entre as localizações
-    UNVERIFIED = "Não verificado"  # Importado, mas ainda não processado
-    MANUAL = "Manual"          # Lançamento feito manualmente pelo usuário
+    VERIFIED = "Verificado"
+    SUSPICIOUS = "Suspeito"
+    UNVERIFIED = "Não verificado"
+    PENDING = "Pendente" # Status para logs de integração antes da verificação
+
+# --- NOVO ENUM ADICIONADO ---
+# Define a origem do registro de abastecimento
+class FuelLogSource(str, enum.Enum):
+    MANUAL = "MANUAL"
+    INTEGRATION = "INTEGRATION"
+
 
 class FuelLog(Base):
     """
@@ -30,15 +35,17 @@ class FuelLog(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # --- NOVOS CAMPOS PARA INTEGRAÇÃO ---
-    # Estes campos serão preenchidos automaticamente pela integração
-    verification_status = Column(SAEnum(VerificationStatus), nullable=False, default=VerificationStatus.MANUAL)
-    provider_transaction_id = Column(String(255), unique=True, nullable=True, index=True) # ID único da transação no provedor (ex: Ticket Log)
-    provider_name = Column(String(100), nullable=True) # Nome do provedor
+    verification_status = Column(SAEnum(VerificationStatus), nullable=False, default=VerificationStatus.UNVERIFIED)
+    provider_transaction_id = Column(String(255), unique=True, nullable=True, index=True)
+    provider_name = Column(String(100), nullable=True)
     gas_station_name = Column(String(255), nullable=True)
     gas_station_latitude = Column(Float, nullable=True)
     gas_station_longitude = Column(Float, nullable=True)
-    # --- FIM DA ADIÇÃO ---
 
+    # --- COLUNA 'source' FALTANTE ADICIONADA AQUI ---
+    source = Column(SAEnum(FuelLogSource), nullable=False, default=FuelLogSource.MANUAL)
+    # --- FIM DA ADIÇÃO ---
+    
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     
     # Relacionamentos atualizados para seguir o padrão `back_populates`

@@ -131,7 +131,7 @@ async function handleLogin() {
     loginStatus.value = 'success';
     isLoading.value = false;
     setTimeout(() => {
-      router.push({ name: 'dashboard' });
+      void router.push({ name: 'dashboard' });
     }, 800);
   } catch {
     loginStatus.value = 'error';
