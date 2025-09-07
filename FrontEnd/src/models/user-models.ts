@@ -7,19 +7,20 @@ type UserRole = User['role'];
 export interface UserCreate {
   full_name: string;
   email: string;
-  password?: string;
   role: UserRole;
-  avatar_url?: string | null;
+  password?: string;
+  is_active?: boolean;
+  employee_id?: string; // <-- ADICIONAR
 }
 
 // Usado ao atualizar um utilizador existente. Todos os campos são opcionais.
 export interface UserUpdate {
   full_name?: string;
   email?: string;
-  password?: string;
   role?: UserRole;
+  password?: string;
   is_active?: boolean;
-  avatar_url?: string | null;
+  employee_id?: string; // <-- ADICIONAR
 }
 
 // --- NOVA INTERFACE ADICIONADA ---

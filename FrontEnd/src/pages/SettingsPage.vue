@@ -100,6 +100,33 @@
               </q-list>
             </q-tab-panel>
 
+            <q-tab-panel v-if="authStore.isManager" name="integrations">
+              <div class="text-h6">Integrações</div>
+              <q-separator class="q-my-md" />
+              <q-form @submit.prevent="handleUpdateIntegration" class="q-gutter-y-md" style="max-width: 500px">
+                <div class="text-subtitle1 text-weight-medium">Cartão de Combustível</div>
+                <p class="text-caption text-grey-7">Insira as credenciais da API fornecidas pelo seu provedor de cartão de combustível (ex: Ticket Log) para habilitar a importação automática de abastecimentos.</p>
+
+                <q-select outlined v-model="integrationForm.fuel_provider_name" :options="['Ticket Log', 'Alelo Frota', 'Sodexo Wizeo', 'Outro']" label="Provedor" />
+                
+                <q-input outlined v-model="integrationForm.fuel_provider_api_key" label="Chave de API (API Key)">
+                  <template v-slot:append>
+                    <q-chip dense square :color="settingsStore.fuelIntegrationSettings?.is_api_key_set ? 'positive' : 'grey-7'" text-color="white" :label="settingsStore.fuelIntegrationSettings?.is_api_key_set ? 'Definida' : 'Não Definida'"/>
+                  </template>
+                </q-input>
+
+                <q-input outlined v-model="integrationForm.fuel_provider_api_secret" label="Segredo da API (API Secret)">
+                   <template v-slot:append>
+                    <q-chip dense square :color="settingsStore.fuelIntegrationSettings?.is_api_secret_set ? 'positive' : 'grey-7'" text-color="white" :label="settingsStore.fuelIntegrationSettings?.is_api_secret_set ? 'Definida' : 'Não Definida'"/>
+                  </template>
+                </q-input>
+
+                <div class="row justify-end">
+                  <q-btn type="submit" label="Salvar Configuração" color="primary" unelevated :loading="settingsStore.isLoadingFuelSettings"/>
+                </div>
+              </q-form>
+            </q-tab-panel>
+
             <q-tab-panel v-if="authStore.isManager" name="organization">
               <div class="text-h6">Organização</div>
               <q-separator class="q-my-md" />
@@ -119,22 +146,22 @@
                     </q-item-label>
                   </q-item-section>
                    <q-item-section side>
-                    <q-btn
-                      v-if="isDemo"
-                      @click="showUpgradeDialog"
-                      color="primary"
-                      label="Fazer Upgrade"
-                      unelevated
-                      dense
-                    />
-                  </q-item-section>
+                     <q-btn
+                       v-if="isDemo"
+                       @click="showUpgradeDialog"
+                       color="primary"
+                       label="Fazer Upgrade"
+                       unelevated
+                       dense
+                     />
+                   </q-item-section>
                 </q-item>
                 <q-item>
                    <q-item-section avatar><q-icon name="credit_card" /></q-item-section>
                    <q-item-section>
-                    <q-item-label>Faturação</q-item-label>
-                    <q-item-label caption>Para alterar o seu plano ou dados de faturação, por favor, contacte o nosso suporte.</q-item-label>
-                  </q-item-section>
+                     <q-item-label>Faturação</q-item-label>
+                     <q-item-label caption>Para alterar o seu plano ou dados de faturação, por favor, contacte o nosso suporte.</q-item-label>
+                   </q-item-section>
                 </q-item>
               </q-list>
             </q-tab-panel>
@@ -146,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import { isAxiosError } from 'axios';
 import { useAuthStore } from 'stores/auth-store';
@@ -222,6 +249,7 @@ const tabs = computed(() => {
     { name: 'appearance', label: 'Aparência', icon: 'visibility' },
     { name: 'notifications', label: 'Notificações', icon: 'notifications' },
     { name: 'organization', label: 'Organização', icon: 'business', managerOnly: true },
+    { name: 'integrations', label: 'Integrações', icon: 'sync_alt', managerOnly: true }, // <-- NOVA ABA
   ];
 
   if (authStore.isManager) {
@@ -233,4 +261,41 @@ const tabs = computed(() => {
 function updateDarkMode(value: boolean | 'auto') {
   settingsStore.setDarkMode(value);
 }
+
+// --- LÓGICA PARA A NOVA ABA DE INTEGRAÇÕES ---
+const integrationForm = ref({
+  fuel_provider_name: '',
+  fuel_provider_api_key: '',
+  fuel_provider_api_secret: '',
+});
+
+watch(() => settingsStore.fuelIntegrationSettings, (newSettings) => {
+  if (newSettings) {
+    integrationForm.value.fuel_provider_name = newSettings.fuel_provider_name || '';
+    // Não preenchemos os campos de senha/chave para segurança, apenas mostramos o status
+    integrationForm.value.fuel_provider_api_key = '';
+    integrationForm.value.fuel_provider_api_secret = '';
+  }
+}, { immediate: true });
+
+async function handleUpdateIntegration() {
+  // Apenas envia os campos que o usuário preencheu
+  const payload: { [key: string]: string } = {};
+  if (integrationForm.value.fuel_provider_name) {
+    payload.fuel_provider_name = integrationForm.value.fuel_provider_name;
+  }
+  if (integrationForm.value.fuel_provider_api_key) {
+    payload.fuel_provider_api_key = integrationForm.value.fuel_provider_api_key;
+  }
+  if (integrationForm.value.fuel_provider_api_secret) {
+    payload.fuel_provider_api_secret = integrationForm.value.fuel_provider_api_secret;
+  }
+  await settingsStore.updateFuelIntegrationSettings(payload);
+}
+
+onMounted(() => {
+  if (authStore.isManager) {
+    void settingsStore.fetchFuelIntegrationSettings();
+  }
+});
 </script>
