@@ -244,7 +244,7 @@ async function onSubmit() {
     });
     
     setTimeout(() => {
-      router.push('/auth/login');
+    void router.push('/auth/login');
     }, 1200);
 
   } catch (error) {

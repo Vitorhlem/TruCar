@@ -54,6 +54,9 @@ async def read_manager_dashboard(
     org_id = current_user.organization_id
     start_date = _get_start_date_from_period(period)
 
+    # --- Busca de dados de custos movida para fora do 'if' ---
+    costs = await crud.report.get_costs_by_category_last_30_days(db, organization_id=org_id, start_date=start_date)
+    
     # --- Busca de dados comuns a todos os gestores ---
     kpis = await crud.report.get_dashboard_kpis(db, organization_id=org_id)
     efficiency_kpis = await crud.report.get_efficiency_kpis(db, organization_id=org_id, start_date=start_date)
@@ -63,7 +66,6 @@ async def read_manager_dashboard(
 
     # --- Busca de dados premium (apenas para CLIENTE_ATIVO) ---
     if current_user.role == UserRole.CLIENTE_ATIVO:
-        costs = await crud.report.get_costs_by_category_last_30_days(db, organization_id=org_id, start_date=start_date)
         km_per_day = await crud.report.get_km_per_day_last_30_days(db, organization_id=org_id, start_date=start_date)
         podium = await crud.report.get_podium_drivers(db, organization_id=org_id)
 
@@ -82,10 +84,10 @@ async def read_manager_dashboard(
     return ManagerDashboardResponse(
         kpis=kpis,
         efficiency_kpis=efficiency_kpis,
+        costs_by_category=costs,
         recent_alerts=recent_alerts,
         upcoming_maintenances=upcoming_maintenances,
         active_goal=active_goal,
-        # Campos premium são nulos por padrão no schema
     )
 
 
