@@ -40,6 +40,7 @@
           <div class="col-12 col-sm-6 col-md-2"><StatCard :label="journeyNounInProgress" :value="kpis?.in_use_vehicles ?? 0" icon="alt_route" color="warning" :loading="dashboardStore.isLoading" to="/vehicles?status=in_use"/></div>
           <div class="col-12 col-sm-6 col-md-2"><StatCard label="Em Manutenção" :value="kpis?.maintenance_vehicles ?? 0" icon="build" color="negative" :loading="dashboardStore.isLoading" to="/maintenance"/></div>
           <div class="col-12 col-sm-6 col-md-2"><StatCard label="Custo por KM" :value="`R$ ${efficiencyKpis?.cost_per_km.toFixed(2) ?? '0.00'}`" icon="paid" color="deep-purple" :loading="dashboardStore.isLoading"/></div>
+          <div class="col-12 col-sm-6 col-md"><StatCard label="Gasto Combustível" :value="`R$ ${fuelCostTotal.toFixed(2)}`" icon="local_gas_station" color="orange-9" :loading="dashboardStore.isLoading"/></div>
           <div class="col-12 col-sm-6 col-md-2"><StatCard label="Taxa de Utilização" :value="`${efficiencyKpis?.utilization_rate.toFixed(1) ?? '0.0'}%`" icon="pie_chart" color="teal" :loading="dashboardStore.isLoading"/></div>
         </div>
 
@@ -283,6 +284,8 @@ import {
   LIcon,
 } from "@vue-leaflet/vue-leaflet";
 
+
+
 // --- LÓGICA DOS ÍCONES DO MAPA ---
 /**
  * Gera um ícone de pino de mapa em SVG como uma data URI,
@@ -314,7 +317,14 @@ const iconPaths = {
 const iconAvailable = createQuasarIconPin('#21BA45', iconPaths.checkCircle);
 const iconInUse = createQuasarIconPin('#F2C037', iconPaths.altRoute);
 const iconMaintenance = createQuasarIconPin('#C10015', iconPaths.build);
-
+const fuelCostTotal = computed(() => {
+  const costs = managerData.value?.costs_by_category || [];
+  // Linha de diagnóstico adicionada
+  console.log("Dados de custo recebidos para cálculo de Combustível:", JSON.stringify(costs));
+  // Correção: a comparação agora ignora maiúsculas/minúsculas
+  const fuel = costs.find((cost: CostByCategory) => cost.cost_type.toLowerCase() === 'Combustível');
+  return fuel ? fuel.total_amount : 0;
+});
 
 // INICIALIZAÇÃO
 const dashboardStore = useDashboardStore();

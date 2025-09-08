@@ -373,8 +373,8 @@ onUnmounted(() => { clearInterval(pollTimer); });
   background: #1a1616;
 }
 .q-drawer .q-list .q-item {
-  color: $grey-2;
-  .q-item__section--avatar { color: $grey-2; }
+  color: $grey-7;
+  .q-item__section--avatar { color: $grey-7; }
 }
 .q-drawer .q-list .q-item.q-router-link--active {
   color: $primary;
