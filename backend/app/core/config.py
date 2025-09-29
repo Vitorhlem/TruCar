@@ -8,24 +8,28 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     SUPERUSER_EMAILS: Set[str] = {"admin@admin.com"}
-    
+
     SMTP_SERVER: str
     SMTP_PORT: int
     SMTP_USER: str
     SMTP_PASSWORD: str
     EMAILS_FROM_EMAIL: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_SERVER: str
-    POSTGRES_DB: str
+
+    # Estas variáveis agora são opcionais
+    POSTGRES_USER: Optional[str] = None
+    POSTGRES_PASSWORD: Optional[str] = None
+    POSTGRES_SERVER: Optional[str] = None
+    POSTGRES_DB: Optional[str] = None
     DATABASE_URI: Optional[str] = None
 
     def __init__(self, **values):
         super().__init__(**values)
-        self.DATABASE_URI = (
-            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
-            f"{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
-        )
+        # SÓ MONTA A URI SE ELA NÃO FOR FORNECIDA DIRETAMENTE
+        if self.DATABASE_URI is None and self.POSTGRES_USER and self.POSTGRES_SERVER:
+            self.DATABASE_URI = (
+                f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
+                f"{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+            )
 
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
@@ -35,9 +39,6 @@ class Settings(BaseSettings):
 
     ALGORITHM: str = "HS256"
 
-    # --- CHAVE DE CRIPTOGRAFIA ADICIONADA AQUI ---
-    # Esta linha faz com que a sua aplicação leia a variável FERNET_KEY do arquivo .env
     FERNET_KEY: str
-    # --- FIM DA ADIÇÃO ---
 
 settings = Settings()
