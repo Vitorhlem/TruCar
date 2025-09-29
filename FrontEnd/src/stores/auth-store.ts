@@ -2,8 +2,16 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
+import { isAxiosError } from 'axios'; // <-- ADIÇÃO CRÍTICA PARA CORRIGIR O ERRO
 import type { UserNotificationPrefsUpdate } from 'src/models/user-models';
-import type { LoginForm, TokenData, User, UserSector } from 'src/models/auth-models';
+import type {
+  LoginForm,
+  TokenData,
+  User,
+  UserSector,
+  PasswordRecoveryRequest,
+  PasswordResetRequest
+} from 'src/models/auth-models';
 import { useTerminologyStore } from './terminology-store';
 
 function getFromLocalStorage<T>(key: string): T | null {
@@ -29,7 +37,7 @@ export const useAuthStore = defineStore('auth', () => {
   // --- PROPRIEDADES COMPUTADAS (GETTERS) ---
   const isAuthenticated = computed(() => !!accessToken.value);
   const isManager = computed(() => ['cliente_ativo', 'cliente_demo'].includes(user.value?.role ?? ''));
-  const isDriver = computed(() => user.value?.role === 'driver'); // <-- ADICIONADO E CORRIGIDO
+  const isDriver = computed(() => user.value?.role === 'driver');
   const userSector = computed((): UserSector => user.value?.organization?.sector ?? null);
   const isSuperuser = computed(() => user.value?.is_superuser === true);
   const isDemo = computed(() => user.value?.role === 'cliente_demo');
@@ -65,8 +73,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     console.log('Iniciando processo de logout e reset de todas as stores...');
-    // A sua lógica de reset de outras stores viria aqui.
-
     accessToken.value = null;
     user.value = null;
     originalUser.value = null;
@@ -109,6 +115,51 @@ export const useAuthStore = defineStore('auth', () => {
     originalUser.value = null;
     window.location.href = '/admin';
   }
+  
+  // --- AÇÕES DE RECUPERAÇÃO DE SENHA ---
+  async function requestPasswordReset(payload: PasswordRecoveryRequest): Promise<void> {
+    try {
+      await api.post('/login/password-recovery', payload);
+      Notify.create({
+        type: 'positive',
+        message: 'Se um usuário com este e-mail existir, um link para redefinição de senha será enviado.',
+      });
+    } catch (error) {
+      console.error('Erro ao solicitar redefinição de senha:', error);
+      // Por segurança, mostramos a mesma mensagem no erro para não revelar se um e-mail existe ou não.
+      Notify.create({
+        type: 'positive',
+        message: 'Se um usuário com este e-mail existir, um link para redefinição de senha será enviado.',
+      });
+    }
+  }
+
+  async function resetPassword(payload: PasswordResetRequest): Promise<boolean> {
+    try {
+      await api.post('/login/reset-password', payload);
+      Notify.create({
+        type: 'positive',
+        message: 'Senha redefinida com sucesso! Você já pode fazer o login.',
+        icon: 'o_lock_reset'
+      });
+      return true;
+    } catch (error: unknown) { // <-- CORRIGIDO AQUI
+      console.error('Erro ao redefinir senha:', error);
+      
+      let detail = 'Ocorreu um erro. O token pode ser inválido ou ter expirado.';
+      // <-- CORRIGIDO AQUI
+      if (isAxiosError(error) && error.response?.data?.detail) {
+        detail = error.response.data.detail;
+      }
+
+      Notify.create({
+        type: 'negative',
+        message: detail,
+        icon: 'o_error'
+      });
+      return false;
+    }
+  }
 
   // --- FUNÇÕES AUXILIARES ---
   function _setSession(token: string, userData: User) {
@@ -135,7 +186,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     isManager,
-    isDriver, // <-- EXPORTADO
+    isDriver,
     userSector,
     isSuperuser,
     isDemo,
@@ -145,7 +196,8 @@ export const useAuthStore = defineStore('auth', () => {
     originalUser,
     startImpersonation,
     stopImpersonation,
-    updateMyPreferences
+    updateMyPreferences,
+    requestPasswordReset,
+    resetPassword
   };
 });
-

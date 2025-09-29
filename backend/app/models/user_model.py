@@ -1,6 +1,7 @@
 import enum
-import uuid # Importa a biblioteca para gerar IDs únicos
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SAEnum
+import uuid
+from datetime import datetime # Adicionado
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SAEnum, DateTime # Adicionado DateTime
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -8,7 +9,6 @@ from app.core.config import settings
 
 def generate_employee_id():
     """Gera um ID de funcionário único e legível, ex: TRC-a1b2c3d4"""
-    # Usamos os primeiros 8 caracteres de um UUID para garantir unicidade
     unique_part = uuid.uuid4().hex[:8]
     return f"TRC-{unique_part}"
 
@@ -25,11 +25,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     
-    # --- CAMPO ATUALIZADO PARA GERAÇÃO AUTOMÁTICA ---
-    # O `default=generate_employee_id` garante que o campo seja preenchido automaticamente.
-    # `nullable=False` garante que todo usuário terá um ID.
     employee_id = Column(String(50), unique=True, index=True, nullable=False, default=generate_employee_id)
-    # --- FIM DA ALTERAÇÃO ---
 
     role = Column(SAEnum(UserRole), nullable=False)
     is_active = Column(Boolean(), default=True)
@@ -39,6 +35,11 @@ class User(Base):
     notify_by_email = Column(Boolean(), default=True, nullable=False)
     notification_email = Column(String(100), nullable=True)
     
+    # --- INÍCIO DA MODIFICAÇÃO: Campos para Recuperação de Senha ---
+    reset_password_token = Column(String(255), nullable=True, index=True)
+    reset_password_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    # --- FIM DA MODIFICAÇÃO ---
+
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization", back_populates="users")
 
@@ -58,5 +59,3 @@ class User(Base):
     achievements = relationship("UserAchievement", back_populates="user", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="driver", cascade="all, delete-orphan")
     fuel_logs = relationship("FuelLog", back_populates="user", cascade="all, delete-orphan")
-
-

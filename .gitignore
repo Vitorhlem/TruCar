@@ -1,52 +1,25 @@
-# ===================================================================
-# Arquivo .gitignore Centralizado para o Projeto
-# ===================================================================
-
-# Segredos e Arquivos de Ambiente
-# Nunca devem ser enviados para o repositório.
 .env
 .env.*
 !.env.example
-# Descomente a linha acima se você tiver um arquivo de exemplo que DEVE ser versionado.
-
-# Python / Backend
-# -------------------------------------------------------------------
-# Cache do Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Ambiente Virtual do Python (assumindo que pode estar na raiz ou dentro do backend)
 /venv/
 /.venv/
 /backend/venv/
 /backend/.venv/
-
-# Node.js / Frontend (Quasar)
-# -------------------------------------------------------------------
-# ATENÇÃO: Verifique se o nome da sua pasta é 'frontend' ou 'FrontEnd' e ajuste abaixo.
-# Usarei 'frontend' baseado na sua descrição.
-
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.quasar/
 /frontend/.quasar-testing/
-
-# Arquivos temporários do Quasar e outros builds
 /frontend/quasar.config.*.temporary.compiled*
 /frontend/src-cordova/
 /frontend/src-capacitor/
-
-# Logs de Erro de Pacotes (Node)
-# -------------------------------------------------------------------
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-
-# Ficheiros de IDE, Editores e Sistema Operacional
-# -------------------------------------------------------------------
 .vscode/
 .idea/
 *.suo

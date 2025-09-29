@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone # Adicionado timezone
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import List, TYPE_CHECKING, Optional
 
-from app.core.security import get_password_hash, verify_password
+from app.core.security import get_password_hash, verify_password, create_password_reset_token
 from app.models.user_model import User, UserRole
 from app.models.organization_model import Organization
 
@@ -32,7 +32,22 @@ async def get_user_by_email(db: AsyncSession, *, email: str, load_organization: 
     if load_organization:
         stmt = stmt.options(selectinload(User.organization))
     result = await db.execute(stmt)
+
     return result.scalars().first()
+
+async def set_password_reset_token(db: AsyncSession, *, user: User) -> User:
+    """Gera e define um token de redefinição de senha para um usuário."""
+    token = create_password_reset_token(email=user.email)
+    expire_at = datetime.now(timezone.utc) + timedelta(minutes=60) # Expira em 1 hora
+    
+    user.reset_password_token = token
+    user.reset_password_token_expires_at = expire_at
+    
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
 
 async def get_multi_by_org(db: AsyncSession, *, organization_id: int | None = None, skip: int = 0, limit: int = 100) -> List[User]:
     stmt = (
