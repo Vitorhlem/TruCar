@@ -38,7 +38,7 @@
         <!-- Célula de Foto -->
         <template v-slot:body-cell-photo_url="props">
           <q-td :props="props">
-            <q-avatar rounded size="60px" font-size="32px" color="grey-3" text-color="grey-6" icon="o_inventory_2">
+            <q-avatar rounded size="60px" font-size="32px" color="grey-3" text-color="grey-6" icon="inventory_2">
               <img v-if="props.value" :src="`http://localhost:8000${props.value}`" alt="Foto da peça">
             </q-avatar>
           </q-td>
@@ -61,10 +61,10 @@
         <!-- Célula de Ações -->
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" class="q-gutter-x-sm">
-            <q-btn flat round dense icon="o_edit" color="primary" @click="openDialog(props.row)">
+            <q-btn flat round dense icon="edit" color="primary" @click="openDialog(props.row)">
               <q-tooltip>Editar</q-tooltip>
             </q-btn>
-            <q-btn flat round dense icon="o_delete" color="negative" @click="confirmDelete(props.row)">
+            <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)">
               <q-tooltip>Remover</q-tooltip>
             </q-btn>
           </q-td>

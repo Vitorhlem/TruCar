@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import List, TYPE_CHECKING, Optional
 
-from app.core.security import get_password_hash, verify_password, create_password_reset_token
+from app.core.security import get_password_hash, verify_password, create_password_reset_token, PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
 from app.models.user_model import User, UserRole
 from app.models.organization_model import Organization
 
@@ -38,7 +38,9 @@ async def get_user_by_email(db: AsyncSession, *, email: str, load_organization: 
 async def set_password_reset_token(db: AsyncSession, *, user: User) -> User:
     """Gera e define um token de redefinição de senha para um usuário."""
     token = create_password_reset_token(email=user.email)
-    expire_at = datetime.now(timezone.utc) + timedelta(minutes=60) # Expira em 1 hora
+    
+    # CORREÇÃO: Usando a constante importada para definir o tempo de expiração
+    expire_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)
     
     user.reset_password_token = token
     user.reset_password_token_expires_at = expire_at

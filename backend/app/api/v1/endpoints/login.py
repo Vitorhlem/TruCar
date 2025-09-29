@@ -7,7 +7,7 @@ from typing import Any
 
 from app import crud
 from app.api import deps
-from app.core import auth, email_utils
+from app.core import auth, email_utils, security
 from app.schemas.token_schema import TokenData
 # --- ADICIONADO ---
 # Importamos os schemas e o Enum necessários para a criação explícita
@@ -94,11 +94,8 @@ async def request_password_recovery(
     """
     user = await crud.user.get_user_by_email(db, email=recovery_in.email)
     
-    # Por segurança, não informamos ao cliente se o e-mail existe ou não.
-    # Apenas enviamos o e-mail se o usuário for encontrado.
     if user:
         user_with_token = await crud.user.set_password_reset_token(db=db, user=user)
-        # Envia o e-mail em segundo plano para não bloquear a resposta
         email_utils.send_password_reset_email(
             to_email=user.email,
             user_name=user.full_name,
@@ -117,12 +114,35 @@ async def reset_password(
     """
     Finaliza o processo de redefinição de senha usando o token.
     """
-    email = auth.verify_password_reset_token(token=reset_in.token)
+    # CORREÇÃO: Chamada explícita para security.verify_password_reset_token
+    email = security.verify_password_reset_token(token=reset_in.token)
     if not email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="O token de redefinição de senha é inválido ou expirou.",
         )
+        
+    user = await crud.user.get_user_by_email(db, email=email)
+    if not user or not user.is_active or user.reset_password_token != reset_in.token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O token de redefinição de senha é inválido ou expirou.",
+        )
+
+    if user.reset_password_token_expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O token de redefinição de senha é inválido ou expirou.",
+        )
+
+    await crud.user.update_password(db=db, db_user=user, new_password=reset_in.new_password)
+    
+    user.reset_password_token = None
+    user.reset_password_token_expires_at = None
+    db.add(user)
+    await db.commit()
+    
+    return {"msg": "Sua senha foi redefinida com sucesso."}
         
     user = await crud.user.get_user_by_email(db, email=email)
     if not user or not user.is_active or user.reset_password_token != reset_in.token:
