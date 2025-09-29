@@ -41,7 +41,13 @@ async def create_transaction(
     db.add(part)
     db.add(db_transaction)
     await db.commit()
-    await db.refresh(db_transaction)
+
+    # --- CORREÇÃO APLICADA AQUI ---
+    # Após salvar, damos um "refresh" no objeto e pedimos para que o SQLAlchemy
+    # carregue (popule) os relacionamentos necessários para a resposta da API.
+    await db.refresh(db_transaction, ["user", "related_vehicle", "related_user"])
+    # --- FIM DA CORREÇÃO ---
+
     return db_transaction
 
 async def get_transactions_by_part_id(

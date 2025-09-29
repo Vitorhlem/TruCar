@@ -27,7 +27,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+// --- CORREÇÃO 1: 'onMounted' foi removido da importação ---
+import { ref, computed, watch } from 'vue';
 import { usePartStore } from 'stores/part-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useUserStore } from 'stores/user-store';
@@ -50,8 +51,9 @@ const driverOptions = computed(() => userStore.users.filter(u => u.role === 'dri
 watch(() => props.modelValue, (isOpening) => {
   if (isOpening) {
     formData.value = { quantity: 1 };
-    if (vehicleStore.vehicles.length === 0) vehicleStore.fetchAllVehicles({rowsPerPage: 500});
-    if (userStore.users.length === 0) userStore.fetchAllUsers();
+    // --- CORREÇÃO 2: Adicionado 'void' para suprimir os avisos do linter ---
+    if (vehicleStore.vehicles.length === 0) void vehicleStore.fetchAllVehicles({rowsPerPage: 500});
+    if (userStore.users.length === 0) void userStore.fetchAllUsers();
   }
 });
 
