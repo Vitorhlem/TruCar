@@ -23,7 +23,8 @@ from app.api.v1.endpoints import (
     documents,
     vehicle_costs,
     settings,
-    utils  
+    utils,
+    parts
 )
 
 api_router = APIRouter()
@@ -51,6 +52,6 @@ api_router.include_router(freight_orders.router, prefix="/freight-orders", tags=
 api_router.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetry"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 api_router.include_router(utils.router, prefix="/utils", tags=["Utilities"])
-
+api_router.include_router(parts.router, prefix="/parts", tags=["Parts"]) 
 
 

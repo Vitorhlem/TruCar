@@ -192,7 +192,7 @@ function showUpgradeDialog() {
       color: 'primary',
       unelevated: true
     },
-    persistent: true
+    persistent: false
   });
 }
 
@@ -330,7 +330,7 @@ async function handleEndJourney() {
 function promptToDeleteJourney(journey: Journey) {
   $q.dialog({
     title: 'Confirmar Exclusão', message: `Tem certeza que deseja excluir esta ${terminologyStore.journeyNoun.toLowerCase()}?`,
-    cancel: true, persistent: true,
+    cancel: true, persistent: false,
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
   }).onOk(() => {
     void journeyStore.deleteJourney(journey.id);

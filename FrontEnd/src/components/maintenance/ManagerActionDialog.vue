@@ -124,7 +124,7 @@ function handleUpdateStatus(newStatus: MaintenanceStatus) {
         type: 'textarea',
       },
       cancel: true,
-      persistent: true,
+      persistent: false,
     }).onOk((data: string) => {
       void performUpdate(data || null);
     });

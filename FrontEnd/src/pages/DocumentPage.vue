@@ -255,7 +255,7 @@ function confirmDelete(document: DocumentPublic) {
     title: 'Confirmar Remoção',
     message: `Tem a certeza de que deseja remover o documento "${document.document_type}" associado a "${document.owner_info}"? Esta ação não pode ser desfeita.`,
     cancel: true,
-    persistent: true,
+    persistent: false,
     ok: {
       label: 'Remover',
       color: 'negative',

@@ -200,7 +200,7 @@ function promptToDelete(implement: Implement) {
     title: 'Confirmar Exclusão',
     message: `Tem a certeza que deseja excluir o implemento "${implement.name}"?`,
     cancel: true,
-    persistent: true,
+    persistent: false,
     ok: { label: 'Excluir', color: 'negative', unelevated: true }
   }).onOk(() => {
     void implementStore.deleteImplement(implement.id);
