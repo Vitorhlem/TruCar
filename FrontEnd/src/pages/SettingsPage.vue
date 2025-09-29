@@ -196,7 +196,7 @@ function showUpgradeDialog() {
     title: 'Desbloqueie o Potencial Máximo do TruCar',
     message: 'Para aceder ao histórico completo e outras funcionalidades premium, entre em contato com nossa equipe comercial.',
     ok: { label: 'Entendido', color: 'primary', unelevated: true },
-    persistent: true
+    persistent: false
   });
 }
 // --- FIM DA ADIÇÃO ---

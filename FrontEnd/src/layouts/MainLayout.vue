@@ -186,7 +186,7 @@ function showUpgradeDialog() {
     title: 'Desbloqueie o Potencial Máximo do TruCar',
     message: 'Para liberar recursos avançados como relatórios detalhados e cadastro ilimitado de veículos e motoristas, entre em contato com nossa equipe comercial.',
     ok: { label: 'Entendido', color: 'primary', unelevated: true },
-    persistent: true
+    persistent: false
   });
 }
 
@@ -207,7 +207,8 @@ const menuStructure = computed(() => {
   menu.push(general);
 
   // --- Categoria: Operações (Condicional) ---
-const operations = { label: 'Operações', icon: 'alt_route', children: [] as MenuItem[] };
+// --- Categoria: Operações (Condicional) ---
+  const operations = { label: 'Operações', icon: 'alt_route', children: [] as MenuItem[] };
   if (sector === 'agronegocio' || sector === 'servicos') {
     operations.children.push({ title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' });
   }
@@ -222,8 +223,8 @@ const operations = { label: 'Operações', icon: 'alt_route', children: [] as Me
   }
 
   // --- Categoria: Gestão (Apenas Gestores) ---
-  if (isManager) {
-const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as MenuItem[] };
+if (isManager) {
+    const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as MenuItem[] };
     if (sector === 'agronegocio' || sector === 'servicos' || sector === 'frete') {
       management.children.push({ title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' });
     }
@@ -236,8 +237,8 @@ const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as
     management.children.push({ title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' });
     
     // --- NOVOS LINKS ADICIONADOS ---
+    management.children.push({ title: 'Inventário de Peças', icon: 'inventory', to: '/parts' }); // <-- ADICIONADO AQUI
     management.children.push({ title: 'Gestão de Custos', icon: 'monetization_on', to: '/costs' });
-    // --- LINK PARA ABASTECIMENTOS ADICIONADO AQUI ---
     management.children.push({ title: 'Registros de Abastecimento', icon: 'local_gas_station', to: '/fuel-logs' });
     management.children.push({ title: 'Gestão de Documentos', icon: 'folder_shared', to: '/documents' });
     // --- FIM DA ADIÇÃO ---
@@ -248,7 +249,7 @@ const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as
   }
 
   // --- Categoria: Análise (Apenas Gestores) ---
-  if (isManager) {
+if (isManager) {
     const analysis = {
       label: 'Análise', icon: 'analytics',
       children: [

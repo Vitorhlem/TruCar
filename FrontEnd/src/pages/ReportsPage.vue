@@ -109,7 +109,7 @@ function showUpgradeDialog() {
       color: 'primary',
       unelevated: true
     },
-    persistent: true
+    persistent: false
   });
 }
 

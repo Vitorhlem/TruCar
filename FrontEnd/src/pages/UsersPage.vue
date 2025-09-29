@@ -175,7 +175,7 @@ function promptToDelete(user: User) {
     message: `Tem certeza que deseja excluir o usuário ${user.full_name}? Esta ação não pode ser desfeita.`,
     cancel: { label: 'Cancelar', flat: true },
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
-    persistent: true,
+    persistent: false,
   }).onOk(() => {
     void userStore.deleteUser(user.id);
   });
