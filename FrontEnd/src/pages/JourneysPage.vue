@@ -100,9 +100,43 @@
           <q-card-section class="q-gutter-y-md">
             <q-select outlined v-model="startForm.vehicle_id" :options="vehicleOptions" :label="`${terminologyStore.vehicleNoun} *`" emit-value map-options :rules="[val => !!val || 'Selecione um item']" />
             <q-select v-if="authStore.userSector === 'agronegocio'" outlined v-model="startForm.implement_id" :options="implementOptions" label="Implemento (Opcional)" emit-value map-options clearable :loading="implementStore.isLoading" />
+            
             <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="startForm.start_engine_hours" type="number" label="Horas Iniciais *" :rules="[val => val !== null && val !== undefined && val >= 0 || 'Valor deve ser positivo']" />
             <q-input v-else outlined v-model.number="startForm.start_mileage" type="number" label="KM Inicial *" :rules="[val => val !== null && val !== undefined && val >= 0 || 'Valor deve ser positivo']" />
-            <q-input outlined v-model="startForm.trip_description" :label="`Descrição da ${terminologyStore.journeyNoun}`" />
+            
+            <q-input outlined v-model="startForm.trip_description" :label="`Descrição da ${terminologyStore.journeyNoun} (Opcional)`" />
+            
+            <q-separator class="q-my-md" />
+            <div class="text-subtitle1 text-grey-8">Destino (Opcional)</div>
+
+            <!-- CAMPOS DE ENDEREÇO COM BUSCA DE CEP -->
+            <q-input 
+              outlined 
+              v-model="startForm.destination_cep" 
+              label="CEP do Destino" 
+              mask="#####-###"
+              unmasked-value
+              :loading="isCepLoading"
+              @blur="handleJourneyCepBlur"
+            >
+              <template v-slot:prepend><q-icon name="location_pin" /></template>
+            </q-input>
+
+            <div></div>
+            <q-input outlined v-model="startForm.destination_street" label="Rua / Logradouro" />
+
+            <div></div>
+            <div class="row q-col-gutter-md">
+                <div class="col-8"><q-input outlined v-model="startForm.destination_neighborhood" label="Bairro" /></div>
+                <div class="col-4"><q-input outlined v-model="startForm.destination_number" label="Nº" /></div>
+            </div>
+            <div> </div>
+            <div class="row q-col-gutter-md">
+                <div class="col-8"><q-input outlined v-model="startForm.destination_city" label="Cidade" /></div>
+                <div class="col-4"><q-input outlined v-model="startForm.destination_state" label="UF" /></div>
+              </div>
+            <!-- FIM DOS CAMPOS DE ENDEREÇO -->
+
           </q-card-section>
           <q-card-actions align="right"><q-btn flat label="Cancelar" v-close-popup /><q-btn type="submit" unelevated color="primary" label="Iniciar" :loading="isSubmitting" /></q-card-actions>
         </q-form>
@@ -137,6 +171,7 @@ import { JourneyType, type Journey, type JourneyCreate, type JourneyUpdate } fro
 import type { FreightOrder } from 'src/models/freight-order-models';
 import ClaimFreightDialog from 'components/ClaimFreightDialog.vue';
 import DriverFreightDialog from 'components/DriverFreightDialog.vue';
+import { useCepApi } from 'src/composables/useCepApi';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -145,8 +180,8 @@ const journeyStore = useJourneyStore();
 const vehicleStore = useVehicleStore();
 const implementStore = useImplementStore();
 const freightOrderStore = useFreightOrderStore();
+const { isCepLoading, fetchAddressByCep } = useCepApi();
 
-// --- LÓGICA DE DEMO ADICIONADA ---
 const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
 function showUpgradeDialog() {
   $q.dialog({
@@ -160,25 +195,18 @@ function showUpgradeDialog() {
     persistent: true
   });
 }
-// --- FIM DA ADIÇÃO ---
 
-
-// --- ESTADO COMUM A TODOS OS SETORES ---
 const isSubmitting = ref(false);
-
-// --- ESTADO PARA AGRO/SERVIÇOS ---
 const isStartDialogOpen = ref(false);
 const isEndDialogOpen = ref(false);
 const editingJourney = ref<Journey | null>(null);
 const startForm = ref<Partial<JourneyCreate>>({});
 const endForm = ref<Partial<JourneyUpdate>>({});
 
-// --- ESTADO PARA FRETES ---
 const isClaimDialogOpen = ref(false);
 const isDriverDialogOpen = ref(false);
 const selectedOrderForAction = ref<FreightOrder | null>(null);
 
-// --- FUNÇÕES PARA FRETES ---
 function openClaimDialog(order: FreightOrder) {
   selectedOrderForAction.value = order;
   isClaimDialogOpen.value = true;
@@ -192,7 +220,6 @@ function refreshFreightData() {
   void freightOrderStore.fetchMyPendingOrders();
 }
 
-// --- COMPUTEDS E FUNÇÕES PARA AGRO/SERVIÇOS ---
 const vehicleOptions = computed(() => vehicleStore.availableVehicles.map(v => ({ label: `${v.brand} ${v.model} (${v.license_plate || v.identifier})`, value: v.id })));
 const implementOptions = computed(() => implementStore.availableImplements.map(i => ({ label: `${i.name} (${i.brand} ${i.model})`, value: i.id })));
 
@@ -230,7 +257,18 @@ async function openStartDialog() {
   const promisesToFetch = [vehicleStore.fetchAllVehicles()];
   if (authStore.userSector === 'agronegocio') promisesToFetch.push(implementStore.fetchAvailableImplements());
   await Promise.all(promisesToFetch);
-  startForm.value = { vehicle_id: null, trip_type: JourneyType.FREE_ROAM, trip_description: '', implement_id: null };
+  startForm.value = { 
+    vehicle_id: null, 
+    trip_type: JourneyType.FREE_ROAM, 
+    trip_description: '', 
+    implement_id: null,
+    destination_cep: '',
+    destination_street: '',
+    destination_number: '',
+    destination_neighborhood: '',
+    destination_city: '',
+    destination_state: '',
+  };
   isStartDialogOpen.value = true;
 }
 
@@ -247,6 +285,17 @@ function openEndDialog(journey?: Journey) {
 async function handleStartJourney() {
   isSubmitting.value = true;
   try {
+    // Monta o endereço completo para o campo `destination_address` para compatibilidade
+    if (startForm.value.destination_street) {
+        startForm.value.destination_address = [
+            startForm.value.destination_street,
+            startForm.value.destination_number,
+            startForm.value.destination_neighborhood,
+            startForm.value.destination_city,
+            startForm.value.destination_state
+        ].filter(Boolean).join(', ');
+    }
+
     await journeyStore.startJourney(startForm.value as JourneyCreate);
     $q.notify({ type: 'positive', message: terminologyStore.journeyStartSuccessMessage });
     isStartDialogOpen.value = false;
@@ -288,7 +337,18 @@ function promptToDeleteJourney(journey: Journey) {
   });
 }
 
-// --- LÓGICA DE CARREGAMENTO PRINCIPAL (CONDICIONAL) ---
+async function handleJourneyCepBlur() {
+  if (startForm.value.destination_cep) {
+    const address = await fetchAddressByCep(startForm.value.destination_cep);
+    if (address) {
+      startForm.value.destination_street = address.street;
+      startForm.value.destination_neighborhood = address.neighborhood;
+      startForm.value.destination_city = address.city;
+      startForm.value.destination_state = address.state;
+    }
+  }
+}
+
 onMounted(() => {
   if (authStore.userSector === 'frete') {
     refreshFreightData();
@@ -297,3 +357,4 @@ onMounted(() => {
   }
 });
 </script>
+

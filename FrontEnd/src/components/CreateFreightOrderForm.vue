@@ -40,9 +40,24 @@
             <div class="col-12 col-sm-6">
               <q-input outlined v-model="stop.scheduled_time" type="datetime-local" stack-label label="Data/Hora Agendada *" :rules="[val => !!val || 'Campo obrigatório']" />
             </div>
-            <div class="col-12">
-              <q-input outlined v-model="stop.address" label="Endereço da Parada *" :rules="[val => !!val || 'Campo obrigatório']" />
+            
+            <!-- CAMPOS DE CEP E ENDEREÇO -->
+            <div class="col-12 col-sm-6">
+                <q-input 
+                  outlined 
+                  v-model="stop.cep" 
+                  label="CEP da Parada" 
+                  mask="#####-###"
+                  unmasked-value
+                  :loading="isCepLoading"
+                  @blur="handleStopCepBlur(index)"
+                />
             </div>
+             <div class="col-12 col-sm-6">
+                <q-input outlined v-model="stop.address" label="Endereço da Parada *" :rules="[val => !!val || 'Campo obrigatório']" />
+            </div>
+            <!-- FIM DOS CAMPOS -->
+
             <div class="col-12">
               <q-input outlined v-model="stop.cargo_description" label="Descrição da Carga (nesta parada)" />
             </div>
@@ -65,17 +80,19 @@ import { ref, onMounted, computed } from 'vue';
 import { useClientStore } from 'stores/client-store';
 import { useFreightOrderStore } from 'stores/freight-order-store';
 import type { FreightOrderCreate, StopPointCreate } from 'src/models/freight-order-models';
+import { useCepApi } from 'src/composables/useCepApi';
 
 const emit = defineEmits(['close']);
 
 const clientStore = useClientStore();
 const freightOrderStore = useFreightOrderStore();
+const { isCepLoading, fetchAddressByCep } = useCepApi();
 
 const isSubmitting = ref(false);
 const formData = ref<Partial<FreightOrderCreate>>({});
-const stopPoints = ref<Partial<StopPointCreate>[]>([
-  { type: 'Coleta', sequence_order: 1 },
-  { type: 'Entrega', sequence_order: 2 },
+const stopPoints = ref<Partial<StopPointCreate & { cep: string }>[]>([
+  { type: 'Coleta', sequence_order: 1, cep: '' },
+  { type: 'Entrega', sequence_order: 2, cep: '' },
 ]);
 
 const clientOptions = computed(() =>
@@ -84,29 +101,42 @@ const clientOptions = computed(() =>
 
 function addStopPoint() {
   stopPoints.value.push({
-    sequence_order: stopPoints.value.length + 1
+    sequence_order: stopPoints.value.length + 1,
+    cep: ''
   });
 }
 
 function removeStopPoint(index: number) {
   stopPoints.value.splice(index, 1);
-  // Reajusta a ordem da sequência
   stopPoints.value.forEach((stop, i) => {
     stop.sequence_order = i + 1;
   });
 }
 
+async function handleStopCepBlur(index: number) {
+  const stop = stopPoints.value[index];
+  if (stop && stop.cep) {
+    const address = await fetchAddressByCep(stop.cep);
+    if (address) {
+      stop.address = `${address.street}, ${address.neighborhood}, ${address.city} - ${address.state}`;
+    }
+  }
+}
+
 async function handleSubmit() {
   isSubmitting.value = true;
   try {
-    // --- INÍCIO DA CORREÇÃO ---
-    // Garantimos que 'undefined' seja convertido para 'null' para o payload
     const payload: FreightOrderCreate = {
       client_id: formData.value.client_id as number,
-      description: formData.value.description || null, // Se for undefined, vira null
-      stop_points: stopPoints.value as StopPointCreate[],
+      description: formData.value.description || null,
+      stop_points: stopPoints.value.map(s => ({
+        sequence_order: s.sequence_order,
+        type: s.type,
+        address: s.address,
+        cargo_description: s.cargo_description,
+        scheduled_time: s.scheduled_time,
+      })) as StopPointCreate[],
     };
-    // --- FIM DA CORREÇÃO ---
     
     await freightOrderStore.addFreightOrder(payload);
     emit('close');
