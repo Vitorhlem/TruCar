@@ -135,7 +135,11 @@ function openCreateDialog() {
 function openEditDialog(user: User) {
   resetForm();
   editingUserId.value = user.id;
-  formData.value = { ...user, password: '' };
+  formData.value = { 
+    ...user, 
+    avatar_url: user.avatar_url || '', 
+    password: '' 
+  };
   isFormDialogOpen.value = true;
 }
 

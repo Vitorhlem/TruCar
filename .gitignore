@@ -1,39 +1,49 @@
+# ===================================================================
+# Arquivo .gitignore Centralizado para o Projeto
+# ===================================================================
 
-# Segredos e Ficheiros de Ambiente
+# Segredos e Arquivos de Ambiente
 # Nunca devem ser enviados para o repositório.
 .env
-*.env
 .env.*
-.env.local*
+!.env.example
+# Descomente a linha acima se você tiver um arquivo de exemplo que DEVE ser versionado.
 
-# Python / Back-end
+# Python / Backend
 # -------------------------------------------------------------------
-# e ficheiro .pyc em qualquer lugar dentro da pasta 'backend'.
-/backend/**/__pycache__/
-/backend/**/*.pyc
+# Cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Ambientes virtuais do Python
+# Ambiente Virtual do Python (assumindo que pode estar na raiz ou dentro do backend)
+/venv/
+/.venv/
 /backend/venv/
-venv/
-.venv/
-env/
+/backend/.venv/
 
-
-# Node.js / Front-end (Quasar)
+# Node.js / Frontend (Quasar)
 # -------------------------------------------------------------------
-# Dependências e ficheiros de build do front-end.
-# Os caminhos começam com / para garantir que são relativos à raiz.
-/FrontEnd/node_modules/
-/FrontEnd/dist/
-/FrontEnd/.quasar/
-/FrontEnd/.quasar-testing/
-/FrontEnd/test/
-/FrontEnd/src-cordova/
-/FrontEnd/src-capacitor/
+# ATENÇÃO: Verifique se o nome da sua pasta é 'frontend' ou 'FrontEnd' e ajuste abaixo.
+# Usarei 'frontend' baseado na sua descrição.
 
-# Ficheiros temporários do Quasar
-/quasar.config.*.temporary.compiled*
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.quasar/
+/frontend/.quasar-testing/
 
+# Arquivos temporários do Quasar e outros builds
+/frontend/quasar.config.*.temporary.compiled*
+/frontend/src-cordova/
+/frontend/src-capacitor/
+
+# Logs de Erro de Pacotes (Node)
+# -------------------------------------------------------------------
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Ficheiros de IDE, Editores e Sistema Operacional
 # -------------------------------------------------------------------
@@ -46,11 +56,5 @@ env/
 *.sw?
 *~
 .DS_Store
+Thumbs.db
 .thumbs.db
-
-
-# Logs de Erro
-# -------------------------------------------------------------------
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*

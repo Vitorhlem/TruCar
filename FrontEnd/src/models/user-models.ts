@@ -10,7 +10,8 @@ export interface UserCreate {
   role: UserRole;
   password?: string;
   is_active?: boolean;
-  employee_id?: string; // <-- ADICIONAR
+  employee_id?: string;
+  avatar_url?: string; // <-- ADICIONADO
 }
 
 // Usado ao atualizar um utilizador existente. Todos os campos são opcionais.
@@ -20,7 +21,8 @@ export interface UserUpdate {
   role?: UserRole;
   password?: string;
   is_active?: boolean;
-  employee_id?: string; // <-- ADICIONAR
+  employee_id?: string;
+  avatar_url?: string; // <-- ADICIONADO
 }
 
 // --- NOVA INTERFACE ADICIONADA ---
