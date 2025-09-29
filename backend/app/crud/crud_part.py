@@ -49,6 +49,7 @@ async def create(db: AsyncSession, *, part_in: PartCreate, organization_id: int,
 
     # Se houver estoque inicial, cria uma transação
     if part_in.stock > 0:
+        # A chamada aqui já estava correta pois importamos diretamente
         await crud_transaction.create_transaction(
             db=db,
             part_id=db_obj.id,

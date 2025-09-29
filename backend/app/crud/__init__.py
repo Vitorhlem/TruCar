@@ -13,3 +13,4 @@ from . import crud_freight_order as freight_order
 from . import crud_vehicle_cost as vehicle_cost
 from . import crud_document as document 
 from . import crud_part as part # <-- ADICIONE ESTA LINHA
+from . import crud_inventory_transaction as crud_transaction # Adiciona o novo módulo de transação

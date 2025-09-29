@@ -139,7 +139,9 @@ async def add_stock_transaction(
     quantity_change = -transaction_in.quantity if transaction_in.transaction_type in [TransactionType.SAIDA_USO, TransactionType.SAIDA_FIM_DE_VIDA] else transaction_in.quantity
 
     try:
-        transaction = await crud.inventory_transaction.create_transaction(
+        # --- CORREÇÃO APLICADA AQUI ---
+        # A chamada foi alterada de 'crud.inventory_transaction' para 'crud.crud_transaction'
+        transaction = await crud.crud_transaction.create_transaction(
             db=db,
             part_id=part_id,
             user_id=current_user.id,
@@ -152,7 +154,6 @@ async def add_stock_transaction(
         return transaction
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
 
 @router.get("/{part_id}/history", response_model=List[TransactionPublic])
 async def read_part_history(
@@ -170,7 +171,7 @@ async def read_part_history(
     if not part:
         raise HTTPException(status_code=404, detail="Peça não encontrada.")
         
-    history = await crud.inventory_transaction.get_transactions_by_part_id(
+    history = await crud.crud_transaction.get_transactions_by_part_id(
         db, part_id=part_id, skip=skip, limit=limit
     )
     return history
