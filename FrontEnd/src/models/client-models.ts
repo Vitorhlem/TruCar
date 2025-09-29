@@ -6,6 +6,13 @@ export interface Client {
   contact_person?: string | null;
   phone?: string | null;
   email?: string | null;
+  // --- CAMPOS DE ENDEREÇO ADICIONADOS ---
+  cep?: string | null;
+  address_street?: string | null;
+  address_number?: string | null;
+  address_neighborhood?: string | null;
+  address_city?: string | null;
+  address_state?: string | null;
 }
 
 // Usamos 'Partial' para o Update, pois todos os campos são opcionais

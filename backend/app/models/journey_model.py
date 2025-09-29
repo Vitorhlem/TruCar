@@ -1,5 +1,3 @@
-# backend/app/models/journey_model.py
-
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Float
@@ -9,9 +7,6 @@ from .implement_model import Implement
 from app.db.base_class import Base
 from .organization_model import Organization
 from .user_model import User
-
-from .vehicle_model import Vehicle
-# IMPORTA o Enum a partir da nossa fonte da verdade (o schema).
 from app.schemas.journey_schema import JourneyType
 
 class Journey(Base):
@@ -26,20 +21,26 @@ class Journey(Base):
     trip_type = Column(String(50), nullable=False)
     implement_id = Column(Integer, ForeignKey("implements.id"), nullable=True)
     freight_order_id = Column(Integer, ForeignKey("freight_orders.id"), nullable=True)
-    freight_order = relationship("FreightOrder", back_populates="journeys")
     
-    # --- AS DUAS LINHAS QUE ESTAVAM EM FALTA ---
-    destination_address = Column(String, nullable=True)
     trip_description = Column(String, nullable=True)
-    # --- FIM DAS LINHAS EM FALTA ---
-
     start_engine_hours = Column(Float, nullable=True)
     end_engine_hours = Column(Float, nullable=True)
+
+    # --- CAMPOS DE ENDEREÇO ATUALIZADOS ---
+    destination_address = Column(String, nullable=True) # Campo completo para referência
+    destination_street = Column(String(255), nullable=True)
+    destination_neighborhood = Column(String(100), nullable=True)
+    destination_city = Column(String(100), nullable=True)
+    destination_state = Column(String(2), nullable=True)
+    destination_cep = Column(String(9), nullable=True)
+    # --- FIM DA ATUALIZAÇÃO ---
 
     # Relacionamentos
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
     driver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    
+    freight_order = relationship("FreightOrder", back_populates="journeys")
     implement = relationship("Implement", back_populates="journeys")
     vehicle = relationship("Vehicle", back_populates="journeys")
     driver = relationship("User", back_populates="journeys")

@@ -75,7 +75,6 @@ const isCreateDialogOpen = ref(false);
 const isDetailsDialogOpen = ref(false);
 const selectedOrderForAction = ref<FreightOrder | null>(null);
 
-// Filtros para o Kanban
 const openOrders = computed(() => freightOrderStore.freightOrders.filter(o => o.status === 'Aberta'));
 const claimedOrders = computed(() => freightOrderStore.freightOrders.filter(o => o.status === 'Atribuída'));
 const inTransitOrders = computed(() => freightOrderStore.freightOrders.filter(o => o.status === 'Em Trânsito'));
@@ -86,14 +85,11 @@ function openCreateDialog() {
 }
 
 function openDetailsDialog(order: FreightOrder) {
-  // Passamos o objeto inteiro diretamente para o diálogo,
-  // que então decide quais ações mostrar com base na role do usuário.
   selectedOrderForAction.value = order;
   isDetailsDialogOpen.value = true;
 }
 
 onMounted(() => {
-  // Todos os usuários (gestores e motoristas) carregam a mesma lista para o Kanban.
   void freightOrderStore.fetchAllFreightOrders();
 });
 </script>

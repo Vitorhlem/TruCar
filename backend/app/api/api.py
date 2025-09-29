@@ -22,7 +22,8 @@ from app.api.v1.endpoints import (
     vehicles,
     documents,
     vehicle_costs,
-    settings # <-- 1. NOVA IMPORTAÇÃO ADICIONADA
+    settings,
+    utils  
 )
 
 api_router = APIRouter()
@@ -33,12 +34,8 @@ api_router.include_router(admin.router, prefix="/admin", tags=["Admin Panel"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_router.include_router(vehicles.router, prefix="/vehicles", tags=["Vehicles"])
-# --- 2. NOVA ROTA ADICIONADA ---
-# Colocamos a rota de custos logo abaixo da de veículos para manter a organização
 api_router.include_router(vehicle_costs.router, prefix="/vehicles/{vehicle_id}/costs", tags=["Vehicle Costs"])
-# --- FIM DA ADIÇÃO ---
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
-
 api_router.include_router(journeys.router, prefix="/journeys", tags=["Journeys"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
@@ -53,5 +50,7 @@ api_router.include_router(clients.router, prefix="/clients", tags=["Clients"])
 api_router.include_router(freight_orders.router, prefix="/freight-orders", tags=["Freight Orders"])
 api_router.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetry"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
+api_router.include_router(utils.router, prefix="/utils", tags=["Utilities"])
+
 
 

@@ -19,11 +19,9 @@ export interface Journey {
   destination_address?: string | null;
   trip_description?: string | null;
   
-  // OS CAMPOS QUE ESTAVAM EM FALTA:
   start_engine_hours: number | null;
   end_engine_hours: number | null;
   implement?: ImplementCreate;
-
 
   // Relações
   vehicle: Vehicle;
@@ -38,16 +36,21 @@ export interface JourneyCreate {
   destination_address?: string;
   trip_description?: string;
   implement_id?: number | null;
-
-  
-  // OS CAMPOS QUE ESTAVAM EM FALTA:
   start_mileage?: number;
   start_engine_hours?: number;
+
+  // --- CAMPOS DE ENDEREÇO ATUALIZADOS ---
+  destination_cep?: string;
+  destination_street?: string;
+  destination_number?: string; // <-- ADICIONADO
+  destination_neighborhood?: string;
+  destination_city?: string;
+  destination_state?: string;
 }
 
 // A interface para o formulário de ATUALIZAÇÃO (Finalização)
 export interface JourneyUpdate {
-  // OS CAMPOS QUE ESTAVAM EM FALTA:
   end_mileage?: number;
   end_engine_hours?: number;
 }
+
