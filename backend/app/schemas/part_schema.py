@@ -3,6 +3,7 @@ from typing import Optional
 
 class PartBase(BaseModel):
     name: str
+    category: str
     part_number: Optional[str] = None
     brand: Optional[str] = None
     stock: int
@@ -19,7 +20,7 @@ class PartUpdate(PartBase):
 
 class PartPublic(PartBase):
     id: int
-    photo_url: Optional[str] = None # O campo permanece aqui para ser enviado na resposta.
+    photo_url: Optional[str] = None
 
     class Config:
         from_attributes = True

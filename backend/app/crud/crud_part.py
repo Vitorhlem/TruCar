@@ -3,7 +3,9 @@ from sqlalchemy import select, func, or_
 from typing import List, Optional
 
 from app.models.part_model import Part
+from . import crud_inventory_transaction as crud_transaction
 from app.schemas.part_schema import PartCreate, PartUpdate
+from app.models.inventory_transaction_model import TransactionType
 
 async def get(db: AsyncSession, *, id: int, organization_id: int) -> Optional[Part]:
     """Busca uma peça pelo ID, garantindo que pertence à organização."""
@@ -34,25 +36,39 @@ async def get_multi_by_org(
     result = await db.execute(stmt)
     return result.scalars().all()
 
-async def create(db: AsyncSession, *, part_in: PartCreate, organization_id: int, photo_url: Optional[str] = None) -> Part:
-    """Cria uma nova peça no inventário."""
+async def create(db: AsyncSession, *, part_in: PartCreate, organization_id: int, user_id: int, photo_url: Optional[str] = None) -> Part:
+    """Cria uma nova peça e registra a transação de estoque inicial."""
     db_obj = Part(
-        **part_in.model_dump(),
+        **part_in.model_dump(exclude={"stock"}), # Exclui o estoque para definir manualmente
+        stock=0, # Começa com 0 para a transação ajustar
         photo_url=photo_url,
         organization_id=organization_id
     )
     db.add(db_obj)
+    await db.flush() # Atribui um ID ao db_obj antes de usá-lo na transação
+
+    # Se houver estoque inicial, cria uma transação
+    if part_in.stock > 0:
+        await crud_transaction.create_transaction(
+            db=db,
+            part_id=db_obj.id,
+            user_id=user_id,
+            transaction_type=TransactionType.AJUSTE_INICIAL,
+            quantity_change=part_in.stock,
+            notes=f"Carga inicial do item no sistema."
+        )
+    
     await db.commit()
     await db.refresh(db_obj)
     return db_obj
 
+
 async def update(db: AsyncSession, *, db_obj: Part, obj_in: PartUpdate, photo_url: Optional[str]) -> Part:
-    """Atualiza uma peça."""
-    update_data = obj_in.model_dump(exclude_unset=True)
+    """Atualiza uma peça. O estoque é atualizado via transações, não aqui."""
+    update_data = obj_in.model_dump(exclude_unset=True, exclude={'stock'})
     for field, value in update_data.items():
         setattr(db_obj, field, value)
     
-    # Atualiza a URL da foto separadamente
     db_obj.photo_url = photo_url
     
     db.add(db_obj)
@@ -60,9 +76,10 @@ async def update(db: AsyncSession, *, db_obj: Part, obj_in: PartUpdate, photo_ur
     await db.refresh(db_obj)
     return db_obj
 
-async def remove(db: AsyncSession, *, id: int) -> Optional[Part]:
+async def remove(db: AsyncSession, *, id: int, organization_id: int) -> Optional[Part]:
     """Remove uma peça do inventário."""
-    db_obj = await db.get(Part, id)
+    # Adicionamos organization_id para segurança
+    db_obj = await get(db, id=id, organization_id=organization_id)
     if db_obj:
         await db.delete(db_obj)
         await db.commit()
