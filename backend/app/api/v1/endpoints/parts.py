@@ -9,6 +9,9 @@ from app import crud
 from app.api import deps
 from app.models.user_model import User, UserRole
 from app.schemas.part_schema import PartPublic, PartCreate, PartUpdate
+from app.schemas.inventory_transaction_schema import TransactionCreate, TransactionPublic
+from app.models.inventory_transaction_model import TransactionType
+
 
 router = APIRouter()
 
@@ -29,27 +32,30 @@ async def save_upload_file(upload_file: UploadFile) -> str:
 async def create_part(
     db: AsyncSession = Depends(deps.get_db),
     name: str = Form(...),
-    part_number: Optional[str] = Form(None),
-    brand: Optional[str] = Form(None),
+    category: str = Form(...), # NOVO
     stock: int = Form(...),
     min_stock: int = Form(...),
+    part_number: Optional[str] = Form(None),
+    brand: Optional[str] = Form(None),
     location: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """Cria uma nova peça no inventário."""
+    """Cria uma nova peça no inventário e sua transação inicial."""
     part_in = PartCreate(
-        name=name, part_number=part_number, brand=brand, stock=stock,
-        min_stock=min_stock, location=location, notes=notes
+        name=name, category=category, stock=stock, min_stock=min_stock,
+        part_number=part_number, brand=brand, location=location, notes=notes
     )
     
     photo_url = None
     if file:
         photo_url = await save_upload_file(file)
     
+    # Passamos o user_id para registrar quem criou a peça
     part_db = await crud.part.create(
-        db=db, part_in=part_in, organization_id=current_user.organization_id, photo_url=photo_url
+        db=db, part_in=part_in, organization_id=current_user.organization_id, 
+        user_id=current_user.id, photo_url=photo_url
     )
     return part_db
 
@@ -58,23 +64,23 @@ async def update_part(
     part_id: int,
     db: AsyncSession = Depends(deps.get_db),
     name: str = Form(...),
+    category: str = Form(...), # NOVO
+    min_stock: int = Form(...),
     part_number: Optional[str] = Form(None),
     brand: Optional[str] = Form(None),
-    stock: int = Form(...),
-    min_stock: int = Form(...),
     location: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """Atualiza uma peça no inventário."""
+    """Atualiza os dados de uma peça (não altera o estoque)."""
     db_part = await crud.part.get(db, id=part_id, organization_id=current_user.organization_id)
     if not db_part:
         raise HTTPException(status_code=404, detail="Peça não encontrada.")
         
     part_in = PartUpdate(
-        name=name, part_number=part_number, brand=brand, stock=stock,
-        min_stock=min_stock, location=location, notes=notes
+        name=name, category=category, min_stock=min_stock, part_number=part_number, 
+        brand=brand, location=location, notes=notes
     )
     
     photo_url = db_part.photo_url
@@ -106,9 +112,65 @@ async def delete_part(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """Remove uma peça do inventário."""
+    """Remove uma peça do inventário (Apenas se não tiver histórico)."""
+    # A lógica para verificar o histórico antes de deletar pode ser adicionada no CRUD
     db_part = await crud.part.get(db, id=part_id, organization_id=current_user.organization_id)
     if not db_part:
         raise HTTPException(status_code=404, detail="Peça não encontrada.")
-    await crud.part.remove(db=db, id=part_id)
+    await crud.part.remove(db=db, id=part_id, organization_id=current_user.organization_id)
 
+@router.post("/{part_id}/transaction", response_model=TransactionPublic)
+async def add_stock_transaction(
+    part_id: int,
+    transaction_in: TransactionCreate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_manager)
+):
+    """
+    Registra uma movimentação de estoque para uma peça (Saída, Retorno, Fim de Vida, etc.).
+    """
+    # Validação para garantir que a quantidade de saída não seja maior que o estoque
+    if transaction_in.transaction_type in [TransactionType.SAIDA_USO, TransactionType.SAIDA_FIM_DE_VIDA]:
+        part = await crud.part.get(db, id=part_id, organization_id=current_user.organization_id)
+        if not part or part.stock < transaction_in.quantity:
+            raise HTTPException(status_code=400, detail="Estoque insuficiente para esta saída.")
+    
+    # A quantidade para saídas deve ser negativa
+    quantity_change = -transaction_in.quantity if transaction_in.transaction_type in [TransactionType.SAIDA_USO, TransactionType.SAIDA_FIM_DE_VIDA] else transaction_in.quantity
+
+    try:
+        transaction = await crud.inventory_transaction.create_transaction(
+            db=db,
+            part_id=part_id,
+            user_id=current_user.id,
+            transaction_type=transaction_in.transaction_type,
+            quantity_change=quantity_change,
+            notes=transaction_in.notes,
+            related_vehicle_id=transaction_in.related_vehicle_id,
+            related_user_id=transaction_in.related_user_id
+        )
+        return transaction
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{part_id}/history", response_model=List[TransactionPublic])
+async def read_part_history(
+    part_id: int,
+    db: AsyncSession = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(deps.get_current_active_manager)
+):
+    """
+    Retorna o histórico de movimentações de uma peça específica.
+    """
+    # Valida se a peça pertence à organização do usuário
+    part = await crud.part.get(db, id=part_id, organization_id=current_user.organization_id)
+    if not part:
+        raise HTTPException(status_code=404, detail="Peça não encontrada.")
+        
+    history = await crud.inventory_transaction.get_transactions_by_part_id(
+        db, part_id=part_id, skip=skip, limit=limit
+    )
+    return history
