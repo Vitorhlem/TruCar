@@ -4,20 +4,16 @@
     @mousemove="handleMouseMove"
     @mouseleave="handleMouseLeave"
   >
-    <!-- 1. Fundo com Vídeo Local e Overlay -->
     <video ref="backgroundVideo" autoplay loop muted playsinline class="background-video">
       <source src="~assets/login-video.mp4" type="video/mp4">
       O seu navegador não suporta o tag de vídeo.
     </video>
     <div class="video-overlay"></div>
 
-    <!-- 2. Container do Formulário (para perspetiva 3D) -->
     <div class="login-card-container">
       <q-card ref="loginCard" flat class="login-card q-pa-lg">
-        <!-- EFEITO DE BRILHO ADICIONADO -->
         <div class="card-shine"></div>
         <q-card-section class="text-center q-pb-none">
-          <!-- ANIMAÇÕES SEQUENCIAIS ADICIONADAS -->
           <img
             src="~assets/trucar-logo-white.png"
             alt="TruCar Logo"
@@ -64,11 +60,17 @@
 
             <div class="row items-center justify-between text-grey-5 animated-form-element" style="animation-delay: 0.6s;">
               <q-checkbox v-model="rememberMe" label="Lembrar-me" size="sm" dark />
-              <q-btn label="Esqueceu a senha?" flat no-caps size="sm" class="text-primary" />
+              <q-btn
+                label="Esqueceu a senha?"
+                flat
+                no-caps
+                size="sm"
+                class="text-primary"
+                to="/auth/forgot-password"
+              />
             </div>
 
             <div class="animated-form-element" style="animation-delay: 0.7s;">
-              <!-- BOTÃO COM MICRO-INTERAÇÃO -->
               <q-btn
                 type="submit"
                 :color="getButtonColor"
@@ -152,12 +154,10 @@ function handleMouseMove(event: MouseEvent) {
   const mouseY = (clientY / height) * 2 - 1;
 
   if (loginCard.value) {
-    // Rotação 3D
     const rotateY = mouseX * 8;
     const rotateX = -mouseY * 8;
     loginCard.value.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
 
-    // Efeito de brilho
     const rect = loginCard.value.getBoundingClientRect();
     const shineX = event.clientX - rect.left;
     const shineY = event.clientY - rect.top;
@@ -230,10 +230,9 @@ function handleMouseLeave() {
   border-radius: 16px;
   transition: transform 0.3s ease-out;
   position: relative;
-  overflow: hidden; // Necessário para o efeito de brilho
+  overflow: hidden;
 }
 
-/* 3. EFEITO DE BRILHO NO CARTÃO */
 .card-shine {
   position: absolute;
   top: var(--shine-y, 0);
@@ -247,7 +246,6 @@ function handleMouseLeave() {
   pointer-events: none;
 }
 
-/* 2. ANIMAÇÃO DE ENTRADA SEQUENCIAL */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -257,7 +255,6 @@ function handleMouseLeave() {
   animation: fadeInUp 0.5s ease-out forwards;
 }
 
-/* 4. TRANSIÇÃO DE FOCO NOS INPUTS */
 :deep(.q-field--standout.q-field--focused .q-field__control) {
   box-shadow: 0 0 10px rgba(var(--q-color-primary-rgb), 0.5);
 }
@@ -265,7 +262,6 @@ function handleMouseLeave() {
   transition: box-shadow 0.3s ease;
 }
 
-/* 1. MICRO-INTERAÇÃO NO BOTÃO */
 .login-btn {
   transition: background-color 0.3s ease;
 }
@@ -276,4 +272,3 @@ function handleMouseLeave() {
   opacity: 0;
 }
 </style>
-
