@@ -58,7 +58,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17' # Requerido pelo Android Studio mais recente
+          java-version: '21' # Requerido pelo Android Studio mais recente
 
       - name: Instalar dependências do Quasar
         working-directory: ./FrontEnd
