@@ -66,13 +66,15 @@ async def create(db: AsyncSession, *, part_in: PartCreate, organization_id: int,
     return db_obj
 
 
-async def update(db: AsyncSession, *, db_obj: Part, obj_in: PartUpdate, photo_url: Optional[str]) -> Part:
+async def update(db: AsyncSession, *, db_obj: Part, obj_in: PartUpdate, photo_url: Optional[str], invoice_url: Optional[str]) -> Part:
     """Atualiza uma peça. O estoque é atualizado via transações, não aqui."""
-    update_data = obj_in.model_dump(exclude_unset=True, exclude={'stock'})
+    update_data = obj_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_obj, field, value)
     
+    # Garante que ambas as URLs sejam atualizadas corretamente
     db_obj.photo_url = photo_url
+    db_obj.invoice_url = invoice_url 
     
     db.add(db_obj)
     await db.commit()

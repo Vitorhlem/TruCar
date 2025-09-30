@@ -35,18 +35,25 @@ export const usePartStore = defineStore('part', {
       }
     },
 
-    async createPart(payload: PartCreatePayload): Promise<boolean> {
+     async createPart(payload: PartCreatePayload): Promise<boolean> {
         this.isLoading = true;
         try {
             const formData = new FormData();
             Object.entries(payload).forEach(([key, value]) => {
-                if (key !== 'photo_file' && value !== null && value !== undefined) {
+                // Não adiciona os campos de arquivo diretamente
+                if (key !== 'photo_file' && key !== 'invoice_file' && value !== null && value !== undefined) {
                     formData.append(key, String(value));
                 }
             });
             if (payload.photo_file) {
                 formData.append('file', payload.photo_file);
             }
+            // --- LINHA FALTANTE ADICIONADA AQUI ---
+            if (payload.invoice_file) {
+                formData.append('invoice_file', payload.invoice_file);
+            }
+            // --- FIM DA CORREÇÃO ---
+            
             await api.post('/parts/', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
@@ -62,18 +69,24 @@ export const usePartStore = defineStore('part', {
         }
     },
 
-    async updatePart(id: number, payload: PartCreatePayload): Promise<boolean> {
+     async updatePart(id: number, payload: PartCreatePayload): Promise<boolean> {
         this.isLoading = true;
         try {
             const formData = new FormData();
             Object.entries(payload).forEach(([key, value]) => {
-                if (key !== 'photo_file' && value !== null && value !== undefined) {
+                if (key !== 'photo_file' && key !== 'invoice_file' && value !== null && value !== undefined) {
                     formData.append(key, String(value));
                 }
             });
             if (payload.photo_file) {
                 formData.append('file', payload.photo_file);
             }
+            // --- LINHA FALTANTE ADICIONADA AQUI ---
+            if (payload.invoice_file) {
+                formData.append('invoice_file', payload.invoice_file);
+            }
+            // --- FIM DA ADIÇÃO ---
+            
             await api.put(`/parts/${id}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
