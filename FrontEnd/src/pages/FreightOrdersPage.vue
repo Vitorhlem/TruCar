@@ -51,7 +51,7 @@
     </div>
 
     <!-- DIÁLOGOS -->
-    <q-dialog v-model="isCreateDialogOpen" persistent maximized>
+    <q-dialog v-model="isCreateDialogOpen"  maximized>
       <CreateFreightOrderForm @close="isCreateDialogOpen = false" />
     </q-dialog>
     <q-dialog v-model="isDetailsDialogOpen">

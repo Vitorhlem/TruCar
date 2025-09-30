@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List  # Adicione a importação de List
 
 from app import crud
 from app.api import deps
 from app.models.user_model import User, UserRole
-# --- ADICIONADO ---
-# Importamos o Enum para verificar o status do plano da organização
-# --- FIM DA ADIÇÃO ---
 from sqlalchemy.exc import IntegrityError
 
 from app.schemas.vehicle_schema import (
@@ -15,6 +13,8 @@ from app.schemas.vehicle_schema import (
     VehiclePublic, 
     VehicleListResponse
 )
+# NOVO: Importe o schema do histórico
+from app.schemas.inventory_transaction_schema import TransactionPublic
 
 router = APIRouter()
 
@@ -66,6 +66,28 @@ async def read_vehicle_by_id(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado.")
     return vehicle
 
+# --- NOVO ENDPOINT ADICIONADO ---
+@router.get("/{vehicle_id}/inventory-history", response_model=List[TransactionPublic])
+async def read_vehicle_inventory_history(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    vehicle_id: int,
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Retorna o histórico de todas as movimentações de peças/inventário
+    associadas a um veículo específico.
+    """
+    # Valida se o veículo pertence à organização do usuário
+    vehicle = await crud.vehicle.get(db, vehicle_id=vehicle_id, organization_id=current_user.organization_id)
+    if not vehicle:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado.")
+
+    # Busca o histórico usando a nova função CRUD que vamos criar
+    history = await crud.inventory_transaction.get_transactions_by_vehicle_id(db, vehicle_id=vehicle_id)
+    return history
+# --- FIM DO NOVO ENDPOINT ---
+
 
 @router.post("/", response_model=VehiclePublic, status_code=status.HTTP_201_CREATED)
 async def create_vehicle(
@@ -77,8 +99,6 @@ async def create_vehicle(
     """
     Cria um novo veículo para a organização do gestor logado.
     """
-    # --- LÓGICA DE RESTRIÇÃO ATUALIZADA ---
-    # Agora a verificação é feita sobre o PAPEL do utilizador, não sobre a organização.
     if current_user.role == UserRole.CLIENTE_DEMO:
         vehicle_count = await crud.vehicle.count_by_org(db, organization_id=current_user.organization_id)
         if vehicle_count >= 1:
@@ -86,7 +106,6 @@ async def create_vehicle(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="A sua conta de demonstração permite o cadastro de apenas 1 veículo."
             )
-    # --- FIM DA ATUALIZAÇÃO ---
 
     try:
         vehicle = await crud.vehicle.create_with_owner(

@@ -1,7 +1,7 @@
 import enum
 import uuid
-from datetime import datetime # Adicionado
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SAEnum, DateTime # Adicionado DateTime
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SAEnum, DateTime
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -35,19 +35,43 @@ class User(Base):
     notify_by_email = Column(Boolean(), default=True, nullable=False)
     notification_email = Column(String(100), nullable=True)
     
-    # --- INÍCIO DA MODIFICAÇÃO: Campos para Recuperação de Senha ---
     reset_password_token = Column(String(255), nullable=True, index=True)
     reset_password_token_expires_at = Column(DateTime(timezone=True), nullable=True)
-    # --- FIM DA MODIFICAÇÃO ---
-
+    
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization", back_populates="users")
+
+    # --- CORREÇÃO ADICIONADA AQUI ---
+    # Adicionamos as relações inversas para resolver a ambiguidade.
+    # Dizemos ao SQLAlchemy qual ForeignKey usar para cada relação.
+    
+    # Transações que este utilizador realizou
+    inventory_transactions_performed = relationship(
+        "InventoryTransaction",
+        foreign_keys="[InventoryTransaction.user_id]",
+        back_populates="user"
+    )
+
+    inventory_transactions_received = relationship(
+        "InventoryTransaction",
+        foreign_keys="[InventoryTransaction.related_user_id]",
+        back_populates="related_user"
+    )
+
+    # Transações onde este utilizador recebeu um item (ex: um motorista)
+    inventory_transactions_received = relationship(
+        "InventoryTransaction",
+        foreign_keys="[InventoryTransaction.related_user_id]",
+        back_populates="related_user",
+        cascade="all, delete-orphan"
+    )
+    # --- FIM DA CORREÇÃO ---
+
 
     @property
     def is_superuser(self) -> bool:
         return self.email in settings.SUPERUSER_EMAILS
 
-    # Relações existentes
     freight_orders = relationship("FreightOrder", back_populates="driver")
     journeys = relationship("Journey", back_populates="driver", cascade="all, delete-orphan")
     reported_requests = relationship(
