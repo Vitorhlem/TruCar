@@ -1,12 +1,12 @@
   import type { User } from './auth-models';
   import type { Vehicle } from './vehicle-models';
 
-  export enum MaintenanceStatus {
-    PENDING = 'Pendente',
-    APPROVED = 'Aprovado',
-    REJECTED = 'Rejeitado',
-    IN_PROGRESS = 'Em Progresso',
-    COMPLETED = 'Concluído',
+export enum MaintenanceStatus {
+  PENDENTE = 'PENDENTE',
+  APROVADA = 'APROVADA',
+  REJEITADA = 'REJEITADA',
+  EM_ANDAMENTO = 'EM ANDAMENTO',
+  CONCLUIDA = 'CONCLUIDA',
   }
 
   export enum MaintenanceCategory {
