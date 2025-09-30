@@ -8,7 +8,7 @@ from app.models.part_model import Part
 from app.schemas.vehicle_cost_schema import VehicleCostCreate
 from . import crud_inventory_transaction as crud_transaction
 from . import crud_vehicle_cost as crud_cost # Importa o CRUD de custos
-
+from app.models.vehicle_cost_model import CostType # Importa o Enum de Tipos de Custo
 from app.models.vehicle_component_model import VehicleComponent
 from app.models.inventory_transaction_model import InventoryTransaction, TransactionType
 from app.schemas.vehicle_component_schema import VehicleComponentCreate
@@ -21,13 +21,15 @@ async def install_component(db: AsyncSession, *, vehicle_id: int, user_id: int, 
     """
     Instala um componente, dá baixa no stock, e cria um custo se a peça tiver valor.
     """
+    # 1. Busca a peça para verificar o valor e o stock
     part_to_install = await db.get(Part, obj_in.part_id)
     if not part_to_install:
         raise ValueError("Peça a ser instalada não encontrada no inventário.")
     
     if part_to_install.stock < obj_in.quantity:
-        raise ValueError("Estoque insuficiente para instalar esta quantidade.")
+        raise ValueError(f"Estoque insuficiente. Disponível: {part_to_install.stock}, Requerido: {obj_in.quantity}")
 
+    # 2. Cria a transação de saída do stock
     transaction = await crud_transaction.create_transaction(
         db=db,
         part_id=obj_in.part_id,
@@ -38,6 +40,7 @@ async def install_component(db: AsyncSession, *, vehicle_id: int, user_id: int, 
         related_vehicle_id=vehicle_id
     )
 
+    # 3. Cria o registo do componente ativo
     new_component = VehicleComponent(
         vehicle_id=vehicle_id,
         part_id=obj_in.part_id,
@@ -47,16 +50,15 @@ async def install_component(db: AsyncSession, *, vehicle_id: int, user_id: int, 
     )
     db.add(new_component)
 
-    # --- LÓGICA DE CUSTO CORRIGIDA ---
+    # --- LÓGICA DE CUSTO ADICIONADA AQUI ---
+    # 4. Se a peça tiver um valor, cria um registo de custo
     if part_to_install.value and part_to_install.value > 0:
         total_cost = part_to_install.value * obj_in.quantity
         cost_in = VehicleCostCreate(
-            # 1. Adiciona o campo 'description' obrigatório
-            description=f"Custo da instalação de {obj_in.quantity}x '{part_to_install.name}'",
+            description=f"Custo automático da instalação de {obj_in.quantity}x '{part_to_install.name}'",
             amount=total_cost,
             date=datetime.now(timezone.utc).date(),
-            # 2. Usa o novo tipo de custo do Enum
-            cost_type=CostType.PECAS_COMPONENTES
+            cost_type=CostType.PECAS_COMPONENTES # Usa o tipo de custo correto
         )
         await crud_cost.create_cost(
             db=db,
@@ -64,10 +66,10 @@ async def install_component(db: AsyncSession, *, vehicle_id: int, user_id: int, 
             vehicle_id=vehicle_id,
             organization_id=organization_id
         )
-    # --- FIM DA CORREÇÃO ---
+    # --- FIM DA LÓGICA DE CUSTO ---
 
     await db.commit()
-    await db.refresh(new_component, ["part"])
+    await db.refresh(new_component, ["part", "inventory_transaction"])
 
     return new_component
 
