@@ -11,8 +11,10 @@ jobs:
     runs-on: windows-latest # Usa uma máquina virtual Windows
 
     steps:
-      - name: Checkout do código
+      - name: Checkout do código com LFS
         uses: actions/checkout@v4
+        with:
+          lfs: true # <-- CORREÇÃO ADICIONADA AQUI
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -32,7 +34,7 @@ jobs:
         run: quasar build -m electron -T win64
 
       - name: Upload do Artefato (.exe)
-        uses: actions/upload-artifact@v4 # <-- CORRIGIDO AQUI
+        uses: actions/upload-artifact@v4
         with:
           name: TruCar-Windows-x64
           path: ./FrontEnd/dist/electron/Packaged/TruCar-win-x64 # Caminho para o executável gerado
@@ -42,8 +44,10 @@ jobs:
     runs-on: ubuntu-latest # Usa uma máquina virtual Linux
 
     steps:
-      - name: Checkout do código
+      - name: Checkout do código com LFS
         uses: actions/checkout@v4
+        with:
+          lfs: true # <-- CORREÇÃO ADICIONADA AQUI
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -65,7 +69,7 @@ jobs:
         run: quasar build -m capacitor -T android
 
       - name: Upload do Projeto Android para Artefatos
-        uses: actions/upload-artifact@v4 # <-- CORRIGIDO AQUI
+        uses: actions/upload-artifact@v4
         with:
           name: TruCar-Android-Project
           path: ./FrontEnd/src-capacitor/android # Faz o upload do projeto Android completo
