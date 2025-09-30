@@ -24,7 +24,8 @@ from app.api.v1.endpoints import (
     vehicle_costs,
     settings,
     utils,
-    parts
+    parts,
+    vehicle_components 
 )
 
 api_router = APIRouter()
@@ -53,5 +54,6 @@ api_router.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetr
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 api_router.include_router(utils.router, prefix="/utils", tags=["Utilities"])
 api_router.include_router(parts.router, prefix="/parts", tags=["Parts"]) 
+api_router.include_router(vehicle_components.router, tags=["Vehicle Components"])
 
 

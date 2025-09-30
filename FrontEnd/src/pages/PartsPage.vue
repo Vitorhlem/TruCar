@@ -43,11 +43,18 @@
             </q-avatar>
           </q-td>
         </template>
+
         <template v-slot:body-cell-stock="props">
           <q-td :props="props">
             <q-chip :color="getStockColor(props.row.stock, props.row.min_stock)" text-color="white" class="text-weight-bold" square>
               {{ props.row.stock }} / {{ props.row.min_stock }}
             </q-chip>
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-value="props">
+          <q-td :props="props">
+            {{ props.value ? props.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A' }}
           </q-td>
         </template>
 
@@ -89,21 +96,25 @@
           </q-card-section>
 
           <q-card-section class="row q-col-gutter-md">
-            <div class="col-12 col-md-8 q-gutter-y-md">
+            <div class="col-12 col-md-7 q-gutter-y-md">
               <q-input outlined v-model="formData.name" label="Nome do Item *" :rules="[val => !!val || 'Campo obrigatório']" />
               <q-select outlined v-model="formData.category" :options="categoryOptions" label="Categoria *" :rules="[val => !!val || 'Campo obrigatório']" />
+              <q-input outlined v-model.number="formData.value" type="number" label="Custo do Item (R$)" prefix="R$" step="0.01" />
               <q-input outlined v-model="formData.part_number" label="Código / Part Number" />
               <q-input outlined v-model="formData.brand" label="Marca" />
               <q-input outlined v-model="formData.location" label="Localização (Ex: Prateleira A-03)" />
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-5 q-gutter-y-md">
               <q-file v-model="photoFile" label="Foto do Item" outlined clearable accept=".jpg, .jpeg, .png, .webp, .avif">
                 <template v-slot:prepend><q-icon name="photo_camera" /></template>
+              </q-file>
+              <q-file v-model="invoiceFile" label="Nota Fiscal (PDF)" outlined clearable accept=".pdf">
+                <template v-slot:prepend><q-icon name="attach_file" /></template>
               </q-file>
               <q-img v-if="!photoFile && formData.photo_url" :src="`http://localhost:8000${formData.photo_url}`" class="q-mt-md rounded-borders" style="height: 120px; max-width: 100%" fit="contain" />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input outlined v-model.number="formData.stock" type="number" :label="isEditing ? 'Estoque Inicial (só na criação)' : 'Estoque Inicial *'" :disable="isEditing" :hint="isEditing ? 'Use as Ações para alterar o estoque' : ''" :rules="[val => val >= 0 || 'Valor inválido']" />
+              <q-input outlined v-model.number="formData.stock" type="number" :label="isEditing ? 'Estoque (somente leitura)' : 'Estoque Inicial *'" :disable="isEditing" :hint="isEditing ? 'Use as Ações para alterar o estoque' : ''" :rules="[val => val >= 0 || 'Valor inválido']" />
             </div>
             <div class="col-12 col-sm-6">
               <q-input outlined v-model.number="formData.min_stock" type="number" label="Estoque Mínimo *" :rules="[val => val >= 0 || 'Valor inválido']" />
@@ -131,14 +142,12 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useQuasar, type QTableProps } from 'quasar';
 import { usePartStore, type PartCreatePayload } from 'stores/part-store';
 import type { Part, PartCategory } from 'src/models/part-models';
-// NOVOS IMPORTS DOS COMPONENTES
 import ManageStockDialog from 'components/ManageStockDialog.vue';
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
 
 const $q = useQuasar();
 const partStore = usePartStore();
 
-// --- CONTROLE DOS DIÁLOGOS ---
 const isDialogOpen = ref(false);
 const isStockDialogOpen = ref(false);
 const isHistoryDialogOpen = ref(false);
@@ -148,10 +157,11 @@ const editingPart = ref<Part | null>(null);
 const isEditing = computed(() => !!editingPart.value);
 const searchQuery = ref('');
 const photoFile = ref<File | null>(null);
+const invoiceFile = ref<File | null>(null);
 
 const categoryOptions: PartCategory[] = ["Peça", "Fluído", "Consumível", "Outro"];
 
-const initialFormData = {
+const initialFormData: Partial<Part> = {
   name: '',
   category: 'Peça' as PartCategory,
   part_number: '',
@@ -161,14 +171,16 @@ const initialFormData = {
   location: '',
   notes: '',
   photo_url: null,
+  value: null,
+  invoice_url: null,
 };
-const formData = ref<Partial<Part>>({ ...initialFormData });
+const formData = ref({ ...initialFormData });
 
 const columns: QTableProps['columns'] = [
   { name: 'photo_url', label: 'Foto', field: 'photo_url', align: 'center' },
   { name: 'name', label: 'Item', field: 'name', align: 'left', sortable: true },
   { name: 'category', label: 'Categoria', field: 'category', align: 'left', sortable: true },
-  { name: 'part_number', label: 'Código', field: 'part_number', align: 'left' },
+  { name: 'value', label: 'Custo Unitário', field: 'value', align: 'right', sortable: true },
   { name: 'stock', label: 'Estoque', field: 'stock', align: 'center', sortable: true },
   { name: 'location', label: 'Localização', field: 'location', align: 'left' },
   { name: 'actions', label: 'Ações', field: 'actions', align: 'center' },
@@ -186,10 +198,7 @@ function getStockColor(current: number, min: number): string {
 
 function getCategoryIcon(category: PartCategory): string {
   const iconMap: Record<PartCategory, string> = {
-    'Peça': 'settings',
-    'Fluído': 'opacity',
-    'Consumível': 'inbox',
-    'Outro': 'category',
+    'Peça': 'settings', 'Fluído': 'opacity', 'Consumível': 'inbox', 'Outro': 'category',
   };
   return iconMap[category] || 'inventory_2';
 }
@@ -198,6 +207,7 @@ function resetForm() {
   editingPart.value = null;
   formData.value = { ...initialFormData };
   photoFile.value = null;
+  invoiceFile.value = null;
 }
 
 function openDialog(part: Part | null = null) {
@@ -225,6 +235,9 @@ async function handleSubmit() {
   const payload: PartCreatePayload = { ...formData.value };
   if (photoFile.value) {
     payload.photo_file = photoFile.value;
+  }
+  if (invoiceFile.value) {
+    payload.invoice_file = invoiceFile.value;
   }
   
   const success = isEditing.value && editingPart.value

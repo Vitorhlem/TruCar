@@ -10,6 +10,7 @@ class PartBase(BaseModel):
     min_stock: int
     location: Optional[str] = None
     notes: Optional[str] = None
+    value: Optional[float] = None
 
 class PartCreate(PartBase):
     pass
@@ -24,11 +25,14 @@ class PartUpdate(BaseModel):
     min_stock: Optional[int] = None
     location: Optional[str] = None
     notes: Optional[str] = None
+    value: Optional[float] = None # --- ADICIONADO ---
+
 # --- FIM DA CORREÇÃO ---
 
 class PartPublic(PartBase):
     id: int
     photo_url: Optional[str] = None
+    invoice_url: Optional[str] = None # --- ADICIONADO ---
 
     class Config:
         from_attributes = True

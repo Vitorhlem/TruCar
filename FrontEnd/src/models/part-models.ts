@@ -3,7 +3,7 @@ export type PartCategory = "Peça" | "Fluído" | "Consumível" | "Outro";
 export interface Part {
   id: number;
   name: string;
-  category: PartCategory; // <-- CAMPO ADICIONADO
+  category: PartCategory;
   part_number: string | null;
   brand: string | null;
   stock: number;
@@ -11,6 +11,8 @@ export interface Part {
   location: string | null;
   notes: string | null;
   photo_url: string | null;
+  value: number | null; // Já estava correto
+  invoice_url: string | null; // --- ADICIONADO ---
 }
 
 // Interface para criar uma nova peça (sem o id)
