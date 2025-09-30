@@ -1,3 +1,17 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:75aa920eb81fef4b93d250261ae022b39a23c2d819af7d1135f1cf30874167f7
-size 340
+@ECHO off
+GOTO start
+:find_dp0
+SET dp0=%~dp0
+EXIT /b
+:start
+SETLOCAL
+CALL :find_dp0
+
+IF EXIST "%dp0%\node.exe" (
+  SET "_prog=%dp0%\node.exe"
+) ELSE (
+  SET "_prog=node"
+  SET PATHEXT=%PATHEXT:;.JS;=;%
+)
+
+endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\node_modules\@quasar\cli\bin\quasar.js" %*

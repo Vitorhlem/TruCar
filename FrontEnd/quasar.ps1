@@ -1,3 +1,28 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:0679ba916266ef32ad4df3263ba230e18ae8d9a2eba4836ed9a51bbfd23739f1
-size 865
+#!/usr/bin/env pwsh
+$basedir=Split-Path $MyInvocation.MyCommand.Definition -Parent
+
+$exe=""
+if ($PSVersionTable.PSVersion -lt "6.0" -or $IsWindows) {
+  # Fix case when both the Windows and Linux builds of Node
+  # are installed in the same directory
+  $exe=".exe"
+}
+$ret=0
+if (Test-Path "$basedir/node$exe") {
+  # Support pipeline input
+  if ($MyInvocation.ExpectingInput) {
+    $input | & "$basedir/node$exe"  "$basedir/node_modules/@quasar/cli/bin/quasar.js" $args
+  } else {
+    & "$basedir/node$exe"  "$basedir/node_modules/@quasar/cli/bin/quasar.js" $args
+  }
+  $ret=$LASTEXITCODE
+} else {
+  # Support pipeline input
+  if ($MyInvocation.ExpectingInput) {
+    $input | & "node$exe"  "$basedir/node_modules/@quasar/cli/bin/quasar.js" $args
+  } else {
+    & "node$exe"  "$basedir/node_modules/@quasar/cli/bin/quasar.js" $args
+  }
+  $ret=$LASTEXITCODE
+}
+exit $ret
