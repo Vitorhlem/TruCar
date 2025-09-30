@@ -19,7 +19,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Use uma versão LTS do Node.js
+          node-version: '20' # Use uma versão LTS do Node.js
 
       - name: Instalar dependências do Quasar
         working-directory: ./FrontEnd
