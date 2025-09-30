@@ -31,13 +31,13 @@ jobs:
 
       - name: Build do executável para Windows
         working-directory: ./FrontEnd
-        run: npx quasar build -m electron -T win64 # <-- CORRIGIDO AQUI
+        run: npx quasar build -m electron -T win32 -A x64
 
       - name: Upload do Artefato (.exe)
         uses: actions/upload-artifact@v4
         with:
           name: TruCar-Windows-x64
-          path: ./FrontEnd/dist/electron/Packaged/TruCar-win-x64 # Caminho para o executável gerado
+          path: ./FrontEnd/dist/electron/Packaged/TruCar-win-x64
 
   # Job para criar o app Android
   build-android:
