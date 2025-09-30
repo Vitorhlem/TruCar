@@ -1,5 +1,6 @@
 import type { User } from './auth-models';
 import type { Vehicle } from './vehicle-models';
+import type { Part } from './part-models'; 
 
 export type TransactionType = "Entrada" | "Saída para Uso" | "Fim de Vida" | "Retorno" | "Ajuste Inicial" | "Ajuste Manual";
 
@@ -23,4 +24,5 @@ export interface InventoryTransaction {
   user: User | null;
   related_vehicle: Vehicle | null;
   related_user: User | null;
+  part: Part | null; // <-- PROPRIEDADE ADICIONADA
 }

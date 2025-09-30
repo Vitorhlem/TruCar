@@ -1,46 +1,77 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, subqueryload 
 from sqlalchemy import select
 from datetime import datetime, timezone
 from typing import List
 
+from app.models.part_model import Part
+from app.schemas.vehicle_cost_schema import VehicleCostCreate
+from . import crud_inventory_transaction as crud_transaction
+from . import crud_vehicle_cost as crud_cost # Importa o CRUD de custos
+
 from app.models.vehicle_component_model import VehicleComponent
-from app.models.inventory_transaction_model import TransactionType
+from app.models.inventory_transaction_model import InventoryTransaction, TransactionType
 from app.schemas.vehicle_component_schema import VehicleComponentCreate
 from . import crud_inventory_transaction as crud_transaction
 from app.models.vehicle_model import Vehicle
 
 async def install_component(db: AsyncSession, *, vehicle_id: int, user_id: int, organization_id: int, obj_in: VehicleComponentCreate) -> VehicleComponent:
     """
-    Instala um componente em um veículo, dando baixa no estoque e criando o registro do componente.
+    Instala um componente, dá baixa no stock, e cria um custo se a peça tiver valor.
     """
-    # 1. Cria a transação de saída do estoque primeiro
-    #    A quantidade de saída é sempre negativa
+    # 1. Busca a peça para verificar o valor e o stock antes de qualquer outra coisa
+    part_to_install = await db.get(Part, obj_in.part_id)
+    if not part_to_install:
+        raise ValueError("Peça a ser instalada não encontrada no inventário.")
+    
+    if part_to_install.stock < obj_in.quantity:
+        raise ValueError("Estoque insuficiente para instalar esta quantidade.")
+
+    # 2. Cria a transação de saída do stock
     transaction = await crud_transaction.create_transaction(
         db=db,
         part_id=obj_in.part_id,
         user_id=user_id,
         transaction_type=TransactionType.SAIDA_USO,
-        quantity_change=-obj_in.quantity, # CORREÇÃO: Quantidade negativa para saídas
+        quantity_change=-obj_in.quantity,
         notes=f"Instalado no veículo ID {vehicle_id}",
         related_vehicle_id=vehicle_id
     )
 
-    # 2. Cria o registro do componente ativo no veículo
-    #    Esta parte estava em falta no seu código original.
+    # 3. Cria o registo do componente ativo
     new_component = VehicleComponent(
         vehicle_id=vehicle_id,
         part_id=obj_in.part_id,
-        inventory_transaction_id=transaction.id, # Associa o componente à transação
+        inventory_transaction_id=transaction.id,
         installation_date=datetime.now(timezone.utc),
         is_active=True,
     )
     db.add(new_component)
+
+    # --- LÓGICA DE CUSTO ADICIONADA AQUI ---
+    # 4. Se a peça tiver um valor, cria um registo de custo
+    if part_to_install.value and part_to_install.value > 0:
+        total_cost = part_to_install.value * obj_in.quantity
+        cost_in = VehicleCostCreate(
+            # O erro pedia "description", vamos usar o nome da peça
+            description=f"Instalação de {obj_in.quantity}x '{part_to_install.name}'",
+            amount=total_cost,
+            date=datetime.now(timezone.utc).date(),
+            # O erro pedia um tipo válido, usaremos "Manutenção"
+            cost_type="Manutenção"
+        )
+        await crud_cost.create_cost(
+            db=db,
+            obj_in=cost_in,
+            vehicle_id=vehicle_id,
+            organization_id=organization_id
+        )
+    # --- FIM DA LÓGICA DE CUSTO ---
+
     await db.commit()
-    await db.refresh(new_component, ["part"]) # Carrega os dados da peça para o retorno
+    await db.refresh(new_component, ["part"])
 
     return new_component
-
 
 async def discard_component(db: AsyncSession, *, component_id: int, user_id: int, organization_id: int) -> VehicleComponent:
     """
@@ -83,10 +114,22 @@ async def get_components_by_vehicle(db: AsyncSession, *, vehicle_id: int) -> Lis
     """
     Busca o histórico de componentes ATIVOS instalados em um veículo.
     """
-    stmt = select(VehicleComponent).where(
-        VehicleComponent.vehicle_id == vehicle_id,
-        VehicleComponent.is_active == True
-    ).options(selectinload(VehicleComponent.part)).order_by(VehicleComponent.installation_date.desc())
+    stmt = (
+        select(VehicleComponent)
+        .where(
+            VehicleComponent.vehicle_id == vehicle_id,
+            VehicleComponent.is_active == True
+        )
+        .options(
+            # CORREÇÃO: Usamos subqueryload para carregar relações aninhadas
+            # Carrega a Peça -> Transação -> Utilizador que fez a transação
+            selectinload(VehicleComponent.part),
+            subqueryload(VehicleComponent.inventory_transaction).selectinload(
+                InventoryTransaction.user
+            ),
+        )
+        .order_by(VehicleComponent.installation_date.desc())
+    )
     
     result = await db.execute(stmt)
     return result.scalars().all()

@@ -43,9 +43,11 @@ export const useVehicleComponentStore = defineStore('vehicleComponent', {
       try {
         await api.put(`/vehicle-components/${componentId}/discard`);
         Notify.create({ type: 'positive', message: 'Componente marcado como descartado.' });
-        await this.fetchComponents(vehicleId); // Recarrega a lista
+        await this.fetchComponents(vehicleId);
+        return true; // Recarrega a lista
       } catch {
         Notify.create({ type: 'negative', message: 'Erro ao descartar componente.' });
+        return false;
       } finally {
         this.isLoading = false;
       }
