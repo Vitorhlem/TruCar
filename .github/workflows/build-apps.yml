@@ -1,0 +1,71 @@
+name: Build Android & Windows Apps
+
+on:
+  push:
+    branches:
+      - main # Dispara o workflow em push para a branch main
+
+jobs:
+  # Job para criar o executável de Windows
+  build-windows:
+    runs-on: windows-latest # Usa uma máquina virtual Windows
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # Use uma versão LTS do Node.js
+
+      - name: Instalar dependências do Quasar
+        working-directory: ./FrontEnd
+        run: npm install
+
+      - name: Instalar dependências do Electron
+        working-directory: ./FrontEnd/src-electron
+        run: npm install
+
+      - name: Build do executável para Windows
+        working-directory: ./FrontEnd
+        run: quasar build -m electron -T win64
+
+      - name: Upload do Artefato (.exe)
+        uses: actions/upload-artifact@v3
+        with:
+          name: TruCar-Windows-x64
+          path: ./FrontEnd/dist/electron/Packaged/TruCar-win-x64 # Caminho para o executável gerado
+
+  # Job para criar o app Android
+  build-android:
+    runs-on: ubuntu-latest # Usa uma máquina virtual Linux
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Instalar Java Development Kit (JDK)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17' # Requerido pelo Android Studio mais recente
+
+      - name: Instalar dependências do Quasar
+        working-directory: ./FrontEnd
+        run: npm install
+
+      - name: Build dos assets para Capacitor
+        working-directory: ./FrontEnd
+        run: quasar build -m capacitor -T android
+
+      - name: Upload do Projeto Android para Artefatos
+        uses: actions/upload-artifact@v3
+        with:
+          name: TruCar-Android-Project
+          path: ./FrontEnd/src-capacitor/android # Faz o upload do projeto Android completo
