@@ -173,6 +173,10 @@ export default defineConfig((/* ctx */) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-capacitor-apps/configuring-capacitor
     capacitor: {
       hideSplashscreen: true,
+      // *** ADICIONADO AQUI ***
+      // Define o ID do App para evitar a pergunta no CI/CD
+      packageName: 'com.trucar.app',
+      appName: 'TruCar'
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/configuring-electron
