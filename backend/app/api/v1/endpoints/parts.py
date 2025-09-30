@@ -142,18 +142,30 @@ async def add_stock_transaction(
     current_user: User = Depends(deps.get_current_active_manager)
 ):
     """
-    Registra uma movimentação de estoque para uma peça.
+    Regista uma movimentação de stock para uma peça.
     """
+    part = await crud.part.get(db, id=part_id, organization_id=current_user.organization_id)
+    if not part:
+        raise HTTPException(status_code=404, detail="Peça não encontrada.")
+
+    quantity_change = -transaction_in.quantity if transaction_in.transaction_type in [TransactionType.SAIDA_USO, TransactionType.SAIDA_FIM_DE_VIDA] else transaction_in.quantity
+
     try:
-        transaction = await crud.crud_transaction.create_transaction(
+        # A chamada está correta, passando os argumentos um a um
+        transaction = await crud.inventory_transaction.create_transaction(
             db=db,
             part_id=part_id,
             user_id=current_user.id,
-            transaction_in=transaction_in
+            transaction_type=transaction_in.transaction_type,
+            quantity_change=quantity_change,
+            notes=transaction_in.notes,
+            related_vehicle_id=transaction_in.related_vehicle_id,
+            related_user_id=transaction_in.related_user_id
         )
         return transaction
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get("/{part_id}/history", response_model=List[TransactionPublic])
 async def read_part_history(
@@ -170,7 +182,7 @@ async def read_part_history(
     if not part:
         raise HTTPException(status_code=404, detail="Peça não encontrada.")
         
-    history = await crud.crud_transaction.get_transactions_by_part_id(
+    history = await crud.inventory_transaction.get_transactions_by_part_id(
         db, part_id=part_id, skip=skip, limit=limit
     )
     return history

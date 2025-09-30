@@ -35,3 +35,4 @@ class Part(Base):
 
     # NOVO: Relação com o histórico de transações
     transactions = relationship("InventoryTransaction", back_populates="part", cascade="all, delete-orphan")
+    

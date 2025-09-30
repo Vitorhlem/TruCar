@@ -3,8 +3,10 @@ from typing import Optional
 from datetime import datetime
 
 from app.models.inventory_transaction_model import TransactionType
+# --- GARANTIR ESTES IMPORTS ---
 from app.schemas.user_schema import UserPublic
 from app.schemas.vehicle_schema import VehiclePublic
+from app.schemas.part_schema import PartPublic
 
 # Schema para criar uma nova transação
 class TransactionCreate(BaseModel):
@@ -14,7 +16,7 @@ class TransactionCreate(BaseModel):
     related_vehicle_id: Optional[int] = None
     related_user_id: Optional[int] = None
 
-# Schema para exibir a transação na API
+# Schema para exibir a transação na API (Resposta)
 class TransactionPublic(BaseModel):
     id: int
     transaction_type: TransactionType
@@ -23,10 +25,11 @@ class TransactionPublic(BaseModel):
     notes: Optional[str]
     timestamp: datetime
     
-    # Relações que serão carregadas
+    # Relações que precisam de ser carregadas e validadas
     user: Optional[UserPublic] = None
     related_vehicle: Optional[VehiclePublic] = None
     related_user: Optional[UserPublic] = None
+    part: Optional[PartPublic] = None
 
     class Config:
-        from_attributes = True
+        from_attributes = True # Essencial para converter modelos SQLAlchemy para Pydantic
