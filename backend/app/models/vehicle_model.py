@@ -43,3 +43,4 @@ class Vehicle(Base):
 
     # --- Relação com Documentos adicionada ---
     documents = relationship("Document", back_populates="vehicle", cascade="all, delete-orphan")
+    components = relationship("VehicleComponent", back_populates="vehicle", cascade="all, delete-orphan")

@@ -12,5 +12,7 @@ from . import crud_client as client
 from . import crud_freight_order as freight_order
 from . import crud_vehicle_cost as vehicle_cost
 from . import crud_document as document 
-from . import crud_part as part # <-- ADICIONE ESTA LINHA
-from . import crud_inventory_transaction as crud_transaction # Adiciona o novo módulo de transação
+from . import crud_part as part
+from . import crud_inventory_transaction as crud_transaction 
+from . import crud_vehicle_component as vehicle_component
+

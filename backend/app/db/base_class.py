@@ -25,3 +25,4 @@ from app.models.document_model import Document
 from app.models.goal_model import Goal
 from app.models.alert_model import Alert
 from app.models.vehicle_cost_model import VehicleCost
+from app.models.vehicle_component_model import VehicleComponent 

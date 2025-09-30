@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum as SAEnum, Float # Adicionado Float
 from sqlalchemy.orm import relationship
 import enum
 
@@ -19,6 +19,8 @@ class Part(Base):
     
     # NOVO: Campo de categoria adicionado
     category = Column(SAEnum(PartCategory), nullable=False, default=PartCategory.PECA)
+    value = Column(Float, nullable=True) # Custo do item
+    invoice_url = Column(String(512), nullable=True) # URL para a nota fiscal (PDF)
 
     part_number = Column(String(100), nullable=True, index=True)
     brand = Column(String(100), nullable=True)

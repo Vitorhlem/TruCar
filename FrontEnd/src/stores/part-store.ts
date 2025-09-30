@@ -8,6 +8,8 @@ import type { InventoryTransaction, TransactionCreate } from 'src/models/invento
 
 export interface PartCreatePayload extends Partial<Part> {
   photo_file?: File | null;
+  invoice_file?: File | null; // --- ADICIONADO ---
+
 }
 
 export const usePartStore = defineStore('part', {
