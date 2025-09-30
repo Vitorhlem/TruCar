@@ -1,141 +1,113 @@
 <template>
-  <q-page padding>
-    <div class="flex items-center justify-between q-mb-md">
-      <h1 class="text-h5 text-weight-bold q-my-none">Chamados de Manutenção</h1>
-      <q-btn
-        @click="openCreateRequestDialog"
-        color="primary"
-        icon="add_circle"
-        label="Abrir Novo Chamado"
-        unelevated
-      />
-    </div>
-
-    <q-card flat bordered class="q-mb-md">
-       <q-card-section>
-         <q-input
-           outlined
-           dense
-           debounce="300"
-           v-model="searchTerm"
-           :placeholder="`Buscar por ${terminologyStore.vehicleNoun.toLowerCase()}, solicitante, problema...`"
-         >
-           <template v-slot:append><q-icon name="search" /></template>
-         </q-input>
-       </q-card-section>
-     </q-card>
-
-    <q-tabs v-model="tab" dense class="text-grey" active-color="primary" indicator-color="primary" align="justify" narrow-indicator>
-      <q-tab name="open" label="Chamados Abertos" />
-      <q-tab name="closed" label="Histórico (Finalizados)" />
-    </q-tabs>
-    <q-separator />
-
-    <q-tab-panels v-model="tab" animated>
-      <q-tab-panel name="open">
-        <div v-if="maintenanceStore.isLoading" class="row q-col-gutter-md">
-          <div v-for="n in 4" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3"><q-card flat bordered><q-skeleton height="150px" square /></q-card></div>
+  <q-page class="q-pa-md">
+    <div class="row items-start q-col-gutter-md">
+      <div class="col-12 col-md-4">
+        <div class="flex items-center justify-between q-mb-md">
+          <h1 class="text-h5 text-weight-bold q-my-none">Manutenções</h1>
+          <q-btn
+            @click="openCreateRequestDialog"
+            color="primary"
+            icon="add"
+            label="Novo Pedido"
+            unelevated
+          />
         </div>
-        <div v-else-if="openRequests.length > 0" class="row q-col-gutter-md">
-          <div v-for="req in openRequests" :key="req.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-            <MaintenanceRequestCard :request="req" :vehicle-noun="terminologyStore.vehicleNoun" @click="openDetailsDialog(req)" />
-          </div>
-        </div>
-        <div v-else class="text-center q-pa-xl text-grey-7">
-          <q-icon name="check_circle_outline" size="4em" />
-          <p class="q-mt-md">Nenhum chamado aberto no momento.</p>
-        </div>
-      </q-tab-panel>
 
-      <q-tab-panel name="closed">
-        <div v-if="closedRequests.length === 0 && !maintenanceStore.isLoading" class="text-center q-pa-xl text-grey-7">
-          <q-icon name="inbox" size="4em" />
-          <p class="q-mt-md">Nenhum chamado finalizado no histórico.</p>
-        </div>
-        <q-list v-else bordered separator>
-          <q-item v-for="req in closedRequests" :key="req.id" clickable v-ripple @click="openDetailsDialog(req)">
-            <q-item-section>
-              <q-item-label>{{ req.vehicle.brand }} {{ req.vehicle.model }} ({{ req.vehicle.license_plate || req.vehicle.identifier }})</q-item-label>
-              <q-item-label caption>{{ req.problem_description }}</q-item-label>
-            </q-item-section>
-            <q-item-section side top>
-              <q-badge :color="getStatusColor(req.status)" :label="req.status" />
-            </q-item-section>
+        <q-input
+          v-model="searchTerm"
+          dense
+          outlined
+          placeholder="Procurar por título ou veículo..."
+          class="q-mb-md"
+        >
+          <template v-slot:append>
+            <q-icon name="search" />
+          </template>
+        </q-input>
+
+        <q-list bordered separator>
+          <q-item-label header>Pedidos Abertos</q-item-label>
+          <MaintenanceRequestCard
+            v-for="request in openRequests"
+            :key="request.id"
+            :request="request"
+            :is-selected="selectedRequestId === request.id"
+            @click="selectRequest(request.id)"
+          />
+          <q-item v-if="openRequests.length === 0" class="text-grey">
+            <q-item-section>Nenhum pedido de manutenção aberto.</q-item-section>
+          </q-item>
+
+          <q-separator spaced />
+
+          <q-item-label header>Pedidos Fechados</q-item-label>
+          <MaintenanceRequestCard
+            v-for="request in closedRequests"
+            :key="request.id"
+            :request="request"
+            :is-selected="selectedRequestId === request.id"
+            @click="selectRequest(request.id)"
+          />
+           <q-item v-if="closedRequests.length === 0" class="text-grey">
+            <q-item-section>Nenhum pedido de manutenção fechado.</q-item-section>
           </q-item>
         </q-list>
-      </q-tab-panel>
-    </q-tab-panels>
+      </div>
 
-    <ManagerActionDialog
-      v-model="isDetailsDialogOpen"
-      :request="selectedRequest"
-      :vehicle-noun="terminologyStore.vehicleNoun"
-    />
-    <CreateRequestDialog
-      v-model="isCreateDialogOpen"
-      :vehicle-noun="terminologyStore.vehicleNoun"
-      :plate-or-identifier-label="terminologyStore.plateOrIdentifierLabel"
-    />
+      <div class="col-12 col-md-8">
+        <MaintenanceDetailsDialog v-if="selectedRequest" :request="selectedRequest" />
+        <q-card v-else flat bordered class="flex flex-center text-center text-grey" style="height: 100%;">
+          <div>
+            <q-icon name="inbox" size="lg" />
+            <p>Selecione um pedido para ver os detalhes.</p>
+          </div>
+        </q-card>
+      </div>
+    </div>
+
+    <CreateRequestDialog v-model="isCreateDialogOpen" />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import { useMaintenanceStore } from 'stores/maintenance-store';
-import { useTerminologyStore } from 'stores/terminology-store';
 import { MaintenanceStatus, type MaintenanceRequest } from 'src/models/maintenance-models';
-import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue';
-import ManagerActionDialog from 'components/maintenance/ManagerActionDialog.vue';
 import MaintenanceRequestCard from 'components/maintenance/MaintenanceRequestCard.vue';
+import MaintenanceDetailsDialog from 'components/maintenance/MaintenanceDetailsDialog.vue';
+import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue';
 
 const maintenanceStore = useMaintenanceStore();
-const terminologyStore = useTerminologyStore();
-
 const searchTerm = ref('');
-const tab = ref('open');
 const isCreateDialogOpen = ref(false);
-const isDetailsDialogOpen = ref(false);
 
-// --- A CORREÇÃO CRUCIAL ESTÁ AQUI ---
-// 1. Guardamos apenas o ID do chamado selecionado
 const selectedRequestId = ref<number | null>(null);
 
-// 2. Criamos uma 'computed property' que busca o objeto ATUALIZADO na store
+function selectRequest(id: number) {
+  selectedRequestId.value = id;
+}
+
 const selectedRequest = computed(() => {
   if (!selectedRequestId.value) return null;
-  return maintenanceStore.requests.find(r => r.id === selectedRequestId.value) || null;
+  // CORRIGIDO: Usa .maintenances e tipa o parâmetro 'r'
+  return maintenanceStore.maintenances.find((r: MaintenanceRequest) => r.id === selectedRequestId.value) || null;
 });
-// --- FIM DA CORREÇÃO ---
 
-const openRequests = computed(() => maintenanceStore.requests.filter(r => r.status !== MaintenanceStatus.COMPLETED && r.status !== MaintenanceStatus.REJECTED));
-const closedRequests = computed(() => maintenanceStore.requests.filter(r => r.status === MaintenanceStatus.COMPLETED || r.status === MaintenanceStatus.REJECTED));
+// CORRIGIDO: Usa .maintenances e tipa o parâmetro 'r'
+const openRequests = computed(() => maintenanceStore.maintenances.filter((r: MaintenanceRequest) => r.status !== MaintenanceStatus.COMPLETED && r.status !== MaintenanceStatus.REJECTED));
+const closedRequests = computed(() => maintenanceStore.maintenances.filter((r: MaintenanceRequest) => r.status === MaintenanceStatus.COMPLETED || r.status === MaintenanceStatus.REJECTED));
 
 function openCreateRequestDialog() {
   isCreateDialogOpen.value = true;
 }
 
-function openDetailsDialog(request: MaintenanceRequest) {
-  // 3. A função agora apenas guarda o ID. A 'computed property' faz o resto.
-  selectedRequestId.value = request.id;
-  isDetailsDialogOpen.value = true;
-}
-
-function getStatusColor(status: MaintenanceStatus): string {
-  const colorMap: Record<MaintenanceStatus, string> = {
-    [MaintenanceStatus.PENDING]: 'orange',
-    [MaintenanceStatus.APPROVED]: 'primary',
-    [MaintenanceStatus.REJECTED]: 'negative',
-    [MaintenanceStatus.IN_PROGRESS]: 'info',
-    [MaintenanceStatus.COMPLETED]: 'positive',
-  };
-  return colorMap[status] || 'grey';
-}
-
 watch(searchTerm, (newValue) => {
-  void maintenanceStore.fetchRequests(newValue);
+  // CORRIGIDO: Usa o nome correto da action
+  void maintenanceStore.fetchMaintenanceRequests({search: newValue});
 });
 
 onMounted(() => {
-  void maintenanceStore.fetchRequests();
+  // CORRIGIDO: Usa o nome correto da action
+  void maintenanceStore.fetchMaintenanceRequests();
 });
 </script>

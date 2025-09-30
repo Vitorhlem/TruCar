@@ -25,3 +25,4 @@ class VehicleComponent(Base):
     vehicle = relationship("Vehicle", back_populates="components")
     part = relationship("Part")
     transaction = relationship("InventoryTransaction")
+    inventory_transaction = relationship("InventoryTransaction", back_populates="vehicle_component")

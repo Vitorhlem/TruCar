@@ -48,3 +48,9 @@ class InventoryTransaction(Base):
         foreign_keys=[related_user_id], 
         back_populates="inventory_transactions_received" # Liga ao User que recebeu o item
     )
+
+    vehicle_component = relationship(
+        "VehicleComponent", 
+        back_populates="inventory_transaction", 
+        uselist=False
+    )
