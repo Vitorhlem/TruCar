@@ -26,12 +26,23 @@
         
         <template v-slot:body-cell-photo_url="props">
           <q-td :props="props">
-            <q-avatar rounded size="60px" font-size="32px" color="grey-3" text-color="grey-6" :icon="getCategoryIcon(props.row.category)">
-              <img v-if="props.value" :src="`http://localhost:8000${props.value}`" alt="Foto do item">
+            <q-avatar 
+              rounded 
+              size="60px" 
+              font-size="32px" 
+              color="grey-3" 
+              text-color="grey-6"
+              :icon="props.value ? undefined : getCategoryIcon(props.row.category)"
+            >
+              <img 
+                v-if="props.value" 
+                :src="`http://localhost:8000${props.value}`" 
+                alt="Foto do item"
+                style="object-fit: contain; width: 100%; height: 100%;"
+              >
             </q-avatar>
           </q-td>
         </template>
-
         <template v-slot:body-cell-stock="props">
           <q-td :props="props">
             <q-chip :color="getStockColor(props.row.stock, props.row.min_stock)" text-color="white" class="text-weight-bold" square>
