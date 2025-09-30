@@ -2,24 +2,24 @@
   <q-dialog :model-value="modelValue" @update:model-value="val => emit('update:modelValue', val)">
     <q-card style="width: 800px; max-width: 90vw;" class="rounded-borders" v-if="request">
       <q-card-section class="bg-primary text-white">
-        <div class="text-h6">Chamado #{{ request.id }}: {{ request.vehicle.brand }} {{ request.vehicle.model }}</div>
+        <div class="text-h6">Chamado #{{ request.id }}: {{ request.vehicle?.brand }} {{ request.vehicle?.model }}</div>
         <div class="text-subtitle2">Solicitado por {{ request.reporter?.full_name || 'N/A' }}</div>
       </q-card-section>
 
       <q-card-section v-if="authStore.isManager && !isClosed" class="bg-grey-2">
         <div class="text-weight-medium q-mb-sm">Ações do Gestor</div>
         <div class="row q-gutter-sm">
-          <q-btn @click="() => handleUpdateStatus(MaintenanceStatus.APPROVED)" color="primary" label="Aprovar" dense unelevated icon="thumb_up" />
-          <q-btn @click="() => handleUpdateStatus(MaintenanceStatus.IN_PROGRESS)" color="info" label="Em Andamento" dense unelevated icon="engineering" />
-          <q-btn @click="() => handleUpdateStatus(MaintenanceStatus.COMPLETED)" color="positive" label="Concluir" dense unelevated icon="check_circle" />
-          <q-btn @click="() => handleUpdateStatus(MaintenanceStatus.REJECTED)" color="negative" label="Rejeitar" dense unelevated icon="thumb_down" />
+          <q-btn @click="() => handleUpdateStatus(MaintenanceStatus.APROVADA)" color="primary" label="Aprovar" dense unelevated icon="thumb_up" />
+          <q-btn @click="() => handleUpdateStatus(MaintenanceStatus.EM_ANDAMENTO)" color="info" label="Em Andamento" dense unelevated icon="engineering" />
+          <q-btn @click="() => handleUpdateStatus(MaintenanceStatus.CONCLUIDA)" color="positive" label="Concluir" dense unelevated icon="check_circle" />
+          <q-btn @click="() => handleUpdateStatus(MaintenanceStatus.REJEITADA)" color="negative" label="Rejeitar" dense unelevated icon="thumb_down" />
         </div>
       </q-card-section>
       
       <q-scroll-area style="height: 400px;">
         <q-card-section>
           <q-list bordered separator>
-            <q-item><q-item-section><q-item-label caption>{{ terminologyStore.vehicleNoun }}</q-item-label><q-item-label>{{ request.vehicle.brand }} {{ request.vehicle.model }} ({{ request.vehicle.license_plate || request.vehicle.identifier }})</q-item-label></q-item-section></q-item>
+            <q-item><q-item-section><q-item-label caption>Veículo</q-item-label><q-item-label>{{ request.vehicle?.brand }} {{ request.vehicle?.model }} ({{ request.vehicle?.license_plate || request.vehicle?.identifier }})</q-item-label></q-item-section></q-item>
             <q-item><q-item-section><q-item-label caption>Categoria</q-item-label><q-item-label>{{ request.category }}</q-item-label></q-item-section></q-item>
             <q-item><q-item-section><q-item-label caption>Problema Reportado</q-item-label><q-item-label class="text-body2" style="white-space: pre-wrap;">{{ request.problem_description }}</q-item-label></q-item-section></q-item>
           </q-list>
@@ -43,15 +43,7 @@
       <q-separator />
 
       <q-card-section v-if="!isClosed" class="bg-grey-2">
-        <q-input
-          v-model="newCommentText"
-          outlined
-          bg-color="white"
-          placeholder="Digite sua mensagem..."
-          dense
-          autogrow
-          @keydown.enter.prevent="postComment"
-        >
+        <q-input v-model="newCommentText" outlined bg-color="white" placeholder="Digite sua mensagem..." dense autogrow @keydown.enter.prevent="postComment">
           <template v-slot:after>
             <q-btn @click="postComment" round dense flat icon="send" color="primary" :disable="!newCommentText.trim()" />
           </template>
@@ -71,7 +63,6 @@ import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useMaintenanceStore } from 'stores/maintenance-store';
 import { useAuthStore } from 'stores/auth-store';
-import { useTerminologyStore } from 'stores/terminology-store';
 import { MaintenanceStatus, type MaintenanceRequest, type MaintenanceRequestUpdate, type MaintenanceCommentCreate } from 'src/models/maintenance-models';
 
 const props = defineProps<{
@@ -83,19 +74,16 @@ const emit = defineEmits(['update:modelValue']);
 const $q = useQuasar();
 const maintenanceStore = useMaintenanceStore();
 const authStore = useAuthStore();
-const terminologyStore = useTerminologyStore();
 const newCommentText = ref('');
 
 const isClosed = computed(() => 
-  props.request?.status === MaintenanceStatus.COMPLETED ||
-  props.request?.status === MaintenanceStatus.REJECTED
+  props.request?.status === MaintenanceStatus.CONCLUIDA ||
+  props.request?.status === MaintenanceStatus.REJEITADA
 );
 
 async function postComment() {
   if (!props.request || !newCommentText.value.trim()) return;
-  const payload: MaintenanceCommentCreate = {
-    comment_text: newCommentText.value,
-  };
+  const payload: MaintenanceCommentCreate = { comment_text: newCommentText.value };
   await maintenanceStore.addComment(props.request.id, payload);
   newCommentText.value = '';
 }
@@ -103,33 +91,30 @@ async function postComment() {
 function handleUpdateStatus(newStatus: MaintenanceStatus) {
   if (!props.request) return;
 
-  const performUpdate = async (notes: string | null) => {
+  const performUpdate = async (notes?: string) => {
     if (!props.request) return;
     const payload: MaintenanceRequestUpdate = { 
       status: newStatus,
-      manager_notes: notes,
+      manager_notes: notes ?? props.request.manager_notes,
     };
     await maintenanceStore.updateRequest(props.request.id, payload);
-    if (newStatus === MaintenanceStatus.COMPLETED || newStatus === MaintenanceStatus.REJECTED) {
+    if (newStatus === MaintenanceStatus.CONCLUIDA || newStatus === MaintenanceStatus.REJEITADA) {
       emit('update:modelValue', false);
     }
   };
 
-  if (newStatus === MaintenanceStatus.COMPLETED || newStatus === MaintenanceStatus.REJECTED) {
+  if (newStatus === MaintenanceStatus.CONCLUIDA || newStatus === MaintenanceStatus.REJEITADA) {
     $q.dialog({
       title: 'Anotações Finais (Opcional)',
       message: 'Adicione uma nota de conclusão para este chamado.',
-      prompt: {
-        model: props.request.manager_notes || '',
-        type: 'textarea',
-      },
+      prompt: { model: props.request.manager_notes || '', type: 'textarea' },
       cancel: true,
       persistent: false,
     }).onOk((data: string) => {
-      void performUpdate(data || null);
+      void performUpdate(data);
     });
   } else {
-    void performUpdate(props.request.manager_notes);
+    void performUpdate();
   }
 }
-</script> 
+</script>

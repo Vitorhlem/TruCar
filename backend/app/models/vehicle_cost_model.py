@@ -8,9 +8,11 @@ from app.db.base_class import Base
 class CostType(str, enum.Enum):
     MANUTENCAO = "Manutenção"
     COMBUSTIVEL = "Combustível"
-    PEDAGIO = "Pedágio" # Pedágio = Toll
-    SEGURO = "Seguro" # Seguro = Insurance
-    PNEU = "Pneu" # Pneu = Tire
+    PEDAGIO = "Pedágio"
+    SEGURO = "Seguro"
+    PNEU = "Pneu"
+    # --- NOVA OPÇÃO ADICIONADA ---
+    PECAS_COMPONENTES = "Peças e Componentes"
     OUTROS = "Outros"
 
 class VehicleCost(Base):

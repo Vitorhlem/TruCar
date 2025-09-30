@@ -1,16 +1,11 @@
 <template>
-  <q-card
-    flat bordered
-    class="floating-card column no-wrap cursor-pointer"
-    @click="emit('click')"
-    @mousemove="handleCardMouseMove"
-    @mouseleave="resetCardTransform"
-  >
+  <q-card flat bordered class="column no-wrap cursor-pointer q-hoverable" @click="emit('click')">
+    <span class="q-focus-helper"></span>
     <q-card-section>
       <div class="row items-center no-wrap">
         <div class="col">
           <div class="text-caption text-grey-8">Chamado #{{ request.id }} • {{ request.category }}</div>
-          <div class="text-subtitle1 text-weight-bold ellipsis">{{ request.vehicle.brand }} {{ request.vehicle.model }}</div>
+          <div class="text-subtitle1 text-weight-bold ellipsis">{{ request.vehicle?.brand }} {{ request.vehicle?.model }}</div>
         </div>
         <q-badge :color="getStatusColor(request.status)" text-color="white" class="q-pa-xs text-body2">
           {{ request.status }}
@@ -25,7 +20,7 @@
     <q-separator />
 
     <q-card-section class="row justify-between items-center q-pa-sm text-caption text-grey-7">
-      <div>{{ request.reporter.full_name }}</div>
+      <div>{{ request.reporter?.full_name }}</div>
       <div>{{ new Date(request.created_at).toLocaleDateString('pt-BR') }}</div>
     </q-card-section>
   </q-card>
@@ -33,20 +28,17 @@
 
 <script setup lang="ts">
 import { MaintenanceStatus, type MaintenanceRequest } from 'src/models/maintenance-models';
-import { useCardTiltAnimation } from 'src/composables/useCardTiltAnimation';
-
-const { handleCardMouseMove, resetCardTransform } = useCardTiltAnimation();
 
 defineProps<{ request: MaintenanceRequest }>();
 const emit = defineEmits(['click']);
 
 function getStatusColor(status: MaintenanceStatus) {
   const colorMap: Record<MaintenanceStatus, string> = {
-    [MaintenanceStatus.PENDING]: 'orange',
-    [MaintenanceStatus.APPROVED]: 'primary',
-    [MaintenanceStatus.REJECTED]: 'negative',
-    [MaintenanceStatus.IN_PROGRESS]: 'info',
-    [MaintenanceStatus.COMPLETED]: 'positive',
+    [MaintenanceStatus.PENDENTE]: 'orange',
+    [MaintenanceStatus.APROVADA]: 'primary',
+    [MaintenanceStatus.REJEITADA]: 'negative',
+    [MaintenanceStatus.EM_ANDAMENTO]: 'info',
+    [MaintenanceStatus.CONCLUIDA]: 'positive',
   };
   return colorMap[status];
 }

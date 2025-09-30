@@ -143,6 +143,8 @@ async def update_request_status(
     if not request:
         raise HTTPException(status_code=404, detail="Solicitação não encontrada.")
     
+    # A chamada à função CRUD estava correta, o problema estava no frontend
+    # Esta chamada já corresponde à assinatura da sua função em crud_maintenance.py
     return await crud.maintenance.update_request_status(
         db=db, db_obj=request, update_data=update_data, manager_id=current_user.id
     )
