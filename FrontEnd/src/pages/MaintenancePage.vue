@@ -55,17 +55,19 @@
       </div>
 
       <div class="col-12 col-md-8">
-        <MaintenanceDetailsDialog v-if="selectedRequest" :request="selectedRequest" />
-        <q-card v-else flat bordered class="flex flex-center text-center text-grey" style="height: 100%;">
+        <q-card flat bordered class="flex flex-center text-center text-grey" style="height: 100%;">
           <div>
             <q-icon name="inbox" size="lg" />
-            <p>Selecione um pedido para ver os detalhes.</p>
+            <p>Selecione um pedido na lista para ver os detalhes.</p>
           </div>
         </q-card>
       </div>
     </div>
 
     <CreateRequestDialog v-model="isCreateDialogOpen" />
+    
+    <!-- O diálogo de detalhes agora é chamado aqui e controlado pelo v-model -->
+    <MaintenanceDetailsDialog v-model="isDetailsDialogOpen" :request="selectedRequest" />
   </q-page>
 </template>
 
@@ -80,20 +82,20 @@ import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue'
 const maintenanceStore = useMaintenanceStore();
 const searchTerm = ref('');
 const isCreateDialogOpen = ref(false);
+const isDetailsDialogOpen = ref(false); // Variável para controlar o diálogo de detalhes
 
 const selectedRequestId = ref<number | null>(null);
 
 function selectRequest(id: number) {
   selectedRequestId.value = id;
+  isDetailsDialogOpen.value = true; // Abre o diálogo ao selecionar um item
 }
 
 const selectedRequest = computed(() => {
   if (!selectedRequestId.value) return null;
-  // CORRIGIDO: Usa .maintenances e tipa o parâmetro 'r'
   return maintenanceStore.maintenances.find((r: MaintenanceRequest) => r.id === selectedRequestId.value) || null;
 });
 
-// CORRIGIDO: Usa .maintenances e tipa o parâmetro 'r'
 const openRequests = computed(() => maintenanceStore.maintenances.filter((r: MaintenanceRequest) => r.status !== MaintenanceStatus.COMPLETED && r.status !== MaintenanceStatus.REJECTED));
 const closedRequests = computed(() => maintenanceStore.maintenances.filter((r: MaintenanceRequest) => r.status === MaintenanceStatus.COMPLETED || r.status === MaintenanceStatus.REJECTED));
 
@@ -102,12 +104,10 @@ function openCreateRequestDialog() {
 }
 
 watch(searchTerm, (newValue) => {
-  // CORRIGIDO: Usa o nome correto da action
   void maintenanceStore.fetchMaintenanceRequests({search: newValue});
 });
 
 onMounted(() => {
-  // CORRIGIDO: Usa o nome correto da action
   void maintenanceStore.fetchMaintenanceRequests();
 });
 </script>
