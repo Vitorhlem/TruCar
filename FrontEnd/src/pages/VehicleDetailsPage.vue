@@ -12,9 +12,9 @@
 
     <q-tabs v-model="tab" dense class="text-grey q-mt-md" active-color="primary" indicator-color="primary" align="left">
       <q-tab name="history" :label="`Histórico de Peças (${filteredHistory.length})`" />
-      <q-tab name="components" label="Componentes Ativos" />
-      <q-tab name="costs" label="Custos" />
-      <q-tab name="maintenance" label="Manutenções" />
+      <q-tab name="components" :label="`Componentes Ativos (${filteredComponents.length})`" />
+      <q-tab name="costs" :label="`Custos (${filteredCosts.length})`" />
+      <q-tab name="maintenance" :label="`Manutenções (${filteredMaintenances.length})`" />
     </q-tabs>
 
     <q-separator />
@@ -24,28 +24,16 @@
         <div class="row items-center justify-between q-mb-md q-gutter-sm">
           <div class="text-h6">Histórico de Movimentações</div>
           <div class="row items-center q-gutter-sm">
-            <q-input dense outlined v-model="dateRange.from" mask="##/##/####" label="De" style="width: 120px" clearable>
-              <template v-slot:append>
-                <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="dateRange.from" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date>
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
+            <q-input dense outlined v-model="dateRange.history" mask="##/##/####" label="De" style="width: 120px" clearable>
+              <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.history" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
             </q-input>
-            <q-input dense outlined v-model="dateRange.to" mask="##/##/####" label="Até" style="width: 120px" clearable>
-              <template v-slot:append>
-                <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="dateRange.to" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date>
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
+            <q-input dense outlined v-model="dateRange.historyTo" mask="##/##/####" label="Até" style="width: 120px" clearable>
+              <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.historyTo" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
             </q-input>
-            <q-input dense debounce="300" v-model="historySearch" placeholder="Pesquisar..." style="width: 220px" clearable>
+            <q-input dense debounce="300" v-model="search.history" placeholder="Pesquisar..." style="width: 220px" clearable>
               <template v-slot:append><q-icon name="search" /></template>
             </q-input>
-            <q-btn @click="exportHistoryToCsv" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
+            <q-btn @click="exportToCsv('history')" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
           </div>
         </div>
         <q-table
@@ -60,11 +48,17 @@
       </q-tab-panel>
 
       <q-tab-panel name="components">
-        <div class="flex items-center justify-between q-mb-md">
+        <div class="row items-center justify-between q-mb-md q-gutter-sm">
           <div class="text-h6">Componentes Atualmente Instalados</div>
-          <q-btn @click="isInstallDialogOpen = true" color="primary" icon="add" label="Instalar Componente" unelevated />
+          <div class="row items-center q-gutter-sm">
+            <q-input dense debounce="300" v-model="search.components" placeholder="Pesquisar..." style="width: 220px" clearable>
+              <template v-slot:append><q-icon name="search" /></template>
+            </q-input>
+            <q-btn @click="exportToCsv('components')" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
+            <q-btn @click="isInstallDialogOpen = true" color="primary" icon="add" label="Instalar Componente" unelevated />
+          </div>
         </div>
-        <q-table :rows="componentStore.components" :columns="componentColumns" row-key="id" :loading="componentStore.isLoading" no-data-label="Nenhum componente ativo instalado neste veículo." flat bordered>
+        <q-table :rows="filteredComponents" :columns="componentColumns" row-key="id" :loading="componentStore.isLoading" no-data-label="Nenhum componente encontrado." flat bordered>
           <template v-slot:body-cell-part="props">
             <q-td :props="props">
               <a href="#" @click.prevent="openPartHistoryDialog(props.row.part)" class="text-primary text-weight-medium cursor-pointer" style="text-decoration: none;">
@@ -82,16 +76,28 @@
       </q-tab-panel>
 
       <q-tab-panel name="costs">
-        <div class="row q-col-gutter-lg">
-          <div class="col-12 col-md-7">
-            <div class="flex items-center justify-between q-mb-md">
-              <div class="text-h6">Custos Lançados</div>
+        <div class="row items-center justify-between q-mb-md q-gutter-sm">
+            <div class="text-h6">Custos Lançados</div>
+            <div class="row items-center q-gutter-sm">
+              <q-input dense outlined v-model="dateRange.costs" mask="##/##/####" label="De" style="width: 120px" clearable>
+                <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.costs" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
+              </q-input>
+              <q-input dense outlined v-model="dateRange.costsTo" mask="##/##/####" label="Até" style="width: 120px" clearable>
+                <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.costsTo" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
+              </q-input>
+              <q-input dense debounce="300" v-model="search.costs" placeholder="Pesquisar..." style="width: 220px" clearable>
+                <template v-slot:append><q-icon name="search" /></template>
+              </q-input>
+              <q-btn @click="exportToCsv('costs')" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
               <q-btn @click="isAddCostDialogOpen = true" color="primary" icon="add" label="Adicionar Custo" unelevated />
             </div>
-            <q-table :rows="costStore.costs" :columns="costColumns" row-key="id" :loading="costStore.isLoading" no-data-label="Nenhum custo lançado para este veículo." flat bordered>
+        </div>
+        <div class="row q-col-gutter-lg">
+          <div class="col-12 col-md-7">
+            <q-table :rows="filteredCosts" :columns="costColumns" row-key="id" :loading="costStore.isLoading" no-data-label="Nenhum custo encontrado para os filtros aplicados." flat bordered>
               <template v-slot:bottom-row>
-                <q-tr class="bg-black-7 text-weight-bold">
-                  <q-td colspan="2" class="text-right">Total:</q-td>
+                <q-tr class="bg-black-9 text-weight-bold">
+                  <q-td colspan="2" class="text-right">Total (Filtrado):</q-td>
                   <q-td class="text-right">
                     {{ new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCost) }}
                   </q-td>
@@ -102,28 +108,34 @@
           <div class="col-12 col-md-5">
             <q-card flat bordered>
               <q-card-section>
-                <div class="text-h6">Distribuição de Custos</div>
+                <div class="text-h6">Distribuição de Custos (Filtrado)</div>
               </q-card-section>
               <q-card-section>
-                <CostsPieChart v-if="costStore.costs.length > 0" :costs="costStore.costs" />
+                <CostsPieChart v-if="filteredCosts.length > 0" :costs="filteredCosts" />
                 <div v-else class="text-center text-grey q-pa-md">
-                  Sem dados suficientes para exibir o gráfico.
+                  Sem dados para exibir o gráfico.
                 </div>
               </q-card-section>
             </q-card>
           </div>
         </div>
       </q-tab-panel>
-      
+
       <q-tab-panel name="maintenance">
-        <div class="flex items-center justify-between q-mb-md">
+        <div class="row items-center justify-between q-mb-md q-gutter-sm">
           <div class="text-h6">Histórico de Manutenções</div>
-          <q-btn color="primary" icon="add" label="Agendar Manutenção" unelevated @click="isMaintenanceDialogOpen = true" />
+          <div class="row items-center q-gutter-sm">
+            <q-input dense debounce="300" v-model="search.maintenances" placeholder="Pesquisar..." style="width: 220px" clearable>
+              <template v-slot:append><q-icon name="search" /></template>
+            </q-input>
+            <q-btn @click="exportToCsv('maintenances')" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
+            <q-btn color="primary" icon="add" label="Agendar Manutenção" unelevated @click="isMaintenanceDialogOpen = true" />
+          </div>
         </div>
-        <q-table :rows="maintenanceStore.maintenances" :columns="maintenanceColumns" row-key="id" :loading="maintenanceStore.isLoading" no-data-label="Nenhuma manutenção registrada para este veículo." flat bordered>
+        <q-table :rows="filteredMaintenances" :columns="maintenanceColumns" row-key="id" :loading="maintenanceStore.isLoading" no-data-label="Nenhuma manutenção encontrada para os filtros aplicados." flat bordered>
           <template v-slot:body-cell-status="props">
             <q-td :props="props">
-              <q-chip :color="props.row.status === 'CONCLUIDA' ? 'positive' : 'warning'" text-color="white" dense square>{{ props.value }}</q-chip>
+              <q-chip :color="props.row.status === 'COMPLETED' ? 'positive' : 'warning'" text-color="white" dense square>{{ props.value }}</q-chip>
             </q-td>
           </template>
           <template v-slot:body-cell-actions="props">
@@ -135,7 +147,10 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <q-dialog v-model="isAddCostDialogOpen"><AddCostDialog :vehicle-id="vehicleId" @close="isAddCostDialogOpen = false" /></q-dialog>
+    <q-dialog v-model="isAddCostDialogOpen">
+      <AddCostDialog :vehicle-id="vehicleId" @close="isAddCostDialogOpen = false" />
+    </q-dialog>
+
     <q-dialog v-model="isInstallDialogOpen">
       <q-card style="width: 500px; max-width: 90vw;">
         <q-form @submit.prevent="handleInstallComponent">
@@ -153,6 +168,7 @@
         </q-form>
       </q-card>
     </q-dialog>
+
     <PartHistoryDialog v-model="isPartHistoryDialogOpen" :part="selectedPart" />
     <MaintenanceDetailsDialog v-model="isMaintenanceDetailsOpen" :request="selectedMaintenance" />
     <CreateRequestDialog v-model="isMaintenanceDialogOpen" :preselected-vehicle-id="vehicleId" />
@@ -175,6 +191,7 @@ import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
 import type { Part } from 'src/models/part-models';
 import type { MaintenanceRequest } from 'src/models/maintenance-models';
+import type { VehicleCost } from 'src/models/vehicle-cost-models';
 import AddCostDialog from 'components/AddCostDialog.vue';
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
 import CostsPieChart from 'components/CostsPieChart.vue';
@@ -200,53 +217,61 @@ const isMaintenanceDialogOpen = ref(false);
 const isMaintenanceDetailsOpen = ref(false);
 const selectedPart = ref<Part | null>(null);
 const selectedMaintenance = ref<MaintenanceRequest | null>(null);
+const installForm = ref({ part_id: null, quantity: 1 });
+const partOptions = ref<{label: string, value: number}[]>([]);
 
-// --- Histórico ---
+// --- Estado de Filtros e Pesquisas ---
+const search = ref({ history: '', components: '', costs: '', maintenances: '' });
+const dateRange = ref({ history: '', historyTo: '', costs: '', costsTo: '' });
+
+// --- Dados e Lógica do Histórico ---
 const inventoryHistory = ref<InventoryTransaction[]>([]);
 const isHistoryLoading = ref(false);
-const historySearch = ref('');
-const dateRange = ref({ from: '', to: '' });
-
 const filteredHistory = computed(() => {
-  const needle = historySearch.value ? historySearch.value.toLowerCase() : '';
-  const startDate = dateRange.value.from ? parse(dateRange.value.from, 'dd/MM/yyyy', new Date()) : null;
-  const endDate = dateRange.value.to ? parse(dateRange.value.to, 'dd/MM/yyyy', new Date()) : null;
-  if(endDate) endDate.setHours(23, 59, 59, 999);
-
-  return inventoryHistory.value.filter((row) => {
+  return inventoryHistory.value.filter(row => {
+    const needle = search.value.history.toLowerCase();
+    const startDate = dateRange.value.history ? parse(dateRange.value.history, 'dd/MM/yyyy', new Date()) : null;
+    const endDate = dateRange.value.historyTo ? parse(dateRange.value.historyTo, 'dd/MM/yyyy', new Date()) : null;
+    if(endDate) endDate.setHours(23, 59, 59, 999);
     const rowDate = new Date(row.timestamp);
+
     const dateMatch = (!startDate || rowDate >= startDate) && (!endDate || rowDate <= endDate);
-    const textMatch = !needle || (
-      row.part?.name.toLowerCase().includes(needle) ||
-      row.transaction_type.toLowerCase().includes(needle) ||
-      row.user?.full_name.toLowerCase().includes(needle)
-    );
+    const textMatch = !needle || JSON.stringify(row).toLowerCase().includes(needle);
     return dateMatch && textMatch;
   });
 });
 
-// --- Componentes ---
-const installForm = ref({ part_id: null, quantity: 1 });
-const partOptions = ref<{label: string, value: number}[]>([]);
+// --- Dados e Lógica de Componentes ---
+const filteredComponents = computed(() => {
+  const needle = search.value.components.toLowerCase();
+  if (!needle) return componentStore.components;
+  return componentStore.components.filter(row => JSON.stringify(row).toLowerCase().includes(needle));
+});
 
-// --- Custos ---
-const totalCost = computed(() => costStore.costs.reduce((sum, cost) => sum + cost.amount, 0));
+// --- Dados e Lógica de Custos ---
+const filteredCosts = computed(() => {
+  return costStore.costs.filter(row => {
+    const needle = search.value.costs.toLowerCase();
+    const startDate = dateRange.value.costs ? parse(dateRange.value.costs, 'dd/MM/yyyy', new Date()) : null;
+    const endDate = dateRange.value.costsTo ? parse(dateRange.value.costsTo, 'dd/MM/yyyy', new Date()) : null;
+    if(endDate) endDate.setHours(23, 59, 59, 999);
+    const rowDate = new Date(row.date);
+
+    const dateMatch = (!startDate || rowDate >= startDate) && (!endDate || rowDate <= endDate);
+    const textMatch = !needle || JSON.stringify(row).toLowerCase().includes(needle);
+    return dateMatch && textMatch;
+  });
+});
+const totalCost = computed(() => filteredCosts.value.reduce((sum, cost) => sum + cost.amount, 0));
+
+// --- Dados e Lógica de Manutenções ---
+const filteredMaintenances = computed(() => {
+  const needle = search.value.maintenances.toLowerCase();
+  if (!needle) return maintenanceStore.maintenances;
+  return maintenanceStore.maintenances.filter(row => JSON.stringify(row).toLowerCase().includes(needle));
+});
 
 // --- Colunas das Tabelas ---
-const costColumns: QTableColumn[] = [
-  { name: 'date', label: 'Data', field: 'date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), sortable: true, align: 'left' },
-  { name: 'cost_type', label: 'Tipo', field: 'cost_type', sortable: true, align: 'left' },
-  { name: 'amount', label: 'Valor', field: 'amount', format: (val) => `R$ ${val.toFixed(2)}`, sortable: true, align: 'right' },
-];
-
-const componentColumns: QTableColumn[] = [
-  { name: 'part', label: 'Componente', field: row => row.part?.name || 'Item Removido', align: 'left', sortable: true },
-  { name: 'installation_date', label: 'Instalado em', field: 'installation_date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), align: 'left', sortable: true },
-  { name: 'age', label: 'Idade', field: 'installation_date', format: (val) => `${differenceInDays(new Date(), new Date(val))} dias`, align: 'center', sortable: true },
-  { name: 'installer', label: 'Instalado por', field: row => row.inventory_transaction?.user?.full_name || 'N/A', align: 'left', sortable: true },
-  { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
-];
-
 const historyColumns: QTableColumn[] = [
     { name: 'timestamp', label: 'Data e Hora', field: 'timestamp', format: (val) => format(new Date(val), 'dd/MM/yyyy HH:mm'), align: 'left', sortable: true },
     { name: 'part', label: 'Peça / Item', field: row => row.part?.name || 'Item Removido', align: 'left', sortable: true },
@@ -254,56 +279,72 @@ const historyColumns: QTableColumn[] = [
     { name: 'quantity_change', label: 'Quantidade', field: 'quantity_change', align: 'center', sortable: true, format: (val) => val > 0 ? `+${val}`: val },
     { name: 'user', label: 'Realizado por', field: row => row.user?.full_name || 'Sistema', align: 'left' },
 ];
-
+const componentColumns: QTableColumn[] = [
+  { name: 'part', label: 'Componente', field: (row: VehicleComponent) => row.part?.name || 'Item Removido', align: 'left', sortable: true },
+  { name: 'installation_date', label: 'Instalado em', field: 'installation_date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), align: 'left', sortable: true },
+  { name: 'age', label: 'Idade (dias)', field: 'installation_date', format: (val) => `${differenceInDays(new Date(), new Date(val))}`, align: 'center', sortable: true },
+  { name: 'installer', label: 'Instalado por', field: (row: VehicleComponent) => row.inventory_transaction?.user?.full_name || 'N/A', align: 'left', sortable: true },
+  { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
+];
+const costColumns: QTableColumn[] = [
+  { name: 'date', label: 'Data', field: 'date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), sortable: true, align: 'left' },
+  { name: 'cost_type', label: 'Tipo', field: 'cost_type', sortable: true, align: 'left' },
+  { name: 'amount', label: 'Valor', field: 'amount', format: (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), sortable: true, align: 'right' },
+];
 const maintenanceColumns: QTableColumn[] = [
-  { name: 'start_date', label: 'Data', field: 'start_date', format: (val) => val ? format(new Date(val), 'dd/MM/yyyy') : 'A definir', sortable: true, align: 'left' },
+  { name: 'created_at', label: 'Data', field: 'created_at', format: (val) => val ? format(new Date(val), 'dd/MM/yyyy') : 'A definir', sortable: true, align: 'left' },
   { name: 'category', label: 'Tipo', field: 'category', sortable: true, align: 'left' },
-  { name: 'title', label: 'Descrição', field: 'title', align: 'left' },
+  { name: 'problem_description', label: 'Descrição', field: 'problem_description', align: 'left', style: 'white-space: pre-wrap;' },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
   { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
 ];
 
-
 // --- Funções ---
-function openPartHistoryDialog(part: Part | null) {
-  if (!part) return;
-  selectedPart.value = part;
-  void partStore.fetchHistory(part.id);
-  isPartHistoryDialogOpen.value = true;
-}
+function exportToCsv(tabName: 'history' | 'components' | 'costs' | 'maintenances') {
+  let data: (InventoryTransaction | VehicleComponent | VehicleCost | MaintenanceRequest)[], columns: QTableColumn[], fileName: string;
+  switch (tabName) {
+    case 'history':
+      data = filteredHistory.value;
+      columns = historyColumns;
+      fileName = 'historico_pecas';
+      break;
+    case 'components':
+      data = filteredComponents.value;
+      columns = componentColumns;
+      fileName = 'componentes_ativos';
+      break;
+    case 'costs':
+      data = filteredCosts.value;
+      columns = costColumns;
+      fileName = 'custos';
+      break;
+    case 'maintenances':
+      data = filteredMaintenances.value;
+      columns = maintenanceColumns;
+      fileName = 'manutencoes';
+      break;
+  }
 
-function openMaintenanceDetails(maintenance: MaintenanceRequest) {
-  selectedMaintenance.value = maintenance;
-  isMaintenanceDetailsOpen.value = true;
-}
-
-function exportHistoryToCsv() {
-  const columnsToExp = historyColumns.filter(c => c.label);
+  const columnsToExp = columns.filter(c => c.label && c.name !== 'actions');
   const content = [
     columnsToExp.map(col => col.label).join(';'),
-    ...filteredHistory.value.map(row => columnsToExp.map(col => {
+    ...data.map(row => columnsToExp.map(col => {
       let val;
-      if (typeof col.field === 'function') {
-        val = col.field(row);
-      } else {
-        val = row[col.field as keyof typeof row];
-      }
-      if (col.format && val) {
-        val = col.format(val, row);
-      }
-      return `"${val ?? ''}"`;
+      if (typeof col.field === 'function') val = col.field(row as never);
+      else val = row[col.field as keyof typeof row];
+
+      if (col.format && val) val = col.format(val, row as never);
+      
+      const cleanVal = `"${String(val ?? '').replace(/"/g, '""')}"`;
+      return cleanVal;
     }).join(';'))
   ].join('\r\n');
 
   const status = exportFile(
-    `historico_${vehicleStore.selectedVehicle?.license_plate || vehicleId}.csv`,
-    '\ufeff' + content,
-    'text/csv'
+    `${fileName}_${vehicleStore.selectedVehicle?.license_plate || vehicleId}.csv`,
+    '\ufeff' + content, 'text/csv'
   );
-
-  if (status !== true) {
-    $q.notify({ message: 'O browser bloqueou o download...', color: 'negative', icon: 'warning' });
-  }
+  if (status !== true) $q.notify({ message: 'O browser bloqueou o download...', color: 'negative' });
 }
 
 async function fetchHistory() {
@@ -318,7 +359,7 @@ async function fetchHistory() {
   }
 }
 
-function filterParts(val: string, update: (callback: () => void) => void) {
+function filterParts(val: string, update: (cb: () => void) => void) {
   update(() => {
     const needle = val.toLowerCase();
     partOptions.value = partStore.parts
@@ -339,7 +380,6 @@ async function handleInstallComponent() {
     await fetchHistory();
     await partStore.fetchParts();
     await componentStore.fetchComponents(vehicleId);
-    // --- ATUALIZAÇÃO DA LISTA DE CUSTOS ---
     await costStore.fetchCosts(vehicleId);
   }
 }
@@ -363,6 +403,18 @@ function confirmDiscard(component: VehicleComponent) {
     });
 }
 
+function openPartHistoryDialog(part: Part | null) {
+  if (!part) return;
+  selectedPart.value = part;
+  void partStore.fetchHistory(part.id);
+  isPartHistoryDialogOpen.value = true;
+}
+
+function openMaintenanceDetails(maintenance: MaintenanceRequest) {
+  selectedMaintenance.value = maintenance;
+  isMaintenanceDetailsOpen.value = true;
+}
+
 onMounted(() => {
   void vehicleStore.fetchVehicleById(vehicleId);
   void costStore.fetchCosts(vehicleId);
@@ -372,3 +424,4 @@ onMounted(() => {
   void maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 });
 });
 </script>
+

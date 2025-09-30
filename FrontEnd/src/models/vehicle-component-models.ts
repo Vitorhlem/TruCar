@@ -1,4 +1,5 @@
 import type { Part } from './part-models';
+import type { InventoryTransaction } from './inventory-transaction-models';
 
 export interface VehicleComponent {
   id: number;
@@ -6,6 +7,7 @@ export interface VehicleComponent {
   uninstallation_date: string | null;
   is_active: boolean;
   part: Part;
+  inventory_transaction?: InventoryTransaction; // Propriedade adicionada
 }
 
 export interface VehicleComponentCreate {
