@@ -175,7 +175,7 @@ export default defineConfig((/* ctx */) => {
       hideSplashscreen: true,
       // *** ADICIONADO AQUI ***
       // Define o ID do App para evitar a pergunta no CI/CD
-      packageName: 'com.trucar.app',
+      packageName: 'org.capacitor.quasar.app',
       appName: 'TruCar'
     },
 
