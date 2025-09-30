@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone # --- ADICIONADO timezone ---
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -10,6 +10,7 @@ from app.models.inventory_transaction_model import InventoryTransaction, Transac
 from app.models.part_model import Part
 from app.models.vehicle_cost_model import VehicleCost, CostType
 from app.schemas.vehicle_cost_schema import VehicleCostCreate
+from app.schemas.inventory_transaction_schema import TransactionCreate
 
 
 
@@ -18,19 +19,20 @@ async def create_transaction(
     *,
     part_id: int,
     user_id: int,
-    transaction_type: TransactionType,
-    quantity_change: int,
-    notes: Optional[str] = None,
-    related_vehicle_id: Optional[int] = None,
-    related_user_id: Optional[int] = None
+    transaction_in: TransactionCreate
 ) -> InventoryTransaction:
     """
-    Cria uma nova transação de inventário e atualiza o estoque da peça.
-    Se a transação for uma SAIDA_USO para um veículo, também cria o registro do componente.
+    Cria uma nova transação de inventário, atualiza o estoque da peça e
+    cria registros relacionados (componente, custo) se aplicável.
     """
     part = await db.get(Part, part_id)
     if not part:
         raise ValueError("Peça não encontrada.")
+
+    # A quantidade para saídas deve ser negativa
+    quantity_change = -transaction_in.quantity if transaction_in.transaction_type in [
+        TransactionType.SAIDA_USO, TransactionType.SAIDA_FIM_DE_VIDA
+    ] else transaction_in.quantity
 
     # Validação de estoque para saídas
     if quantity_change < 0 and part.stock < abs(quantity_change):
@@ -41,41 +43,44 @@ async def create_transaction(
     db_transaction = InventoryTransaction(
         part_id=part_id,
         user_id=user_id,
-        transaction_type=transaction_type,
+        transaction_type=transaction_in.transaction_type,
         quantity_change=quantity_change,
         stock_after_transaction=part.stock,
-        notes=notes,
-        related_vehicle_id=related_vehicle_id,
-        related_user_id=related_user_id
+        notes=transaction_in.notes,
+        related_vehicle_id=transaction_in.related_vehicle_id,
+        related_user_id=transaction_in.related_user_id
     )
     
     db.add(part)
     db.add(db_transaction)
     
-    # --- LÓGICA DE INTEGRAÇÃO ADICIONADA ---
-    # Força o commit para que db_transaction receba um ID
     await db.flush() 
 
-    if transaction_type == TransactionType.SAIDA_USO and related_vehicle_id:
-        for _ in range(abs(quantity_change)):
-            vehicle_component = VehicleComponent(...)
+    if transaction_in.transaction_type == TransactionType.SAIDA_USO and transaction_in.related_vehicle_id:
+        for _ in range(transaction_in.quantity):
+            vehicle_component = VehicleComponent(
+                vehicle_id=transaction_in.related_vehicle_id,
+                part_id=part_id,
+                inventory_transaction_id=db_transaction.id,
+                is_active=True
+            )
             db.add(vehicle_component)
         
-        # --- LÓGICA PARA CRIAR CUSTO AUTOMÁTICO ---
         if part.value and part.value > 0:
+            total_cost = part.value * transaction_in.quantity
             cost_in = VehicleCostCreate(
                 description=f"Instalação do item: {part.name}",
-                amount=part.value,
-                date=datetime.utcnow().date(),
-                cost_type=CostType.MANUTENCAO # Ou outra lógica para definir o tipo
+                amount=total_cost,
+                # --- CORREÇÃO APLICADA AQUI ---
+                date=datetime.now(timezone.utc).date(),
+                cost_type=CostType.MANUTENCAO
             )
             cost_db_obj = VehicleCost(
                 **cost_in.model_dump(),
-                vehicle_id=related_vehicle_id,
+                vehicle_id=transaction_in.related_vehicle_id,
                 organization_id=part.organization_id
             )
             db.add(cost_db_obj)
-    # --- FIM DA LÓGICA ---
 
     await db.commit()
     await db.refresh(db_transaction, ["user", "related_vehicle", "related_user", "part"])

@@ -59,6 +59,7 @@ async def create_part(
     if invoice_file:
         invoice_url = await save_upload_file(invoice_file, UPLOAD_INVOICE_DIRECTORY)
     
+    # --- CORREÇÃO: Bloco try/except para capturar erros de negócio ---
     try:
         part_db = await crud.part.create(
             db=db, part_in=part_in, organization_id=current_user.organization_id, 
@@ -153,7 +154,6 @@ async def add_stock_transaction(
         return transaction
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
 
 @router.get("/{part_id}/history", response_model=List[TransactionPublic])
 async def read_part_history(
