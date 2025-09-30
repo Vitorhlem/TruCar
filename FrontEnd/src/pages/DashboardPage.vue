@@ -81,6 +81,7 @@
               </q-card>
 
               <!-- GRÁFICOS DE ANÁLISE (Premium) - AGORA LADO A LADO -->
+               <div></div>
               <div class="row q-col-gutter-lg">
                 <div class="col-12 col-md-6">
                   <PremiumWidget title="Análise de Custos" :icon="`insights`" :description="`Análise de custos do período de ${selectedPeriod.label}`">
