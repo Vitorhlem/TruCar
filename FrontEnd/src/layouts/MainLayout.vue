@@ -1,11 +1,58 @@
 <template>
-  <q-layout view="lHh LpR lFf">
-    <!-- CABEÇALHO PRINCIPAL COM DUAS BARRAS -->
-    <q-header elevated class="main-header">
-      <!-- Barra Superior: Logo e Controles do Usuário -->
+  <q-layout view="lHh LpR lFf" class="main-layout-container">
+    <q-drawer
+      v-model="leftDrawerOpen"
+      show-if-above
+      bordered
+      class="app-sidebar"
+      :width="280"
+    >
+      <q-scroll-area class="fit">
+        <div class="q-pa-md text-center sidebar-header">
+           <img src="~assets/trucar-logo-white.png" class="logo-dark-theme" style="height: 35px;" alt="TruCar Logo">
+           <img src="~assets/trucar-logo-dark.png" class="logo-light-theme" style="height: 35px;" alt="TruCar Logo">
+        </div>
+        
+        <q-list padding>
+          <template v-for="category in menuStructure" :key="category.label">
+            <q-expansion-item
+              :icon="category.icon"
+              :label="category.label"
+              expand-separator
+              default-opened
+              header-class="text-weight-bold"
+              class="nav-category"
+            >
+              <q-item
+                v-for="link in category.children"
+                :key="link.title"
+                clickable
+                :to="link.to"
+                exact
+                v-ripple
+                class="nav-link"
+                active-class="nav-link--active"
+              >
+                <q-item-section avatar><q-icon :name="link.icon" size="sm" /></q-item-section>
+                <q-item-section><q-item-label>{{ link.title }}</q-item-label></q-item-section>
+              </q-item>
+            </q-expansion-item>
+          </template>
+
+          <div v-if="authStore.isSuperuser">
+            <q-separator class="q-my-md" />
+            <q-item clickable to="/admin" exact v-ripple class="nav-link" active-class="nav-link--active">
+              <q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
+              <q-item-section><q-item-label>Painel Admin</q-item-label></q-item-section>
+            </q-item>
+          </div>
+        </q-list>
+      </q-scroll-area>
+    </q-drawer>
+
+    <q-header bordered class="main-header">
       <q-toolbar>
-        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" class="lt-md toolbar-icon-btn" />
-        <q-toolbar-title>TruCar</q-toolbar-title>
+        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" class="lt-md" />
         <q-space />
 
         <q-chip
@@ -48,47 +95,7 @@
           </q-list>
         </q-btn-dropdown>
       </q-toolbar>
-
-      <!-- ===== NOVA BARRA DE NAVEGAÇÃO COM MENUS EXPANSÍVEIS ===== -->
-      <div class="navigation-bar gt-sm">
-        <template v-for="category in menuStructure" :key="category.label">
-          <!-- Se a categoria só tiver um item, mostra um botão simples -->
-          
-<q-btn
-  v-if="category.children.length === 1"
-  :to="category.children[0]!.to"
-  :icon="category.children[0]!.icon"
-  :label="category.children[0]!.title"
-  no-caps flat class="nav-button" active-class="nav-button--active"
-/>
-          <!-- Se tiver múltiplos itens, mostra um menu expansível -->
-          <q-btn-dropdown
-            v-else
-            :label="category.label"
-            :icon="category.icon"
-            no-caps flat
-            class="nav-button"
-            content-class="bg-primary-dark-menu"
-          >
-            <q-list dense>
-              <q-item
-                v-for="link in category.children"
-                :key="link.title"
-                :to="link.to"
-                clickable v-close-popup
-                class="nav-dropdown-item"
-              >
-                <q-item-section avatar><q-icon :name="link.icon" size="xs" /></q-item-section>
-                <q-item-section><q-item-label>{{ link.title }}</q-item-label></q-item-section>
-              </q-item>
-            </q-list>
-          </q-btn-dropdown>
-        </template>
-        
-        <!-- Link de Admin separado -->
-         <q-btn v-if="authStore.isSuperuser" to="/admin" icon="admin_panel_settings" label="Painel Admin" no-caps flat class="nav-button" active-class="nav-button--active" />
-      </div>
-
+      
        <q-banner v-if="authStore.isImpersonating" inline-actions class="bg-deep-orange text-white text-center shadow-2">
          <template v-slot:avatar>
            <q-icon name="visibility_off" color="white" />
@@ -100,41 +107,9 @@
            <q-btn flat dense color="white" label="Voltar à minha conta" @click="authStore.stopImpersonation()" />
          </template>
        </q-banner>
-
     </q-header>
 
-    <!-- MENU LATERAL PARA TELAS PEQUENAS (lt-md) -->
-    <q-drawer v-model="leftDrawerOpen" bordered class="lt-md">
-      <q-scroll-area class="fit">
-        <q-list padding>
-          <q-item-label header>Menu</q-item-label>
-          <!-- O menu lateral agora usa a nova estrutura de dados também -->
-          <template v-for="category in menuStructure" :key="category.label + '-mobile'">
-            <q-expansion-item
-              :icon="category.icon"
-              :label="category.label"
-              expand-separator
-              default-opened
-            >
-              <q-item v-for="link in category.children" :key="link.title" clickable :to="link.to" exact v-ripple class="q-pl-lg">
-                <q-item-section avatar><q-icon :name="link.icon" /></q-item-section>
-                <q-item-section><q-item-label>{{ link.title }}</q-item-label></q-item-section>
-              </q-item>
-            </q-expansion-item>
-          </template>
-          <div v-if="authStore.isSuperuser">
-            <q-separator class="q-my-md" />
-            <q-item-label header>Administração</q-item-label>
-            <q-item clickable to="/admin" exact v-ripple>
-              <q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
-              <q-item-section><q-item-label>Painel Admin</q-item-label></q-item-section>
-            </q-item>
-          </div>
-        </q-list>
-      </q-scroll-area>
-    </q-drawer>
-
-    <q-page-container>
+    <q-page-container class="app-page-container">
       <router-view v-slot="{ Component }">
         <transition name="route-transition" mode="out-in">
           <component :is="Component" />
@@ -190,15 +165,13 @@ function showUpgradeDialog() {
   });
 }
 
-// --- NOVA ESTRUTURA DE MENU ORGANIZADA ---
 const menuStructure = computed(() => {
   const sector = authStore.userSector;
   const isManager = authStore.isManager;
   const menu = [];
 
-  // --- Categoria: Geral ---
   const general = {
-    label: 'Geral', icon: 'home',
+    label: 'Geral', icon: 'dashboard',
     children: [
       { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
       { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' },
@@ -206,8 +179,6 @@ const menuStructure = computed(() => {
   };
   menu.push(general);
 
-  // --- Categoria: Operações (Condicional) ---
-// --- Categoria: Operações (Condicional) ---
   const operations = { label: 'Operações', icon: 'alt_route', children: [] as MenuItem[] };
   if (sector === 'agronegocio' || sector === 'servicos') {
     operations.children.push({ title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' });
@@ -215,14 +186,13 @@ const menuStructure = computed(() => {
   if (sector === 'frete' && isManager) {
     operations.children.push({ title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' });
   }
-  if (sector === 'frete' && !isManager) { // Este é o 'driver'
+  if (sector === 'frete' && !isManager) {
     operations.children.push({ title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' });
   }
   if (operations.children.length > 0) {
     menu.push(operations);
   }
 
-  // --- Categoria: Gestão (Apenas Gestores) ---
 if (isManager) {
     const management = { label: 'Gestão', icon: 'settings_suggest', children: [] as MenuItem[] };
     if (sector === 'agronegocio' || sector === 'servicos' || sector === 'frete') {
@@ -235,20 +205,16 @@ if (isManager) {
       management.children.push({ title: 'Clientes', icon: 'groups', to: '/clients' });
     }
     management.children.push({ title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' });
-    
-    // --- NOVOS LINKS ADICIONADOS ---
-    management.children.push({ title: 'Inventário de Peças', icon: 'inventory', to: '/parts' }); // <-- ADICIONADO AQUI
+    management.children.push({ title: 'Inventário', icon: 'inventory_2', to: '/parts' });
     management.children.push({ title: 'Gestão de Custos', icon: 'monetization_on', to: '/costs' });
-    management.children.push({ title: 'Registros de Abastecimento', icon: 'local_gas_station', to: '/fuel-logs' });
-    management.children.push({ title: 'Gestão de Documentos', icon: 'folder_shared', to: '/documents' });
-    // --- FIM DA ADIÇÃO ---
+    management.children.push({ title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' });
+    management.children.push({ title: 'Documentos', icon: 'folder_shared', to: '/documents' });
 
     if (management.children.length > 0) {
       menu.push(management);
     }
   }
 
-  // --- Categoria: Análise (Apenas Gestores) ---
 if (isManager) {
     const analysis = {
       label: 'Análise', icon: 'analytics',
@@ -278,111 +244,109 @@ onUnmounted(() => { clearInterval(pollTimer); });
 </script>
 
 <style lang="scss" scoped>
-.nav-dropdown-item {
-  // A cor do texto agora é branca, com uma leve transparência para o estado normal
-  color: rgba(168, 86, 86, 0.8);
-
-  &.q-router-link--active,
-  &:hover {
-    color: rgb(56, 20, 20); // Cor sólida no hover e quando ativo
-    background-color: rgba(rgb(121, 37, 37), 0.1);
-    font-weight: 600;
-  }
-}
-// O fundo do menu continua escuro em ambos os temas para garantir o contraste
-.bg-primary-dark-menu {
-  background-color: #2c3e50;
-}
-
-.main-header {
-  background: linear-gradient(to right, $primary, lighten($primary, 8%));
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-}
-
-.navigation-bar {
-  padding: 0 16px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.nav-button {
-  transition: all 0.3s ease;
-  color: rgb(255, 254, 254);
-  font-weight: 500;
-  margin: 4px 0;
-  border-radius: 8px;
-  position: relative;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-  }
-
-  &.nav-button--active,
-  &.q-btn-dropdown--current { // Para o dropdown ficar ativo
-    color: white;
-    font-weight: 700;
-    background-color: rgba(0, 0, 0, 0.15);
+.main-layout-container {
+  background-color: #f4f6f9;
+  
+  .body--dark & {
+    background-color: #121212;
   }
 }
 
-.nav-dropdown-item {
-  // Cor padrão para o TEMA CLARO (texto escuro)
-  color: $grey-9;
+// ESTILOS DO MENU LATERAL (SIDEBAR)
+.app-sidebar {
+  // Tema Claro
+  background-color: #ffffff;
+  border-right: 1px solid #e0e0e0;
 
-  // Estilo para o link ATIVO (página atual)
-  &.q-router-link--active {
-    color: $primary;
-    background-color: rgba($primary, 0.1);
-    font-weight: 600;
+  .sidebar-header {
+    .logo-dark-theme { display: none; }
+    .logo-light-theme { display: block; }
   }
 
-  // Estilo para o HOVER (mouse sobre o item)
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+  .nav-category {
+    .q-item__section--avatar { color: $grey-7; }
+    .q-item__label {
+      color: $grey-9;
+      font-weight: 500;
+    }
+  }
+
+  .nav-link {
+    color: #333333; // Texto escuro para melhor leitura
+    margin: 4px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+    font-weight: 500;
+
+    .q-item__section--avatar { color: $grey-8; }
+
+    &--active {
+      background-color: rgba($primary, 0.1);
+      color: $primary;
+      font-weight: 600;
+
+      .q-item__section--avatar { color: $primary; }
+    }
+
+    &:hover:not(.nav-link--active) {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
   }
 }
 
-// --- REGRAS PARA O TEMA ESCURO ---
-.body--dark {
-  .nav-dropdown-item {
-    // Cor do texto para o TEMA ESCURO (texto claro)
-    color: $grey-3;
+// Estilos do menu lateral para o TEMA ESCURO
+.body--dark .app-sidebar {
+  background-color: #1d2d35; // Cor escura para a sidebar
+  border-right-color: #2d3748;
+  color: #aeb9c6; // Cor de texto padrão
 
-    // Ajuste do hover para o tema escuro
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.08);
+  .sidebar-header {
+    .logo-dark-theme { display: block; }
+    .logo-light-theme { display: none; }
+  }
+
+  .nav-category {
+    .q-item__section--avatar { color: #9ca3af; }
+    .q-item__label { color: white; }
+  }
+  
+  .nav-link {
+    color: #d1d5db;
+
+    &--active {
+      background-color: $primary;
+      color: white;
+      box-shadow: 0 4px 10px rgba($primary, 0.3);
+
+      .q-item__section--avatar { color: white; }
+    }
+
+    &:hover:not(.nav-link--active) {
+      background-color: rgba(255, 255, 255, 0.05);
     }
   }
 }
 
 
-.bg-primary-dark-menu {
-  background-color: #3f658a;
-}
+// ESTILOS DO CABEÇALHO SUPERIOR
+.main-header {
+  background-color: white;
+  color: $grey-9;
 
-.toolbar-icon-btn {
-  transition: transform 0.2s ease, color 0.2s ease;
-  &:hover {
-    transform: scale(1.15);
+  .body--dark & {
+    background-color: #1d2d35;
+    border-bottom: 1px solid #2d3748;
+    color: white;
   }
 }
 
-.q-drawer {
-  background: #1a1616;
-}
-.q-drawer .q-list .q-item {
-  color: $grey-7;
-  .q-item__section--avatar { color: $grey-7; }
-}
-.q-drawer .q-list .q-item.q-router-link--active {
-  color: $primary;
-  font-weight: 600;
-  background-color: rgba($primary, 0.1);
-  border-left: 4px solid $primary;
-  .q-item__section--avatar { color: $primary; }
+// ESTILOS GERAIS
+.app-page-container {
+  background-color: #f4f6f9;
+
+  .body--dark & {
+    background-color: #121212;
+  }
 }
 
 .route-transition-enter-active,
@@ -395,4 +359,3 @@ onUnmounted(() => { clearInterval(pollTimer); });
   transform: translateY(10px);
 }
 </style>
-

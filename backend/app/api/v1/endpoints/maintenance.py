@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Response, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from datetime import datetime
@@ -111,23 +111,6 @@ async def delete_maintenance_request(
         
     await crud.maintenance.delete_request(db=db, request_to_delete=request_to_delete)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.get("/", response_model=List[MaintenanceRequestPublic])
-async def read_maintenance_requests(
-    db: AsyncSession = Depends(deps.get_db),
-    current_user: User = Depends(deps.get_current_active_user),
-    skip: int = 0,
-    limit: int = 100,
-    search: str | None = None,
-):
-    """Retorna as solicitações de manutenção. Gestores veem tudo, motoristas veem apenas o que reportaram."""
-    requests = await crud.maintenance.get_all_requests(
-        db=db, organization_id=current_user.organization_id, search=search, skip=skip, limit=limit
-    )
-    if current_user.role == UserRole.DRIVER:
-        return [req for req in requests if req.reported_by_id == current_user.id]
-    return requests
 
 @router.get("/", response_model=List[MaintenanceRequestPublic])
 async def read_maintenance_requests(

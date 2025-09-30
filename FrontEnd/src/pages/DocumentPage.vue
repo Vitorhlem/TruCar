@@ -55,7 +55,7 @@
     </div>
 
     <!-- Diálogo para Adicionar Novo Documento -->
-    <q-dialog v-model="isDialogOpen" persistent>
+    <q-dialog v-model="isDialogOpen" >
       <q-card style="width: 600px; max-width: 90vw;">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">Novo Documento</div>
