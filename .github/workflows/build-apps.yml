@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: TruCar-Windows-x64
-          path: ./FrontEnd/dist/electron/Packaged/TruCar-win-x64
+          path: ./FrontEnd/dist/electron/Packaged/TruCar-win32-x64
 
   # Job para criar o app Android
   build-android:
