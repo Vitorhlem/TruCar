@@ -12,10 +12,10 @@ jobs:
 
     steps:
       - name: Checkout do código
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18' # Use uma versão LTS do Node.js
 
@@ -32,7 +32,7 @@ jobs:
         run: quasar build -m electron -T win64
 
       - name: Upload do Artefato (.exe)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # <-- CORRIGIDO AQUI
         with:
           name: TruCar-Windows-x64
           path: ./FrontEnd/dist/electron/Packaged/TruCar-win-x64 # Caminho para o executável gerado
@@ -43,15 +43,15 @@ jobs:
 
     steps:
       - name: Checkout do código
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Instalar Java Development Kit (JDK)
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17' # Requerido pelo Android Studio mais recente
@@ -65,7 +65,7 @@ jobs:
         run: quasar build -m capacitor -T android
 
       - name: Upload do Projeto Android para Artefatos
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # <-- CORRIGIDO AQUI
         with:
           name: TruCar-Android-Project
           path: ./FrontEnd/src-capacitor/android # Faz o upload do projeto Android completo
