@@ -116,4 +116,4 @@ def read_root():
     return {"status": f"Welcome to {settings.PROJECT_NAME} API!", "version": "1.0.0"}
 
 # 6. Incluir o roteador principal da API
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router)
