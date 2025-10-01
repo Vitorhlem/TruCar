@@ -13,6 +13,7 @@ __pycache__/
 /frontend/.quasar-testing/
 /frontend/quasar.config.*.temporary.compiled*
 /frontend/src-cordova/
+/FrontEnd/src-capacitor/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
