@@ -93,3 +93,44 @@ jobs:
           path: |
             ./FrontEnd/src-capacitor/android/app/build/outputs/apk/release/app-release.apk
             ./FrontEnd/src-capacitor/android/app/build/outputs/bundle/release/app-release.aab
+
+# Job para criar a Release no GitHub
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-android]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download do Artefato do Windows (.exe)
+        uses: actions/download-artifact@v4
+        with:
+          name: TruCar-Windows-Build
+          path: ./release-assets/windows
+
+      - name: Download dos Artefatos do Android (.apk, .aab)
+        uses: actions/download-artifact@v4
+        with:
+          name: TruCar-Android-Builds
+          path: ./release-assets/android
+
+      - name: Checkout do código (para zipar)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Criar zip do código-fonte
+        run: zip -r source-code.zip . -x ".git/*"
+
+      - name: Criar Release e Anexar Arquivos
+        uses: softprops/action-gh-release@v1
+        with:
+          # Usa a tag do git como nome da release e da tag
+          tag_name: ${{ github.ref }}
+          name: TruCar ${{ github.ref_name }}
+          body: "Release automática gerada pelo GitHub Actions."
+          files: |
+            ./release-assets/windows/*
+            ./release-assets/android/*
+            source-code.zip
