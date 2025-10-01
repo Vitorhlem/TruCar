@@ -1,77 +1,64 @@
-name: Build Android & Windows Apps
+name: Build, Sign, and Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*' # Dispara o workflow em push de tags que começam com 'v'
 
 jobs:
   # Job para criar o executável de Windows
   build-windows:
-    runs-on: windows-latest # Usa uma máquina virtual Windows
-
+    runs-on: windows-latest
     steps:
       - name: Checkout do código com LFS
         uses: actions/checkout@v4
         with:
           lfs: true
-
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Use uma versão LTS do Node.js
-
+          node-version: '20'
       - name: Instalar dependências do Quasar
         working-directory: ./FrontEnd
         run: npm install
-
       - name: Instalar dependências do Electron
         working-directory: ./FrontEnd/src-electron
         run: npm install
-
       - name: Build do executável para Windows
         working-directory: ./FrontEnd
         run: npx quasar build -m electron -T win32 -A x64
-
       - name: Upload do Artefato (.exe)
         uses: actions/upload-artifact@v4
         with:
           name: TruCar-Windows-x64
           path: ./FrontEnd/dist/electron/Packaged/TruCar-win32-x64
 
-  # Job para criar o app Android
+  # Job para criar o .apk e .aab assinados
   build-android:
-    runs-on: ubuntu-latest # Usa uma máquina virtual Linux
-
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout do código com LFS
         uses: actions/checkout@v4
         with:
           lfs: true
-
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Instalar Java Development Kit (JDK)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21' # Requerido pelo Android Studio mais recente
-
+          java-version: '21'
       - name: Instalar dependências do Quasar
         working-directory: ./FrontEnd
         run: npm install
-
       - name: Build dos assets para Capacitor
         working-directory: ./FrontEnd
-        run: npx quasar build -m capacitor -T android # <-- CORRIGIDO AQUI
-
+        run: npx quasar build -m capacitor -T android
       - name: Decodificar a Keystore
         working-directory: ./FrontEnd/src-capacitor/android
         run: echo "${{ secrets.KEYSTORE_FILE_B64 }}" | base64 --decode > ./keystore.jks
-
       - name: Build APK e AAB de Release
         working-directory: ./FrontEnd/src-capacitor/android
         run: |
@@ -85,7 +72,6 @@ jobs:
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-            
       - name: Upload dos Artefatos Android (.apk e .aab)
         uses: actions/upload-artifact@v4
         with:
@@ -94,7 +80,7 @@ jobs:
             ./FrontEnd/src-capacitor/android/app/build/outputs/apk/release/app-release.apk
             ./FrontEnd/src-capacitor/android/app/build/outputs/bundle/release/app-release.aab
 
-# Job para criar a Release no GitHub
+  # Job para criar a Release no GitHub
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -120,16 +106,16 @@ jobs:
         with:
           lfs: true
 
+      - name: Criar zip do código-fonte
+        run: zip -r source-code.zip . -x ".git/*"
+
       - name: Criar Release e Anexar Arquivos
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name }} # <-- CORRIGIDO AQUI
+          tag_name: ${{ github.ref_name }}
           name: TruCar ${{ github.ref_name }}
           body: "Release automática gerada pelo GitHub Actions."
           files: |
-            ./release-assets/windows/*
-            ./release-assets/android/*
-            source-code.zip
             ./release-assets/windows/*
             ./release-assets/android/*
             source-code.zip
