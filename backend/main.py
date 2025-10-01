@@ -39,6 +39,8 @@ from app.models.goal_model import Goal
 from app.models.alert_model import Alert
 from app.models.vehicle_cost_model import VehicleCost
 from app.models.vehicle_component_model import VehicleComponent
+from app.models.tire_model import VehicleTire # Importa o novo modelo de pneu
+
 # ==============================================================================
 
 
