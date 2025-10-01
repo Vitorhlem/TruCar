@@ -6,7 +6,6 @@ Base = declarative_base()
 # A LINHA MÁGICA: Importa todos os modelos DEPOIS que a Base foi definida.
 # Isto garante que a Base já conhece todas as suas tabelas.
 # Ordem explícita para evitar erros de referência de chave estrangeira
-from app.models.organization_model import Organization
 from app.models.user_model import User
 from app.models.vehicle_model import Vehicle
 from app.models.implement_model import Implement
