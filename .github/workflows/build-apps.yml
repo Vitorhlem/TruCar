@@ -106,7 +106,7 @@ jobs:
       - name: Download do Artefato do Windows (.exe)
         uses: actions/download-artifact@v4
         with:
-          name: TruCar-Windows-Build
+          name: TruCar-Windows-x64
           path: ./release-assets/windows
 
       - name: Download dos Artefatos do Android (.apk, .aab)
