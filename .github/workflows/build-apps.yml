@@ -1,92 +1,82 @@
-name: Build Android & Windows Apps
+name: Build, Sign, and Release
 
 on:
   push:
     branches:
-      - main # Dispara o workflow em push para a branch main
+      - main
 
 jobs:
-  # Job para criar o executável de Windows
   build-windows:
-    runs-on: windows-latest # Usa uma máquina virtual Windows
-
+    name: Build for Windows
+    runs-on: windows-latest
     steps:
-      - name: Checkout do código com LFS
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20' # Use uma versão LTS do Node.js
-
-      - name: Instalar dependências do Quasar
-        working-directory: ./FrontEnd
-        run: npm install
-
-      - name: Instalar dependências do Electron
-        working-directory: ./FrontEnd/src-electron
-        run: npm install
-
-      - name: Build do executável para Windows
-        working-directory: ./FrontEnd
-        run: npx quasar build -m electron -T win32 -A x64
-
-      - name: Upload do Artefato (.exe)
-        uses: actions/upload-artifact@v4
-        with:
-          name: TruCar-Windows-x64
-          path: ./FrontEnd/dist/electron/Packaged/TruCar-win32-x64
-
-  # Job para criar o app Android
-  build-android:
-    runs-on: ubuntu-latest # Usa uma máquina virtual Linux
-
-    steps:
-      - name: Checkout do código com LFS
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Configurar Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Instalar Java Development Kit (JDK)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21' # Requerido pelo Android Studio mais recente
-
-      - name: Instalar dependências do Quasar
+      - name: Install Quasar dependencies
         working-directory: ./FrontEnd
         run: npm install
 
-      - name: Build dos assets para Capacitor
-        working-directory: ./FrontEnd
-        run: npx quasar build -m capacitor -T android # <-- CORRIGIDO AQUI
+      - name: Install Electron dependencies
+        working-directory: ./FrontEnd/src-electron
+        run: npm install
 
-      - name: Decodificar a Keystore
+      - name: Build Windows executable
+        working-directory: ./FrontEnd
+        run: npx quasar build -m electron -T win32 -A x64
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TruCar-Windows-Build
+          path: ./FrontEnd/dist/electron/Packaged/TruCar-win32-x64
+
+  build-android:
+    name: Build for Android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java (JDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install Quasar dependencies
+        working-directory: ./FrontEnd
+        run: npm install
+
+      - name: Build Capacitor assets
+        working-directory: ./FrontEnd
+        run: npx quasar build -m capacitor -T android
+
+      - name: Decode Keystore
         working-directory: ./FrontEnd/src-capacitor/android
         run: echo "${{ secrets.KEYSTORE_FILE_B64 }}" | base64 --decode > ./keystore.jks
 
-      - name: Build APK e AAB de Release
+      - name: Build APK and AAB
         working-directory: ./FrontEnd/src-capacitor/android
         run: |
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-          ./gradlew bundleRelease \
-            -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-            
-      - name: Upload dos Artefatos Android (.apk e .aab)
+          ./gradlew assembleRelease -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+          ./gradlew bundleRelease -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: TruCar-Android-Builds
@@ -94,40 +84,37 @@ jobs:
             ./FrontEnd/src-capacitor/android/app/build/outputs/apk/release/app-release.apk
             ./FrontEnd/src-capacitor/android/app/build/outputs/bundle/release/app-release.aab
 
-# Job para criar a Release no GitHub
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [build-windows, build-android]
     permissions:
       contents: write
-
     steps:
-      - name: Download do Artefato do Windows (.exe)
+      - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
           name: TruCar-Windows-Build
           path: ./release-assets/windows
 
-      - name: Download dos Artefatos do Android (.apk, .aab)
+      - name: Download Android artifacts
         uses: actions/download-artifact@v4
         with:
           name: TruCar-Android-Builds
           path: ./release-assets/android
 
-      - name: Checkout do código (para zipar)
+      - name: Checkout code (for source zip)
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: Criar zip do código-fonte
+      - name: Create source code zip
         run: zip -r source-code.zip . -x ".git/*"
 
-      - name: Criar Release e Anexar Arquivos
+      - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
-          # Usa a tag do git como nome da release e da tag
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
           name: TruCar ${{ github.ref_name }}
           body: "Release automática gerada pelo GitHub Actions."
           files: |
