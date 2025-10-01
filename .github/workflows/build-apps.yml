@@ -2,8 +2,8 @@ name: Build, Sign, and Release
 
 on:
   push:
-    tags:
-      - 'v*' # Dispara o workflow em push de tags que começam com 'v'
+    branches:
+      - main 
 
 jobs:
   # Job para criar o executável de Windows
