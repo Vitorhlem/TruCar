@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.API_URL || 'http://localhost:8000', // Adapte para a URL do seu backend
+  baseURL: process.env.API_URL || 'https://trucar-api.onrender.com/', // Adapte para a URL do seu backend
   withCredentials: true,
 });
 

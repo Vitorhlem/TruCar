@@ -8,7 +8,7 @@ declare module '@vue/runtime-core' {
   }
 }
 
-const api = axios.create({ baseURL: 'http://localhost:8000/api/v1' });
+const api = axios.create({ baseURL: 'https://trucar-api.onrender.com/' });
 
 export default boot(({ app, store }) => {
   api.interceptors.request.use((config) => {

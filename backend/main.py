@@ -74,7 +74,7 @@ async def upload_photo(file: UploadFile = File(...)):
 
     # Retorna a URL completa da imagem. Adapte base_url conforme seu ambiente.
     # Em produção, você pode usar um CDN ou um servidor de arquivos estáticos.
-    base_url = "http://localhost:8000" # URL do seu backend
+    base_url = "https://trucar-api.onrender.com/" # URL do seu backend
     file_url = f"{base_url}/{UPLOAD_DIR}/{unique_filename}"
 
     return JSONResponse(content={"file_url": file_url})

@@ -36,7 +36,7 @@
             >
               <img 
                 v-if="props.value" 
-                :src="`http://localhost:8000${props.value}`" 
+                :src="`https://trucar-api.onrender.com/${props.value}`" 
                 alt="Foto do item"
                 style="object-fit: contain; width: 100%; height: 100%;"
               >
