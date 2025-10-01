@@ -9,7 +9,7 @@
     </div>
 
     <q-card flat bordered>
-       <q-table
+      <q-table
         :rows="partStore.parts"
         :columns="columns"
         row-key="id"
@@ -36,7 +36,7 @@
             >
               <img 
                 v-if="props.value" 
-                :src="`https://trucar-api.onrender.com/${props.value}`" 
+                :src="getImageUrl(props.value)" 
                 alt="Foto do item"
                 style="object-fit: contain; width: 100%; height: 100%;"
               >
@@ -111,7 +111,7 @@
               <q-file v-model="invoiceFile" label="Nota Fiscal (PDF)" outlined clearable accept=".pdf">
                 <template v-slot:prepend><q-icon name="attach_file" /></template>
               </q-file>
-              <q-img v-if="!photoFile && formData.photo_url" :src="`http://localhost:8000${formData.photo_url}`" class="q-mt-md rounded-borders" style="height: 120px; max-width: 100%" fit="contain" />
+              <q-img v-if="!photoFile && formData.photo_url" :src="getImageUrl(formData.photo_url)" class="q-mt-md rounded-borders" style="height: 120px; max-width: 100%" fit="contain" />
             </div>
             <div class="col-12 col-sm-6">
               <q-input outlined v-model.number="formData.stock" type="number" :label="isEditing ? 'Estoque (somente leitura)' : 'Estoque Inicial *'" :disable="isEditing" :hint="isEditing ? 'Use as Ações para alterar o estoque' : ''" :rules="[val => val >= 0 || 'Valor inválido']" />
@@ -144,6 +144,7 @@ import { usePartStore, type PartCreatePayload } from 'stores/part-store';
 import type { Part, PartCategory } from 'src/models/part-models';
 import ManageStockDialog from 'components/ManageStockDialog.vue';
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
+import api from 'src/services/api'; // <-- Importação da API
 
 const $q = useQuasar();
 const partStore = usePartStore();
@@ -185,6 +186,16 @@ const columns: QTableProps['columns'] = [
   { name: 'location', label: 'Localização', field: 'location', align: 'left' },
   { name: 'actions', label: 'Ações', field: 'actions', align: 'center' },
 ];
+
+// Função para construir a URL completa da imagem
+function getImageUrl(path: string | null): string {
+  if (!path) return '';
+  const baseUrl = api.defaults.baseURL || '';
+  // Garante que não haja barras duplas na junção
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  return `${cleanBaseUrl}${cleanPath}`;
+}
 
 watch(searchQuery, () => {
   void partStore.fetchParts(searchQuery.value);
