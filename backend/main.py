@@ -3,6 +3,7 @@ import os
 import shutil
 
 import app.models
+
 from fastapi import FastAPI, Request, status, UploadFile, File, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -22,10 +23,7 @@ setup_logging()
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
-
-
 )
-
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -91,12 +89,11 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Permite as origens da lista
-    allow_credentials=True,      # Permite cookies (importante para autenticação)
-    allow_methods=["*"],         # Permite todos os métodos (GET, POST, PUT, etc.)
-    allow_headers=["*"],         # Permite todos os cabeçalhos
+    allow_origins=["*"],  # Permite todas as origens
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos os métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permite todos os cabeçalhos
 )
-
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
