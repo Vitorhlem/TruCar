@@ -99,6 +99,7 @@
             <div class="col-12 col-md-7 q-gutter-y-md">
               <q-input outlined v-model="formData.name" label="Nome do Item *" :rules="[val => !!val || 'Campo obrigatório']" />
               <q-select outlined v-model="formData.category" :options="categoryOptions" label="Categoria *" :rules="[val => !!val || 'Campo obrigatório']" />
+              <q-input v-if="formData.category === 'Pneu'" outlined v-model="formData.serial_number" label="Nº de Série / Fogo *" :rules="[val => !!val || 'Obrigatório para pneus']" />
               <q-input outlined v-model.number="formData.value" type="number" label="Custo do Item (R$)" prefix="R$" step="0.01" />
               <q-input outlined v-model="formData.part_number" label="Código / Part Number" />
               <q-input outlined v-model="formData.brand" label="Marca" />
@@ -160,7 +161,7 @@ const searchQuery = ref('');
 const photoFile = ref<File | null>(null);
 const invoiceFile = ref<File | null>(null);
 
-const categoryOptions: PartCategory[] = ["Peça", "Fluído", "Consumível", "Outro"];
+const categoryOptions: PartCategory[] = ["Peça", "Pneu", "Fluído", "Consumível", "Outro"]; // Adicionado "Pneu"
 
 const initialFormData: Partial<Part> = {
   name: '',
@@ -174,11 +175,13 @@ const initialFormData: Partial<Part> = {
   photo_url: null,
   value: null,
   invoice_url: null,
+  serial_number: null,
 };
 const formData = ref({ ...initialFormData });
 
 const columns: QTableProps['columns'] = [
   { name: 'photo_url', label: 'Foto', field: 'photo_url', align: 'center' },
+  { name: 'serial_number', label: 'Nº de Série', field: 'serial_number', align: 'left' }, // ADICIONADO
   { name: 'name', label: 'Item', field: 'name', align: 'left', sortable: true },
   { name: 'category', label: 'Categoria', field: 'category', align: 'left', sortable: true },
   { name: 'value', label: 'Custo Unitário', field: 'value', align: 'right', sortable: true },

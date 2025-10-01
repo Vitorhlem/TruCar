@@ -21,6 +21,7 @@ class Part(Base):
     category = Column(SAEnum(PartCategory), nullable=False, default=PartCategory.PECA)
     value = Column(Float, nullable=True) # Custo do item
     invoice_url = Column(String(512), nullable=True) # URL para a nota fiscal (PDF)
+    serial_number = Column(String(100), nullable=True, index=True, unique=True)
 
     part_number = Column(String(100), nullable=True, index=True)
     brand = Column(String(100), nullable=True)

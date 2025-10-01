@@ -11,6 +11,7 @@ class VehicleStatus(str, enum.Enum):
 
 class Vehicle(Base):
     __tablename__ = "vehicles"
+    
 
     id = Column(Integer, primary_key=True, index=True)
     brand = Column(String(50), nullable=False)
@@ -22,7 +23,8 @@ class Vehicle(Base):
     status = Column(SAEnum(VehicleStatus), nullable=False, default=VehicleStatus.AVAILABLE)
     current_km = Column(Integer, nullable=False, default=0)
     current_engine_hours = Column(Float, nullable=True, default=0)
-    
+    axle_configuration = Column(String(10), nullable=True) 
+
     telemetry_device_id = Column(String(100), unique=True, index=True, nullable=True)
     last_latitude = Column(Float, nullable=True)
     last_longitude = Column(Float, nullable=True)
@@ -45,3 +47,4 @@ class Vehicle(Base):
     documents = relationship("Document", back_populates="vehicle", cascade="all, delete-orphan")
     components = relationship("VehicleComponent", back_populates="vehicle", cascade="all, delete-orphan")
     inventory_transactions = relationship("InventoryTransaction", back_populates="related_vehicle")
+    tires = relationship("VehicleTire", back_populates="vehicle", cascade="all, delete-orphan")
