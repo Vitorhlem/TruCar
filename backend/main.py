@@ -57,13 +57,19 @@ app = FastAPI(
 # 4. Criar diretórios necessários
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# 5. Adicionar o Middleware de CORS (logo após a criação do app)
+origins = [
+    "https://trucar-api.onrender.com",  # A URL do seu front-end em produção
+    "http://localhost",
+    "http://localhost:8080", # Porta padrão do Quasar em desenvolvimento
+    "http://localhost:9000", # Outra porta comum do Quasar
+    # Adicione outras URLs se necessário
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite todas as origens
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Permite todos os métodos (GET, POST, etc.)
-    allow_headers=["*"],  # Permite todos os cabeçalhos
+    allow_methods=["*"], # Permite todos os métodos (GET, POST, etc.)
+    allow_headers=["*"], # Permite todos os cabeçalhos
 )
 
 # 6. Adicionar o evento de startup para criar as tabelas

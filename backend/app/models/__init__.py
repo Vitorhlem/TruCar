@@ -11,4 +11,5 @@ from .client_model import Client
 from .freight_order_model import FreightOrder
 from .stop_point_model import StopPoint
 from .achievement_model import Achievement, UserAchievement
-from .inventory_transaction_model import InventoryTransaction, TransactionType
+from .inventory_transaction_model import InventoryTransaction# --> Depende de 'parts'
+from .part_model import Part, PartCategory
