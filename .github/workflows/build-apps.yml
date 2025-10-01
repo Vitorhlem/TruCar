@@ -2,8 +2,8 @@ name: Build Android & Windows Apps
 
 on:
   push:
-    branches:
-      - main # Dispara o workflow em push para a branch main
+    tags:
+      - 'v*'
 
 jobs:
   # Job para criar o executável de Windows
@@ -120,17 +120,16 @@ jobs:
         with:
           lfs: true
 
-      - name: Criar zip do código-fonte
-        run: zip -r source-code.zip . -x ".git/*"
-
       - name: Criar Release e Anexar Arquivos
         uses: softprops/action-gh-release@v1
         with:
-          # Usa a tag do git como nome da release e da tag
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ github.ref_name }} # <-- CORRIGIDO AQUI
           name: TruCar ${{ github.ref_name }}
           body: "Release automática gerada pelo GitHub Actions."
           files: |
+            ./release-assets/windows/*
+            ./release-assets/android/*
+            source-code.zip
             ./release-assets/windows/*
             ./release-assets/android/*
             source-code.zip
