@@ -68,9 +68,28 @@ jobs:
         working-directory: ./FrontEnd
         run: npx quasar build -m capacitor -T android # <-- CORRIGIDO AQUI
 
-      - name: Upload do Projeto Android para Artefatos
+      - name: Decodificar a Keystore
+        working-directory: ./FrontEnd/src-capacitor/android
+        run: echo "${{ secrets.KEYSTORE_FILE_B64 }}" | base64 --decode > ./keystore.jks
+
+      - name: Build APK e AAB de Release
+        working-directory: ./FrontEnd/src-capacitor/android
+        run: |
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+            
+      - name: Upload dos Artefatos Android (.apk e .aab)
         uses: actions/upload-artifact@v4
         with:
-          name: TruCar-Android-Project
-          path: ./FrontEnd/src-capacitor/android # Faz o upload do projeto Android completo
-
+          name: TruCar-Android-Builds
+          path: |
+            ./FrontEnd/src-capacitor/android/app/build/outputs/apk/release/app-release.apk
+            ./FrontEnd/src-capacitor/android/app/build/outputs/bundle/release/app-release.aab
