@@ -21,7 +21,7 @@ class TireRotation(BaseModel):
 class VehicleTirePublic(BaseModel):
     id: int
     position_code: str
-    install_date: datetime
+    installation_date: datetime # CORRIGIDO: O nome do campo estava 'install_date'
     install_km: int
     part: PartPublic # Detalhes completos do pneu
 

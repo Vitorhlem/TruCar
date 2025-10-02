@@ -2,8 +2,9 @@ import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 import { VehicleStatus, type Vehicle, type VehicleCreate, type VehicleUpdate } from 'src/models/vehicle-models';
-import { useDemoStore } from './demo-store'; // <-- 1. IMPORTAMOS A DEMO STORE
-import { useAuthStore } from './auth-store'; // <-- 2. IMPORTAMOS A AUTH STORE
+import { useDemoStore } from './demo-store';
+import { useAuthStore } from './auth-store';
+import { useTireStore } from './tire-store';
 
 interface FetchParams {
   page?: number;
@@ -18,7 +19,7 @@ interface PaginatedVehiclesResponse {
 
 const initialState = () => ({
   vehicles: [] as Vehicle[],
-  selectedVehicle: null as Vehicle | null, // <-- NOVO ESTADO ADICIONADO
+  selectedVehicle: null as Vehicle | null,
   isLoading: false,
   totalItems: 0,
 });
@@ -70,18 +71,16 @@ export const useVehicleStore = defineStore('vehicle', {
         Notify.create({ type: 'positive', message: 'Item adicionado com sucesso!' });
         await this.fetchAllVehicles({ ...initialFetchParams, page: 1 });
 
-        // --- LÓGICA DE ATUALIZAÇÃO ADICIONADA ---
         const authStore = useAuthStore();
         if (authStore.isDemo) {
           const demoStore = useDemoStore();
-          await demoStore.fetchDemoStats(true); // O 'true' força a atualização
+          await demoStore.fetchDemoStats(true);
         }
-        // --- FIM DA ADIÇÃO ---
 
       } catch (error) {
         Notify.create({ type: 'negative', message: 'Erro ao adicionar item.' });
         console.error('Erro ao adicionar:', error);
-        throw error;  
+        throw error;
       }
     },
 
@@ -96,20 +95,38 @@ export const useVehicleStore = defineStore('vehicle', {
         throw error;
       }
     },
-    
+
+    async updateAxleConfiguration(vehicleId: number, axleConfig: string) {
+      try {
+        const response = await api.patch<Vehicle>(`/vehicles/${vehicleId}/axle-config`, { axle_configuration: axleConfig });
+        if (this.selectedVehicle && this.selectedVehicle.id === vehicleId) {
+          this.selectedVehicle = response.data;
+        }
+        const tireStore = useTireStore();
+        if (tireStore.tireLayout) {
+          tireStore.tireLayout.axle_configuration = response.data.axle_configuration || null;
+        }
+
+        Notify.create({ type: 'positive', message: 'Configuração de eixos atualizada!' });
+        return true;
+      } catch (error) {
+        Notify.create({ type: 'negative', message: 'Erro ao atualizar configuração.' });
+        console.error('Erro ao atualizar configuração de eixos:', error);
+        return false;
+      }
+    },
+
     async deleteVehicle(id: number, currentFetchParams: FetchParams) {
       try {
         await api.delete(`/vehicles/${id}`);
         Notify.create({ type: 'positive', message: 'Item excluído com sucesso.' });
         await this.fetchAllVehicles(currentFetchParams);
 
-        // --- LÓGICA DE ATUALIZAÇÃO ADICIONADA ---
         const authStore = useAuthStore();
         if (authStore.isDemo) {
           const demoStore = useDemoStore();
-          await demoStore.fetchDemoStats(true); // O 'true' força a atualização
+          await demoStore.fetchDemoStats(true);
         }
-        // --- FIM DA ADIÇÃO ---
 
       } catch (error) {
         Notify.create({ type: 'negative', message: 'Erro ao excluir o item.' });
@@ -118,3 +135,4 @@ export const useVehicleStore = defineStore('vehicle', {
     },
   },
 });
+

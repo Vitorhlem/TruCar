@@ -21,22 +21,30 @@
     </div>
   </div>
   <div v-else class="text-center text-grey q-pa-lg">
-    Configuração de eixos não definida para este veículo.
+    <div>Configuração de eixos não definida para este veículo.</div>
+    <q-btn
+      label="Definir Configuração"
+      color="primary"
+      unelevated
+      class="q-mt-md"
+      @click="$emit('define-config')"
+      icon="settings"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { VehicleTire } from 'src/models/tire-models';
+import { axleLayouts } from 'src/config/tire-layouts';
 
 const props = defineProps<{
   axleConfig: string | null;
   tires: VehicleTire[];
 }>();
 
-defineEmits(['install', 'remove']);
+defineEmits(['install', 'remove', 'define-config']);
 
-// Lógica para gerar o layout a partir da configuração de eixos
 const layout = computed(() => {
   if (!props.axleConfig) return null;
   const config = axleLayouts[props.axleConfig] || [];
@@ -49,20 +57,6 @@ const layout = computed(() => {
     }))
   };
 });
-
-// Mapeamento de configurações de eixos para posições
-const axleLayouts: Record<string, { label: string; code: string; }[][]> = {
-  '4x2': [
-    [{ label: 'Eixo 1 - Esq.', code: '1E' }, { label: 'Eixo 1 - Dir.', code: '1D' }],
-    [{ label: 'Eixo 2 - Esq. Int.', code: '2EI' }, { label: 'Eixo 2 - Esq. Ext.', code: '2EE' }, { label: 'Eixo 2 - Dir. Int.', code: '2DI' }, { label: 'Eixo 2 - Dir. Ext.', code: '2DE' }]
-  ],
-  '6x2': [
-    [{ label: 'Eixo 1 - Esq.', code: '1E' }, { label: 'Eixo 1 - Dir.', code: '1D' }],
-    [{ label: 'Eixo 2 - Esq. Int.', code: '2EI' }, { label: 'Eixo 2 - Esq. Ext.', code: '2EE' }, { label: 'Eixo 2 - Dir. Int.', code: '2DI' }, { label: 'Eixo 2 - Dir. Ext.', code: '2DE' }],
-    [{ label: 'Eixo 3 - Esq. Int.', code: '3EI' }, { label: 'Eixo 3 - Esq. Ext.', code: '3EE' }, { label: 'Eixo 3 - Dir. Int.', code: '3DI' }, { label: 'Eixo 3 - Dir. Ext.', code: '3DE' }]
-  ],
-  // Adicione outras configurações conforme necessário
-};
 </script>
 
 <style scoped lang="scss">
@@ -75,6 +69,7 @@ const axleLayouts: Record<string, { label: string; code: string; }[][]> = {
 .axle {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 16px;
   margin-bottom: 24px;
   &:last-child {
@@ -90,3 +85,4 @@ const axleLayouts: Record<string, { label: string; code: string; }[][]> = {
   }
 }
 </style>
+

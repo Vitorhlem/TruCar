@@ -11,6 +11,9 @@ class TransactionType(str, enum.Enum):
     RETORNO_ESTOQUE = "Retorno"
     AJUSTE_INICIAL = "Ajuste Inicial"
     AJUSTE_MANUAL = "Ajuste Manual"
+    # --- NOVOS TIPOS ADICIONADOS ---
+    INSTALACAO = "Instalação"
+    DESCARTE = "Descarte"
 
 class InventoryTransaction(Base):
     __tablename__ = "inventory_transactions"

@@ -17,5 +17,6 @@ from . import crud_inventory_transaction as crud_transaction
 from . import crud_vehicle_component as vehicle_component
 from . import crud_inventory_transaction as inventory_transaction
 from . import crud_tire as tire 
+from .crud_tire import install_tire, remove_tire, get_active_tires_by_vehicle
 
 

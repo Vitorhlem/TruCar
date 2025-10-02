@@ -16,7 +16,7 @@ export const useTireStore = defineStore('tire', {
       try {
         const response = await api.get<TireLayout>(`/tires/vehicles/${vehicleId}/tires`);
         this.tireLayout = response.data;
-      } catch (error) {
+      } catch { // --- CORREÇÃO APLICADA AQUI --- (variável 'error' removida)
         Notify.create({ type: 'negative', message: 'Falha ao carregar a configuração de pneus.' });
       } finally {
         this.isLoading = false;
@@ -28,7 +28,7 @@ export const useTireStore = defineStore('tire', {
       try {
         await api.post(`/tires/vehicles/${vehicleId}/tires`, payload);
         Notify.create({ type: 'positive', message: 'Pneu instalado com sucesso!' });
-        await this.fetchTireLayout(vehicleId); // Recarrega os dados
+        await this.fetchTireLayout(vehicleId);
         return true;
       } catch (error) {
         const message = isAxiosError(error) ? error.response?.data?.detail : 'Erro ao instalar pneu.';
@@ -44,7 +44,7 @@ export const useTireStore = defineStore('tire', {
       try {
         await api.put(`/tires/tires/${tireId}/remove?removal_km=${removalKm}`);
         Notify.create({ type: 'positive', message: 'Pneu removido e descartado com sucesso!' });
-        await this.fetchTireLayout(vehicleId); // Recarrega os dados
+        await this.fetchTireLayout(vehicleId);
         return true;
       } catch (error) {
         const message = isAxiosError(error) ? error.response?.data?.detail : 'Erro ao remover pneu.';
@@ -55,4 +55,4 @@ export const useTireStore = defineStore('tire', {
       }
     },
   },
-}); 
+});
