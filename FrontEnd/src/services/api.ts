@@ -10,7 +10,7 @@ const getBaseURL = () => {
   }
   // Para qualquer outro caso (como ao gerar o build para produção),
   // ele usará a URL do servidor na nuvem.
-  return 'https://trucar-api.onrender.com/'; // URL para produção
+  return 'https://trucar.onrender.com'; // URL para produção
 };
 
 const api = axios.create({

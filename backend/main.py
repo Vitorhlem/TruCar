@@ -60,7 +60,7 @@ app = FastAPI(
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 origins = [
-    "https://trucar-api.onrender.com",  # A URL do seu front-end em produção
+    "https://trucar.onrender.com",  # A URL do seu front-end em produção
     "http://localhost",
     "http://localhost:8080", # Porta padrão do Quasar em desenvolvimento
     "http://localhost:9000", # Outra porta comum do Quasar
