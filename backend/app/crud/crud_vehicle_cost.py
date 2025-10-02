@@ -7,7 +7,7 @@ from app.schemas.vehicle_cost_schema import VehicleCostCreate
 
 
 async def create_cost(
-    db: AsyncSession, *, obj_in: VehicleCostCreate, vehicle_id: int, organization_id: int
+    db: AsyncSession, *, obj_in: VehicleCostCreate, vehicle_id: int, organization_id: int, commit: bool = True
 ) -> VehicleCost:
     """Regista um novo custo para um veículo."""
     db_obj = VehicleCost(
@@ -16,8 +16,11 @@ async def create_cost(
         organization_id=organization_id
     )
     db.add(db_obj)
-    await db.commit()
-    await db.refresh(db_obj)
+    
+    if commit:
+        await db.commit()
+        await db.refresh(db_obj)
+        
     return db_obj
 
 
@@ -34,3 +37,5 @@ async def get_costs_by_vehicle(
     )
     result = await db.execute(stmt)
     return result.scalars().all()
+
+    

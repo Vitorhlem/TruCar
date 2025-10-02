@@ -11,12 +11,11 @@ class PartBase(BaseModel):
     location: Optional[str] = None
     notes: Optional[str] = None
     value: Optional[float] = None
+    lifespan_km: Optional[int] = None # --- NOVO CAMPO ---
 
 class PartCreate(PartBase):
     pass
 
-# --- CORREÇÃO APLICADA AQUI ---
-# O PartUpdate agora define seus próprios campos, todos opcionais, e omite 'stock'.
 class PartUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
@@ -25,14 +24,14 @@ class PartUpdate(BaseModel):
     min_stock: Optional[int] = None
     location: Optional[str] = None
     notes: Optional[str] = None
-    value: Optional[float] = None # --- ADICIONADO ---
-
-# --- FIM DA CORREÇÃO ---
+    value: Optional[float] = None
+    lifespan_km: Optional[int] = None # --- NOVO CAMPO ---
 
 class PartPublic(PartBase):
     id: int
     photo_url: Optional[str] = None
-    invoice_url: Optional[str] = None # --- ADICIONADO ---
+    invoice_url: Optional[str] = None
 
     class Config:
         from_attributes = True
+

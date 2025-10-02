@@ -3,10 +3,14 @@ import type { Part } from './part-models';
 // Representa um pneu instalado em uma posição
 export interface VehicleTire {
   id: number;
+  part_id: number;
+  vehicle_id: number;
   position_code: string;
-  install_date: string;
+  installation_date: string; // ISO string
   install_km: number;
-  part: Part; // Detalhes do pneu do inventário
+  is_active: boolean;
+  install_engine_hours?: number | null; // --- ADICIONADO ---
+  part: Part; // Detalhes da peça (pneu)
 }
 
 // Representa a resposta da API com a configuração do veículo
@@ -21,4 +25,12 @@ export interface TireInstallPayload {
   part_id: number;
   position_code: string;
   install_km: number;
+}
+
+export type TireWithStatus = VehicleTire & {
+  status: 'ok' | 'warning' | 'critical';
+  wearPercentage: number;
+  km_rodados: number;
+  horas_de_uso?: number; 
+  lifespan_km: number;
 }
