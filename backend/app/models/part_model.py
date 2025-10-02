@@ -9,6 +9,7 @@ class PartCategory(str, enum.Enum):
     PECA = "Peça"
     FLUIDO = "Fluído"
     CONSUMIVEL = "Consumível"
+    PNEU = "Pneu"  # <-- Categoria Adicionada
     OUTRO = "Outro"
 
 class Part(Base):

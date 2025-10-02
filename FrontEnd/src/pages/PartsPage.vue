@@ -212,7 +212,8 @@ function getStockColor(current: number, min: number): string {
 
 function getCategoryIcon(category: PartCategory): string {
   const iconMap: Record<PartCategory, string> = {
-    'Peça': 'settings', 'Fluído': 'opacity', 'Consumível': 'inbox', 'Outro': 'category',
+    'Peça': 'settings', 'Fluído': 'opacity', 'Consumível': 'inbox', 'Outro': 'category', 'Pneu': 'album',
+
   };
   return iconMap[category] || 'inventory_2';
 }

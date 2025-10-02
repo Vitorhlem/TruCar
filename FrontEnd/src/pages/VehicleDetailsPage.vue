@@ -11,6 +11,7 @@
     <q-skeleton v-else type="text" class="text-h4 q-my-md" width="300px" />
 
     <q-tabs v-model="tab" dense class="text-grey q-mt-md" active-color="primary" indicator-color="primary" align="left">
+      <q-tab name="tires" label="Pneus" />
       <q-tab name="history" :label="`Histórico de Peças (${filteredHistory.length})`" />
       <q-tab name="components" :label="`Componentes Ativos (${filteredComponents.length})`" />
       <q-tab name="costs" :label="`Custos (${filteredCosts.length})`" />
@@ -20,6 +21,30 @@
     <q-separator />
 
     <q-tab-panels v-model="tab" animated>
+      <q-tab-panel name="tires">
+        <div class="row items-center justify-between q-mb-md">
+          <div class="text-h6">Gerenciamento de Pneus</div>
+           <q-btn
+              v-if="tireStore.tireLayout?.axle_configuration"
+              label="Alterar Configuração"
+              color="secondary"
+              flat
+              dense
+              icon="settings"
+              @click="isAxleConfigDialogOpen = true"
+            />
+        </div>
+        <TireLayout
+          v-if="tireStore.tireLayout"
+          :axle-config="tireStore.tireLayout.axle_configuration"
+          :tires="tireStore.tireLayout.tires"
+          @install="openInstallDialog"
+          @remove="openRemoveDialog"
+          @define-config="isAxleConfigDialogOpen = true"
+        />
+        <q-inner-loading :showing="tireStore.isLoading" />
+      </q-tab-panel>
+
       <q-tab-panel name="history">
         <div class="row items-center justify-between q-mb-md q-gutter-sm">
           <div class="text-h6">Histórico de Movimentações</div>
@@ -147,6 +172,7 @@
       </q-tab-panel>
     </q-tab-panels>
 
+    <!-- Diálogos existentes -->
     <q-dialog v-model="isAddCostDialogOpen">
       <AddCostDialog :vehicle-id="vehicleId" @close="isAddCostDialogOpen = false" />
     </q-dialog>
@@ -169,6 +195,59 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="isInstallTireDialogOpen">
+      <q-card style="width: 500px; max-width: 90vw;">
+        <q-form @submit.prevent="handleInstallTire">
+          <q-card-section>
+            <div class="text-h6">Instalar Pneu na Posição: {{ targetPosition }}</div>
+          </q-card-section>
+          <q-card-section class="q-gutter-y-md">
+            <q-select
+              outlined
+              v-model="installTireForm.part_id"
+              :options="tireOptions"
+              label="Selecione o Pneu do Estoque *"
+              emit-value map-options use-input
+              @filter="filterTires"
+              :rules="[val => !!val || 'Selecione um pneu']"
+            />
+            <q-input outlined v-model.number="installTireForm.install_km" type="number" label="KM atual do Veículo *" :rules="[val => val > 0 || 'KM inválido']" />
+          </q-card-section>
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat label="Cancelar" v-close-popup />
+            <q-btn type="submit" unelevated color="primary" label="Instalar" :loading="tireStore.isLoading" />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
+
+     <!-- NOVO DIÁLOGO PARA CONFIGURAR EIXOS -->
+    <q-dialog v-model="isAxleConfigDialogOpen">
+      <q-card style="width: 400px; max-width: 90vw;">
+        <q-form @submit.prevent="handleUpdateAxleConfig">
+          <q-card-section>
+            <div class="text-h6">Definir Configuração de Eixos</div>
+          </q-card-section>
+          <q-card-section>
+            <q-select
+              outlined
+              v-model="selectedAxleConfig"
+              :options="axleConfigOptions"
+              label="Selecione o tipo de veículo/eixo"
+              emit-value
+              map-options
+              :rules="[val => !!val || 'Selecione uma configuração']"
+            />
+          </q-card-section>
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat label="Cancelar" v-close-popup />
+            <q-btn type="submit" unelevated color="primary" label="Salvar" />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
+
+
     <PartHistoryDialog v-model="isPartHistoryDialogOpen" :part="selectedPart" />
     <MaintenanceDetailsDialog v-model="isMaintenanceDetailsOpen" :request="selectedMaintenance" />
     <CreateRequestDialog v-model="isMaintenanceDialogOpen" :preselected-vehicle-id="vehicleId" />
@@ -187,16 +266,20 @@ import { useVehicleCostStore } from 'stores/vehicle-cost-store';
 import { useVehicleComponentStore } from 'stores/vehicle-component-store';
 import { usePartStore } from 'stores/part-store';
 import { useMaintenanceStore } from 'stores/maintenance-store';
+import { useTireStore } from 'stores/tire-store';
 import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
 import type { Part } from 'src/models/part-models';
 import type { MaintenanceRequest } from 'src/models/maintenance-models';
 import type { VehicleCost } from 'src/models/vehicle-cost-models';
+import type { VehicleTire } from 'src/models/tire-models';
 import AddCostDialog from 'components/AddCostDialog.vue';
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
 import CostsPieChart from 'components/CostsPieChart.vue';
 import MaintenanceDetailsDialog from 'components/maintenance/MaintenanceDetailsDialog.vue';
 import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue';
+import TireLayout from 'components/TireLayout.vue';
+import { axleLayouts } from 'src/config/tire-layouts';
 
 const route = useRoute();
 const $q = useQuasar();
@@ -205,9 +288,10 @@ const costStore = useVehicleCostStore();
 const componentStore = useVehicleComponentStore();
 const partStore = usePartStore();
 const maintenanceStore = useMaintenanceStore();
+const tireStore = useTireStore();
 
-const tab = ref((route.query.tab as string) || 'history');
 const vehicleId = Number(route.params.id);
+const tab = ref((route.query.tab as string) || 'tires');
 
 // --- Controlo de Diálogos ---
 const isAddCostDialogOpen = ref(false);
@@ -219,6 +303,20 @@ const selectedPart = ref<Part | null>(null);
 const selectedMaintenance = ref<MaintenanceRequest | null>(null);
 const installForm = ref({ part_id: null, quantity: 1 });
 const partOptions = ref<{label: string, value: number}[]>([]);
+
+// --- Lógica para Pneus ---
+const isInstallTireDialogOpen = ref(false);
+const targetPosition = ref('');
+const tireOptions = ref<{label: string, value: number}[]>([]);
+const installTireForm = ref<{ part_id: number | null, install_km: number | null }>({ part_id: null, install_km: vehicleStore.selectedVehicle?.current_km || null });
+
+// --- Lógica para Configuração de Eixos (NOVO) ---
+const isAxleConfigDialogOpen = ref(false);
+const selectedAxleConfig = ref<string | null>(null);
+const axleConfigOptions = Object.keys(axleLayouts).map(key => ({
+  label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Formata para exibição
+  value: key
+}));
 
 // --- Estado de Filtros e Pesquisas ---
 const search = ref({ history: '', components: '', costs: '', maintenances: '' });
@@ -334,7 +432,7 @@ function exportToCsv(tabName: 'history' | 'components' | 'costs' | 'maintenances
       else val = row[col.field as keyof typeof row];
 
       if (col.format && val) val = col.format(val, row as never);
-      
+
       const cleanVal = `"${String(val ?? '').replace(/"/g, '""')}"`;
       return cleanVal;
     }).join(';'))
@@ -415,13 +513,79 @@ function openMaintenanceDetails(maintenance: MaintenanceRequest) {
   isMaintenanceDetailsOpen.value = true;
 }
 
+// --- Funções para Pneus ---
+function filterTires(val: string, update: (cb: () => void) => void) {
+  update(() => {
+    const needle = val.toLowerCase();
+    tireOptions.value = partStore.parts
+      .filter(p => p.category === 'Pneu' && p.stock > 0 && (p.serial_number?.toLowerCase().includes(needle) || p.name.toLowerCase().includes(needle)))
+      .map(p => ({ label: `${p.brand} ${p.name} (Série: ${p.serial_number})`, value: p.id }));
+  });
+}
+
+function openInstallDialog(positionCode: string) {
+  targetPosition.value = positionCode;
+  installTireForm.value = { part_id: null, install_km: vehicleStore.selectedVehicle?.current_km || 0 };
+  isInstallTireDialogOpen.value = true;
+}
+
+async function handleInstallTire() {
+  if (!installTireForm.value.part_id || !installTireForm.value.install_km) return;
+  const success = await tireStore.installTire(vehicleId, {
+    part_id: installTireForm.value.part_id,
+    position_code: targetPosition.value,
+    install_km: installTireForm.value.install_km,
+  });
+  if (success) {
+    isInstallTireDialogOpen.value = false;
+    await partStore.fetchParts();
+  }
+}
+
+function openRemoveDialog(tire: VehicleTire) {
+  $q.dialog({
+    title: 'Remover Pneu',
+    message: `Digite o KM atual do veículo para remover o pneu (Série: ${tire.part.serial_number}) da posição ${tire.position_code}.`,
+    prompt: {
+      model: String(vehicleStore.selectedVehicle?.current_km || tire.install_km),
+      type: 'number',
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((removalKmString: string) => {
+    void (async () => {
+      const removalKm = Number(removalKmString);
+      if (isNaN(removalKm) || removalKm <= tire.install_km) {
+        $q.notify({ type: 'negative', message: 'O KM de remoção deve ser um número maior que o de instalação.' });
+        return;
+      }
+      const success = await tireStore.removeTire(tire.id, removalKm, vehicleId);
+      if (success) {
+        await fetchHistory();
+      }
+    })();
+  });
+}
+
+// --- NOVA FUNÇÃO PARA ATUALIZAR EIXO ---
+async function handleUpdateAxleConfig() {
+  if (!selectedAxleConfig.value) return;
+  const success = await vehicleStore.updateAxleConfiguration(vehicleId, selectedAxleConfig.value);
+  if (success) {
+    isAxleConfigDialogOpen.value = false;
+  }
+}
+
 onMounted(() => {
-  void vehicleStore.fetchVehicleById(vehicleId);
+  void vehicleStore.fetchVehicleById(vehicleId).then(() => {
+    selectedAxleConfig.value = vehicleStore.selectedVehicle?.axle_configuration || null;
+  });
   void costStore.fetchCosts(vehicleId);
   void componentStore.fetchComponents(vehicleId);
-  void partStore.fetchParts(); 
+  void partStore.fetchParts();
   void fetchHistory();
   void maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 });
+  void tireStore.fetchTireLayout(vehicleId);
 });
 </script>
 
