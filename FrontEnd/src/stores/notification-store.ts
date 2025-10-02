@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
-import type { Notification } from 'src/models/notification-models';
+import type { Notification, NotificationCreate } from 'src/models/notification-models';
+import { Notify } from 'quasar';
 
 export const useNotificationStore = defineStore('notification', {
   state: () => ({
@@ -42,6 +43,25 @@ export const useNotificationStore = defineStore('notification', {
         this.unreadCount = this.notifications.filter(n => !n.is_read).length;
       } catch (error) {
         console.error('Falha ao marcar notificação como lida:', error);
+      }
+    },
+
+    // --- NOVA ACTION ADICIONADA ---
+    async createNotification(payload: NotificationCreate): Promise<boolean> {
+      try {
+        await api.post('/notifications/', payload);
+        Notify.create({
+          type: 'info',
+          message: 'Nova notificação de sistema gerada.',
+          icon: 'warning',
+          position: 'top-right',
+        });
+        // Após criar, atualiza a contagem para o "sininho"
+        await this.fetchUnreadCount();
+        return true;
+      } catch (error) {
+        console.error('Falha ao criar notificação:', error);
+        return false;
       }
     },
   },

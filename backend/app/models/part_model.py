@@ -32,9 +32,12 @@ class Part(Base):
     notes = Column(Text, nullable=True)
     photo_url = Column(String(512), nullable=True)
 
+    # --- NOVO CAMPO ADICIONADO ---
+    lifespan_km = Column(Integer, nullable=True) # Vida útil esperada em KM (para pneus, etc.)
+
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization")
 
     # NOVO: Relação com o histórico de transações
     transactions = relationship("InventoryTransaction", back_populates="part", cascade="all, delete-orphan")
-    
+
