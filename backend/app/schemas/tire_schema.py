@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
-from .part_schema import PartPublic
+from .part_schema import Part, PartPublic
 
 # --- Schemas para Ações ---
 
@@ -9,7 +9,7 @@ class TireInstall(BaseModel):
     part_id: int
     position_code: str
     install_km: int = Field(..., ge=0)
-    install_engine_hours: Optional[float] = Field(None, ge=0) # --- ADICIONADO ---
+    install_engine_hours: Optional[float] = Field(None, ge=0)
 
 class TireRemove(BaseModel):
     removal_km: int = Field(..., ge=0)
@@ -24,9 +24,9 @@ class TireRotation(BaseModel):
 class VehicleTirePublic(BaseModel):
     id: int
     position_code: str
-    installation_date: datetime
+    installation_date: datetime # <-- CORRIGIDO: de 'install_date' para 'installation_date'
     install_km: int
-    install_engine_hours: Optional[float] = None # --- ADICIONADO ---
+    install_engine_hours: Optional[float] = None
     part: PartPublic
 
     class Config:
@@ -37,3 +37,16 @@ class TireLayoutResponse(BaseModel):
     axle_configuration: Optional[str]
     tires: List[VehicleTirePublic]
 
+# --- Schema de Histórico ---
+class VehicleTireHistory(BaseModel):
+    id: int
+    part: Part
+    position_code: str
+    install_km: float
+    removal_km: Optional[float] = None
+    installation_date: datetime # <-- CORRIGIDO: de 'install_date' para 'installation_date'
+    removal_date: Optional[datetime] = None
+    km_run: float = 0.0
+
+    class Config:
+        from_attributes = True

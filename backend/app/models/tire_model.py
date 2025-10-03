@@ -9,8 +9,8 @@ class VehicleTire(Base):
     id = Column(Integer, primary_key=True, index=True)
     vehicle_id = Column(Integer, ForeignKey('vehicles.id'), nullable=False)
     part_id = Column(Integer, ForeignKey('parts.id'), nullable=False)
-    position_code = Column(String, nullable=False)
-    
+    position_code = Column(String(20), nullable=False) # <-- AUMENTE O VALOR PARA 20
+
     install_km = Column(Integer, nullable=False)
     removal_km = Column(Integer, nullable=True)
     
