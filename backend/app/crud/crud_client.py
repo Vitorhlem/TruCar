@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List
+from typing import List, Optional
 
 from app.models.client_model import Client
 from app.schemas.client_schema import ClientCreate, ClientUpdate
@@ -13,8 +13,14 @@ async def create(db: AsyncSession, *, obj_in: ClientCreate, organization_id: int
     await db.refresh(db_obj)
     return db_obj
 
-async def get(db: AsyncSession, *, id: int, organization_id: int) -> Client | None:
-    stmt = select(Client).where(Client.id == id, Client.organization_id == organization_id)
+async def get(db: AsyncSession, *, id: int, organization_id: Optional[int] = None) -> Optional[Client]:
+    """
+    Obtém um cliente por ID, opcionalmente filtrando pela organização.
+    """
+    stmt = select(Client).where(Client.id == id)
+    if organization_id:
+        stmt = stmt.where(Client.organization_id == organization_id)
+
     result = await db.execute(stmt)
     return result.scalars().first()
 
