@@ -1,0 +1,53 @@
+# .github/workflows/backend-ci.yml
+
+name: Backend CI - Test, Lint & Security Scan
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+jobs:
+  test-and-lint:
+    name: "Run Tests, Linter & Security Scan"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Use a versão do Python do seu projeto
+
+      - name: Cache Pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          # Instala as dependências de teste e linting
+          pip install pytest pytest-asyncio aiosqlite ruff bandit
+
+      - name: Run Ruff Linter
+        run: ruff check backend/
+
+      - name: Run Bandit Security Scan
+        run: bandit -r backend/app -ll -ii
+
+      - name: Run Pytest
+        run: pytest backend/

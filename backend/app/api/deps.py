@@ -58,11 +58,16 @@ async def get_current_active_user(
 async def get_current_active_manager(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
+    """
+    Verifica se o utilizador atual é um gestor (CLIENTE_ATIVO ou CLIENTE_DEMO).
+    Levanta uma exceção HTTPException 403 se não for.
+    """
     if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
         raise HTTPException(
-            status_code=403, detail="O utilizador não tem privilégios de gestor suficientes"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="O utilizador não tem permissões de gestor.",
         )
-    return current_user
+    return current_user 
 
 async def get_current_super_admin(
     current_user: User = Depends(get_current_active_user),
