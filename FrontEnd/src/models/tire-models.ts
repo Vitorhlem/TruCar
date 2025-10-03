@@ -34,3 +34,15 @@ export type TireWithStatus = VehicleTire & {
   horas_de_uso?: number; 
   lifespan_km: number;
 }
+
+export interface VehicleTireHistory {
+  id: number;
+  part: Part;
+  install_km: number;
+  removal_km: number | null;
+    position_code: string; // <-- ADICIONE ESTA LINHA
+
+  install_date: string; // as datas vêm como string do JSON
+  removal_date: string | null;
+  km_run: number;
+}

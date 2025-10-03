@@ -23,7 +23,7 @@ class Vehicle(Base):
     status = Column(SAEnum(VehicleStatus), nullable=False, default=VehicleStatus.AVAILABLE)
     current_km = Column(Integer, nullable=False, default=0)
     current_engine_hours = Column(Float, nullable=True, default=0)
-    axle_configuration = Column(String(10), nullable=True) 
+    axle_configuration = Column(String(30), nullable=True) 
 
     telemetry_device_id = Column(String(100), unique=True, index=True, nullable=True)
     last_latitude = Column(Float, nullable=True)

@@ -4,7 +4,8 @@
       <h1 class="text-h4 text-weight-bold q-my-md">
         {{ vehicleStore.selectedVehicle.brand }} {{ vehicleStore.selectedVehicle.model }}
       </h1>
-      <div class="text-subtitle1 text-grey-7">
+      <div class="text-subtitle1 text-grey
+      ">
         {{ vehicleStore.selectedVehicle.license_plate || vehicleStore.selectedVehicle.identifier }}
       </div>
     </div>
@@ -21,31 +22,118 @@
     <q-separator />
 
     <q-tab-panels v-model="tab" animated>
-      <q-tab-panel name="tires">
-        <div class="row items-center justify-between q-mb-md">
-          <div class="text-h6">Gerenciamento de Pneus</div>
-           <q-btn
-              v-if="tireStore.tireLayout?.axle_configuration"
-              label="Alterar Configuração"
-              color="secondary"
-              flat
-              dense
-              icon="settings"
-              @click="isAxleConfigDialogOpen = true"
-            />
+      <!-- ### ABA DE PNEUS ATUALIZADA E ENRIQUECIDA ### -->
+      <q-tab-panel name="tires" class="q-pa-md">
+        <!-- 1. SEÇÃO DE KPIs DE PNEUS -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-6 col-md-3">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey">Custo por KM (Pneus)</div>
+                <div class="text-h6 text-weight-bold">
+                  {{ kpiTireCostPerKm }}
+                  <span v-if="kpiTireCostPerKm !== 'N/A'" class="text-subtitle2 text-grey"> R$/km</span>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-6 col-md-3">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey">Vida Útil Média</div>
+                <div class="text-h6 text-weight-bold">
+                  {{ kpiAvgTireLifespan }}
+                  <span v-if="kpiAvgTireLifespan !== 'N/A'" class="text-subtitle2 text-grey"> km</span>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-6 col-md-3">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey">Pneus em Alerta</div>
+                <div class="text-h6 text-weight-bold" :class="kpiTiresInAlert > 0 ? 'text-negative' : 'text-positive'">
+                  {{ kpiTiresInAlert }}
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-6 col-md-3">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-caption text-grey">Custo Total (Pneus)</div>
+                <div class="text-h6 text-weight-bold">
+                  {{ kpiTotalTireCost }}
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
         </div>
-        <TireLayout
-          v-if="tireStore.tireLayout"
+
+        <q-separator class="q-my-lg" />
+
+        <!-- 2. SEÇÃO DE GERENCIAMENTO VISUAL -->
+        <div class="row items-center justify-between q-mb-md">
+          <div class="text-h6">Layout e Status Atual</div>
+          <q-btn
+            v-if="tireStore.tireLayout?.axle_configuration"
+            label="Alterar Config."
+            color="secondary"
+            flat dense icon="settings"
+            @click="isAxleConfigDialogOpen = true"
+          />
+        </div>
+        <InteractiveTireLayout
+          v-if="tireStore.tireLayout?.axle_configuration"
           :axle-config="tireStore.tireLayout.axle_configuration"
           :tires="tiresWithStatus"
           :is-agro="isAgro"
           @install="openInstallDialog"
           @remove="openRemoveDialog"
-          @define-config="isAxleConfigDialogOpen = true"
         />
-        <q-inner-loading :showing="tireStore.isLoading" />
+        <div v-else-if="!tireStore.isLoading && !vehicleStore.isLoading && !tireStore.tireLayout?.axle_configuration" class="text-center q-pa-lg bg bordered-card">
+            <q-icon name="build" size="lg" color="grey-5" />
+            <div class="text-h6 q-mt-md">Nenhuma configuração de eixos definida.</div>
+            <p class="text-grey">Para começar a gerenciar os pneus, você precisa primeiro definir o layout de eixos do veículo.</p>
+            <q-btn
+              label="Definir Configuração de Eixos"
+              color="primary"
+              unelevated
+              @click="isAxleConfigDialogOpen = true"
+            />
+        </div>
+
+        <q-separator class="q-my-lg" />
+
+        <!-- 3. SEÇÃO DE ANÁLISE HISTÓRICA E FINANCEIRA -->
+        <div class="text-h6 q-mb-md">Análise e Histórico de Pneus</div>
+        <div class="row q-col-gutter-lg">
+          <div class="col-12 col-lg-8">
+            <q-table
+              title="Histórico de Pneus Removidos"
+              :rows="removedTiresHistory"
+              :columns="historyTireColumns"
+              row-key="id"
+              flat bordered
+              dense
+              no-data-label="Nenhum pneu foi removido deste veículo ainda."
+              :loading="isHistoryLoading"
+            />
+          </div>
+          <div class="col-12 col-lg-4">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="text-subtitle1">Custos Mensais com Pneus</div>
+              </q-card-section>
+              <q-card-section>
+                <TireCostChart :costs="tireCostsByMonth" />
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+        <q-inner-loading :showing="tireStore.isLoading || isHistoryLoading" />
       </q-tab-panel>
-      
+
       <q-tab-panel name="history">
         <div class="row items-center justify-between q-mb-md q-gutter-sm">
           <div class="text-h6">Histórico de Movimentações</div>
@@ -122,7 +210,7 @@
           <div class="col-12 col-md-7">
             <q-table :rows="filteredCosts" :columns="costColumns" row-key="id" :loading="costStore.isLoading" no-data-label="Nenhum custo encontrado para os filtros aplicados." flat bordered>
               <template v-slot:bottom-row>
-                <q-tr class="bg-black-9 text-weight-bold">
+                <q-tr class="text-weight-bold" :class="$q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'">
                   <q-td colspan="2" class="text-right">Total (Filtrado):</q-td>
                   <q-td class="text-right">
                     {{ new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCost) }}
@@ -173,7 +261,7 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <!-- Diálogos -->
+    <!-- DIÁLOGOS -->
     <q-dialog v-model="isInstallTireDialogOpen">
       <q-card style="width: 500px; max-width: 90vw;">
         <q-form @submit.prevent="handleInstallTire">
@@ -182,8 +270,8 @@
           </q-card-section>
           <q-card-section class="q-gutter-y-md">
             <q-select outlined v-model="installTireForm.part_id" :options="tireOptions" label="Selecione o Pneu do Estoque *" emit-value map-options use-input @filter="filterTires" :rules="[val => !!val || 'Selecione um pneu']" />
-            <q-input v-if="!isAgro" outlined v-model.number="installTireForm.install_km" type="number" label="KM atual do Veículo *" :rules="[val => val >= 0 || 'KM inválido']" />
-            <q-input v-else outlined v-model.number="installTireForm.install_engine_hours" type="number" label="Horas do Motor atuais *" :rules="[val => val >= 0 || 'Horas inválidas']" />
+            <q-input v-if="!isAgro" outlined v-model.number="installTireForm.install_km" type="number" label="KM atual do Veículo *" :rules="[val => val !== null && val >= 0 || 'KM inválido']" />
+            <q-input v-else outlined v-model.number="installTireForm.install_engine_hours" type="number" label="Horas do Motor atuais *" :rules="[val => val !== null && val >= 0 || 'Horas inválidas']" />
           </q-card-section>
           <q-card-actions align="right" class="q-pa-md">
             <q-btn flat label="Cancelar" v-close-popup />
@@ -239,11 +327,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, onActivated } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar, type QTableColumn, exportFile } from 'quasar';
 import { api } from 'boot/axios';
 import { format, differenceInDays, parse } from 'date-fns';
+import { storeToRefs } from 'pinia';
 
 // Stores
 import { useAuthStore } from 'stores/auth-store';
@@ -253,26 +342,24 @@ import { useVehicleComponentStore } from 'stores/vehicle-component-store';
 import { usePartStore } from 'stores/part-store';
 import { useMaintenanceStore } from 'stores/maintenance-store';
 import { useTireStore } from 'stores/tire-store';
-import { useNotificationStore } from 'stores/notification-store';
 
 // Models
 import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
 import type { Part } from 'src/models/part-models';
 import type { MaintenanceRequest } from 'src/models/maintenance-models';
-import type { VehicleTire, TireWithStatus } from 'src/models/tire-models';
+import type { VehicleTire, TireWithStatus, VehicleTireHistory } from 'src/models/tire-models';
 import type { VehicleCost } from 'src/models/vehicle-cost-models';
-
 
 // Components
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
 import CostsPieChart from 'components/CostsPieChart.vue';
 import MaintenanceDetailsDialog from 'components/maintenance/MaintenanceDetailsDialog.vue';
 import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue';
-import TireLayout from 'components/TireLayout.vue';
+import InteractiveTireLayout from 'components/InteractiveTireLayout.vue';
+import TireCostChart from 'components/TireCostChart.vue';
 import { axleLayouts } from 'src/config/tire-layouts';
 import AddCostDialog from 'components/AddCostDialog.vue';
-
 
 const route = useRoute();
 const $q = useQuasar();
@@ -283,13 +370,18 @@ const componentStore = useVehicleComponentStore();
 const partStore = usePartStore();
 const maintenanceStore = useMaintenanceStore();
 const tireStore = useTireStore();
-const notificationStore = useNotificationStore();
+
+// Usar storeToRefs para obter os dados do histórico de pneus de forma reativa
+const { removedTiresHistory } = storeToRefs(tireStore);
 
 const vehicleId = Number(route.params.id);
 const tab = ref((route.query.tab as string) || 'tires');
 const isAgro = computed(() => authStore.userSector === 'agronegocio');
 
-// --- Diálogos e Formulários ---
+const isHistoryLoading = ref(false);
+const inventoryHistory = ref<InventoryTransaction[]>([]);
+
+// DIÁLOGOS E FORMULÁRIOS
 const isAddCostDialogOpen = ref(false);
 const isInstallDialogOpen = ref(false);
 const isPartHistoryDialogOpen = ref(false);
@@ -299,8 +391,6 @@ const selectedPart = ref<Part | null>(null);
 const selectedMaintenance = ref<MaintenanceRequest | null>(null);
 const installFormComponent = ref({ part_id: null, quantity: 1 });
 const partOptions = ref<{label: string, value: number}[]>([]);
-
-// --- Pneus ---
 const isInstallTireDialogOpen = ref(false);
 const targetPosition = ref('');
 const tireOptions = ref<{label: string, value: number}[]>([]);
@@ -308,9 +398,7 @@ const installTireForm = ref<{
   part_id: number | null,
   install_km: number | null,
   install_engine_hours?: number | null
-}>({ part_id: null, install_km: null, install_engine_hours: null });
-
-// --- Eixos ---
+}>({ part_id: null, install_km: 0, install_engine_hours: 0 });
 const isAxleConfigDialogOpen = ref(false);
 const selectedAxleConfig = ref<string | null>(null);
 const axleConfigOptions = Object.keys(axleLayouts).map(key => ({
@@ -318,7 +406,25 @@ const axleConfigOptions = Object.keys(axleLayouts).map(key => ({
   value: key
 }));
 
-// --- Alertas de Pneus ---
+
+// ### LÓGICA DE ATUALIZAÇÃO CENTRALIZADA ###
+async function refreshAllVehicleData() {
+  isHistoryLoading.value = true;
+  // Dispara todas as chamadas à API em paralelo para maior rapidez
+  await Promise.all([
+    fetchHistory(), // Histórico geral de inventário
+    partStore.fetchParts(),
+    vehicleStore.fetchVehicleById(vehicleId),
+    costStore.fetchCosts(vehicleId),
+    componentStore.fetchComponents(vehicleId),
+    maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 }),
+    tireStore.fetchTireLayout(vehicleId),
+    tireStore.fetchRemovedTiresHistory(vehicleId), // <-- BUSCA O HISTÓRICO CORRETO
+  ]);
+  isHistoryLoading.value = false;
+}
+
+// ### LÓGICA DE PNEUS E STATUS ###
 const tiresWithStatus = computed((): TireWithStatus[] => {
   if (!tireStore.tireLayout?.tires || !vehicleStore.selectedVehicle) return [];
   const currentKm = vehicleStore.selectedVehicle.current_km || 0;
@@ -341,11 +447,46 @@ const tiresWithStatus = computed((): TireWithStatus[] => {
   });
 });
 
-// --- Filtros e Tabelas ---
+// ### KPIs SIMPLIFICADOS (AGORA USAM DADOS DA API) ###
+const kpiTireCostPerKm = computed(() => {
+  const totalKm = removedTiresHistory.value.reduce((sum, tire) => sum + tire.km_run, 0);
+  const totalCost = removedTiresHistory.value.reduce((sum, tire) => sum + (tire.part.value || 0), 0);
+  if (totalKm <= 0 || totalCost <= 0) return 'N/A';
+  return (totalCost / totalKm).toFixed(2);
+});
+
+const kpiTiresInAlert = computed(() => {
+  return tiresWithStatus.value.filter(t => t.status === 'warning' || t.status === 'critical').length;
+});
+
+const kpiTotalTireCost = computed(() => {
+  const removedCost = removedTiresHistory.value.reduce((sum, tire) => sum + (tire.part.value || 0), 0);
+  const installedCost = tiresWithStatus.value.reduce((sum, tire) => sum + (tire.part.value || 0), 0);
+  const total = removedCost + installedCost;
+  return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+});
+
+const kpiAvgTireLifespan = computed(() => {
+    if (removedTiresHistory.value.length === 0) return 'N/A';
+    const validEntries = removedTiresHistory.value.filter(item => item.km_run > 0);
+    if (validEntries.length === 0) return 'N/A';
+    const totalKm = validEntries.reduce((sum, item) => sum + item.km_run, 0);
+    return Math.round(totalKm / validEntries.length).toLocaleString('pt-BR');
+});
+
+// ### GRÁFICO DE CUSTOS SIMPLIFICADO ###
+const tireCostsByMonth = computed(() => {
+  return inventoryHistory.value
+    .filter(t => t.part?.category === 'Pneu' && t.transaction_type === 'Saída para Uso' && t.part?.value)
+    .map(t => ({
+      date: new Date(t.timestamp),
+      amount: t.part!.value!,
+    }));
+});
+
+// ### TABELAS E FILTROS ###
 const search = ref({ history: '', components: '', costs: '', maintenances: '' });
 const dateRange = ref({ history: '', historyTo: '', costs: '', costsTo: '' });
-const inventoryHistory = ref<InventoryTransaction[]>([]);
-const isHistoryLoading = ref(false);
 
 const filteredHistory = computed(() => {
   return inventoryHistory.value.filter(row => {
@@ -383,6 +524,16 @@ const filteredMaintenances = computed(() => {
   return maintenanceStore.maintenances.filter(row => JSON.stringify(row).toLowerCase().includes(needle));
 });
 
+
+// COLUNAS DAS TABELAS
+const historyTireColumns: QTableColumn<VehicleTireHistory>[] = [
+    { name: 'part', label: 'Pneu (Série)', field: row => row.part.serial_number || 'N/A', align: 'left', sortable: true },
+    { name: 'position', label: 'Posição', field: (row) => row.position_code || 'N/A', align: 'center' },
+{ name: 'dates', label: 'Inst./Remoção', field: row => `${row.install_date ? format(new Date(row.install_date), 'dd/MM/yy') : 'N/A'} - ${row.removal_date ? format(new Date(row.removal_date), 'dd/MM/yy') : 'Em uso'}`, align: 'left' },
+    { name: 'km_run', label: 'KM Rodados', field: 'km_run', align: 'right', sortable: true, format: (val: number) => val > 0 ? val.toLocaleString('pt-BR') : 'N/A' },
+    { name: 'cost_per_km', label: 'Custo/KM', field: row => (row.km_run > 0 && row.part.value) ? `R$ ${(row.part.value / row.km_run).toFixed(2)}` : 'N/A', align: 'right', sortable: true },
+];
+
 const historyColumns: QTableColumn[] = [
     { name: 'timestamp', label: 'Data e Hora', field: 'timestamp', format: (val) => format(new Date(val), 'dd/MM/yyyy HH:mm'), align: 'left', sortable: true },
     { name: 'part', label: 'Peça / Item', field: row => row.part?.name || 'Item Removido', align: 'left', sortable: true },
@@ -390,29 +541,41 @@ const historyColumns: QTableColumn[] = [
     { name: 'quantity_change', label: 'Quantidade', field: 'quantity_change', align: 'center', sortable: true, format: (val) => val > 0 ? `+${val}`: val },
     { name: 'user', label: 'Realizado por', field: row => row.user?.full_name || 'Sistema', align: 'left' },
 ];
-const componentColumns: QTableColumn[] = [
-  { name: 'part', label: 'Componente', field: (row: VehicleComponent) => row.part?.name || 'Item Removido', align: 'left', sortable: true },
+const componentColumns: QTableColumn<VehicleComponent>[] = [
+  { name: 'part', label: 'Componente', field: row => row.part?.name || 'Item Removido', align: 'left', sortable: true },
   { name: 'installation_date', label: 'Instalado em', field: 'installation_date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), align: 'left', sortable: true },
   { name: 'age', label: 'Idade (dias)', field: 'installation_date', format: (val) => `${differenceInDays(new Date(), new Date(val))}`, align: 'center', sortable: true },
-  { name: 'installer', label: 'Instalado por', field: (row: VehicleComponent) => row.inventory_transaction?.user?.full_name || 'N/A', align: 'left', sortable: true },
-  { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
+  { name: 'installer', label: 'Instalado por', field: row => row.inventory_transaction?.user?.full_name || 'N/A', align: 'left', sortable: true },
+  { name: 'actions', label: 'Ações', field: () => '', align: 'right' },
 ];
 const costColumns: QTableColumn[] = [
   { name: 'date', label: 'Data', field: 'date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), sortable: true, align: 'left' },
   { name: 'cost_type', label: 'Tipo', field: 'cost_type', sortable: true, align: 'left' },
   { name: 'amount', label: 'Valor', field: 'amount', format: (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), sortable: true, align: 'right' },
 ];
-const maintenanceColumns: QTableColumn[] = [
+const maintenanceColumns: QTableColumn<MaintenanceRequest>[] = [
   { name: 'created_at', label: 'Data', field: 'created_at', format: (val) => val ? format(new Date(val), 'dd/MM/yyyy') : 'A definir', sortable: true, align: 'left' },
   { name: 'category', label: 'Tipo', field: 'category', sortable: true, align: 'left' },
   { name: 'problem_description', label: 'Descrição', field: 'problem_description', align: 'left', style: 'white-space: pre-wrap;' },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-  { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
+  { name: 'actions', label: 'Ações', field: () => '', align: 'right' },
 ];
 
-// --- Funções ---
 
-// --- Funções de Pneus ---
+// ### FUNÇÕES DE AÇÃO ATUALIZADAS ###
+async function fetchHistory() {
+  isHistoryLoading.value = true;
+  try {
+    const { data } = await api.get<InventoryTransaction[]>(`/vehicles/${vehicleId}/inventory-history`);
+    inventoryHistory.value = data;
+  } catch (error) {
+    console.error("Falha ao carregar histórico:", error);
+    $q.notify({ type: 'negative', message: 'Falha ao carregar o histórico do veículo.' });
+  } finally {
+    isHistoryLoading.value = false;
+  }
+}
+
 function openInstallDialog(positionCode: string) {
   targetPosition.value = positionCode;
   installTireForm.value = {
@@ -432,16 +595,12 @@ async function handleInstallTire() {
     position_code: targetPosition.value,
     part_id: installTireForm.value.part_id,
     install_km: installTireForm.value.install_km ?? 0,
-    install_engine_hours: installTireForm.value.install_engine_hours
+    install_engine_hours: installTireForm.value.install_engine_hours ?? undefined
   };
   const success = await tireStore.installTire(vehicleId, payload);
   if (success) {
     isInstallTireDialogOpen.value = false;
-    await Promise.all([
-      partStore.fetchParts(),
-      costStore.fetchCosts(vehicleId),
-      tireStore.fetchTireLayout(vehicleId)
-    ]);
+    await refreshAllVehicleData();
   }
 }
 
@@ -449,7 +608,6 @@ function openRemoveDialog(tire: VehicleTire) {
   const message = isAgro.value
     ? `Digite as Horas do Motor atuais para remover o pneu (Série: ${tire.part.serial_number}) da posição ${tire.position_code}.`
     : `Digite o KM atual do veículo para remover o pneu (Série: ${tire.part.serial_number}) da posição ${tire.position_code}.`;
-
   const model = isAgro.value
     ? String(vehicleStore.selectedVehicle?.current_engine_hours || tire.install_engine_hours || 0)
     : String(vehicleStore.selectedVehicle?.current_km || tire.install_km);
@@ -463,76 +621,38 @@ function openRemoveDialog(tire: VehicleTire) {
   }).onOk((valueStr: string) => {
     void (async () => {
       const value = Number(valueStr);
-      const payload: { removal_km: number, removal_engine_hours: number } = { 
-          removal_km: 0,
-          removal_engine_hours: 0,
-       };
-      let validationOk = false;
+      const removal_km = isAgro.value ? (vehicleStore.selectedVehicle?.current_km || tire.install_km) : value;
+      const removal_engine_hours = isAgro.value ? value : undefined;
 
+      let validationOk = false;
       if (isAgro.value) {
-        payload.removal_engine_hours = value;
-        payload.removal_km = vehicleStore.selectedVehicle?.current_km || tire.install_km;
-        if (!isNaN(value) && value >= (tire.install_engine_hours || 0)) {
-          validationOk = true;
-        }
+        if (removal_engine_hours !== undefined && !isNaN(removal_engine_hours) && removal_engine_hours >= (tire.install_engine_hours || 0)) validationOk = true;
       } else {
-        payload.removal_km = value;
-        if (!isNaN(value) && value >= tire.install_km) {
-          validationOk = true;
-        }
+        if (!isNaN(removal_km) && removal_km >= tire.install_km) validationOk = true;
       }
 
       if (!validationOk) {
         $q.notify({ type: 'negative', message: `O valor de remoção deve ser maior ou igual ao de instalação.` });
         return;
       }
-      
-      const success = await tireStore.removeTire(tire.id, payload.removal_km, payload.removal_engine_hours);
+
+      const success = await tireStore.removeTire(tire.id, removal_km, removal_engine_hours);
       if (success) {
-        await fetchHistory();
+        await refreshAllVehicleData();
       }
     })();
   });
 }
-
-const generatedAlerts = new Set<string>();
-function checkTireWearAndNotify(tires: TireWithStatus[]) { 
-    if (!vehicleStore.selectedVehicle) return;
-    const vehicleName = `${vehicleStore.selectedVehicle.brand} ${vehicleStore.selectedVehicle.model} (${vehicleStore.selectedVehicle.license_plate || vehicleStore.selectedVehicle.identifier})`;
-    for (const tire of tires) {
-        const alertKey = `tire-${tire.id}-${tire.status}`;
-        if (generatedAlerts.has(alertKey)) continue;
-
-        if (tire.status === 'critical') {
-            generatedAlerts.add(alertKey);
-            void notificationStore.createNotification({
-                message: `ALERTA CRÍTICO: Pneu ${tire.part.serial_number} no veículo ${vehicleName} atingiu 100% do desgaste esperado. Troca recomendada!`,
-                related_vehicle_id: vehicleId,
-            });
-        } else if (tire.status === 'warning') {
-            generatedAlerts.add(alertKey);
-            void notificationStore.createNotification({
-                message: `ATENÇÃO: Pneu ${tire.part.serial_number} no veículo ${vehicleName} atingiu 80% do desgaste. Inspecionar para troca ou reforma.`,
-                related_vehicle_id: vehicleId,
-            });
-        }
-    }
-}
-watch(tiresWithStatus, (newTires) => { 
-    if (newTires.length > 0) {
-        checkTireWearAndNotify(newTires);
-    }
-}, { deep: true });
 
 async function handleUpdateAxleConfig() {
   if (!selectedAxleConfig.value) return;
   const success = await vehicleStore.updateAxleConfiguration(vehicleId, selectedAxleConfig.value);
   if (success) {
     isAxleConfigDialogOpen.value = false;
+    await tireStore.fetchTireLayout(vehicleId);
   }
 }
 
-// --- Funções Genéricas e de Componentes ---
 function filterTires(val: string, update: (cb: () => void) => void) {
   update(() => {
     const needle = val.toLowerCase();
@@ -560,12 +680,7 @@ async function handleInstallComponent() {
   if (success) {
     isInstallDialogOpen.value = false;
     installFormComponent.value = { part_id: null, quantity: 1 };
-    await Promise.all([
-        fetchHistory(),
-        partStore.fetchParts(),
-        componentStore.fetchComponents(vehicleId),
-        costStore.fetchCosts(vehicleId)
-    ]);
+    await refreshAllVehicleData();
   }
 }
 
@@ -580,9 +695,7 @@ function confirmDiscard(component: VehicleComponent) {
       void (async () => {
         if (component.part) {
             const success = await componentStore.discardComponent(component.id, vehicleId);
-            if (success) {
-              await fetchHistory();
-            }
+            if (success) await refreshAllVehicleData();
         }
       })();
     });
@@ -600,28 +713,14 @@ function openMaintenanceDetails(maintenance: MaintenanceRequest) {
   isMaintenanceDetailsOpen.value = true;
 }
 
-async function fetchHistory() {
-  isHistoryLoading.value = true;
-  try {
-    const { data } = await api.get<InventoryTransaction[]>(`/vehicles/${vehicleId}/inventory-history`);
-    inventoryHistory.value = data;
-  } catch (error) {
-    console.error("Falha ao carregar histórico de peças:", error);
-    $q.notify({ type: 'negative', message: 'Falha ao carregar o histórico de peças do veículo.' });
-  } finally {
-    isHistoryLoading.value = false;
-  }
-}
-
 function exportToCsv(tabName: 'history' | 'components' | 'costs' | 'maintenances') {
-    let data: (InventoryTransaction | VehicleComponent | MaintenanceRequest | VehicleCost)[], columns: QTableColumn[], fileName: string;
+    let data: (InventoryTransaction | VehicleComponent | MaintenanceRequest | VehicleCost | VehicleTireHistory)[], columns: QTableColumn[], fileName: string;
     switch(tabName) {
         case 'history': data = filteredHistory.value; columns = historyColumns; fileName = 'historico'; break;
         case 'components': data = filteredComponents.value; columns = componentColumns; fileName = 'componentes'; break;
         case 'costs': data = filteredCosts.value; columns = costColumns; fileName = 'custos'; break;
         case 'maintenances': data = filteredMaintenances.value; columns = maintenanceColumns; fileName = 'manutencoes'; break;
     }
-
     if (!data || !columns || !fileName) return;
 
     const columnsToExp = columns.filter(c => c.name !== 'actions' && c.label);
@@ -644,27 +743,16 @@ function exportToCsv(tabName: 'history' | 'components' | 'costs' | 'maintenances
     if (status !== true) $q.notify({ message: 'O browser bloqueou o download...', color: 'negative' });
 }
 
-
-// --- Ciclo de Vida ---
-onActivated(async () => {
-  await vehicleStore.fetchVehicleById(vehicleId);
+// ### onMounted ATUALIZADO ###
+onMounted(async () => {
+  await refreshAllVehicleData();
+  selectedAxleConfig.value = vehicleStore.selectedVehicle?.axle_configuration || null;
 });
-
-onMounted(() => {
-  const promises = [
-    vehicleStore.fetchVehicleById(vehicleId),
-    costStore.fetchCosts(vehicleId),
-    componentStore.fetchComponents(vehicleId),
-    partStore.fetchParts(),
-    fetchHistory(),
-    maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 }),
-    tireStore.fetchTireLayout(vehicleId)
-  ];
-  void Promise.all(promises).then(() => {
-    selectedAxleConfig.value = vehicleStore.selectedVehicle?.axle_configuration || null;
-    checkTireWearAndNotify(tiresWithStatus.value);
-  }).catch(err => console.error("Erro no onMounted Promise.all:", err));
-});
-
 </script>
 
+<style lang="scss" scoped>
+.bordered-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+</style>

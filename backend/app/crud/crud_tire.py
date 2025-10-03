@@ -137,3 +137,20 @@ async def remove_tire(
     
     return tire_to_remove
 
+
+async def get_removed_tires_for_vehicle(db: AsyncSession, *, vehicle_id: int) -> list[VehicleTire]:
+    """
+    Busca todos os pneus que já foram instalados e removidos de um veículo.
+    """
+    stmt = (
+        select(VehicleTire)
+        .where(
+            VehicleTire.vehicle_id == vehicle_id,
+            VehicleTire.is_active == False,
+            VehicleTire.removal_date.isnot(None)
+        )
+        .options(selectinload(VehicleTire.part))
+        .order_by(VehicleTire.removal_date.desc())
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
