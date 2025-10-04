@@ -1,3 +1,2 @@
 Sistema de pdf
 Responsevalidationerror (atribuir para veiculo)
-vida util = 0h, horas rodadas =0h, desgaste = 0% (Pneus)

@@ -1,5 +1,5 @@
 <template>
-  <q-dialog :model-value="modelValue" @update:model-value="val => emit('update:modelValue', val)" persistent>
+  <q-dialog :model-value="modelValue" @update:model-value="val => emit('update:modelValue', val)" >
     <q-card style="width: 500px; max-width: 90vw;" v-if="part">
       <q-form @submit.prevent="handleSubmit">
         <q-card-section>
