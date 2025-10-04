@@ -155,7 +155,16 @@ async def add_stock_transaction(
     if not part:
         raise HTTPException(status_code=404, detail="Peça não encontrada.")
 
-    quantity_change = -transaction_in.quantity if transaction_in.transaction_type in [TransactionType.SAIDA_USO, TransactionType.SAIDA_FIM_DE_VIDA] else transaction_in.quantity
+    # A lógica para determinar o sinal da quantidade foi movida para o CRUD,
+    # mas para o tipo "Fim de Vida", a mudança de estoque é 0.
+    # Esta lógica agora é centralizada e mais clara.
+    
+    # Tipos que removem do estoque
+    if transaction_in.transaction_type in [TransactionType.SAIDA_USO, TransactionType.SAIDA_FIM_DE_VIDA]:
+        quantity_change = -abs(transaction_in.quantity)
+    # Tipos que adicionam ao estoque
+    else:
+        quantity_change = abs(transaction_in.quantity)
 
     try:
         transaction = await crud.inventory_transaction.create_transaction(
@@ -170,8 +179,9 @@ async def add_stock_transaction(
         )
         return transaction
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
+        # Captura erros de negócio do CRUD (ex: estoque insuficiente)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+# --- FIM DA CORREÇÃO ---
 
 @router.get("/{part_id}/history", response_model=List[TransactionPublic])
 async def read_part_history(

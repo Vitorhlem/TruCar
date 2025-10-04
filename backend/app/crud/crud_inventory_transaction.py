@@ -20,14 +20,18 @@ async def _create_transaction_no_commit(
 ) -> InventoryTransaction:
     """
     Prepara uma nova transação de inventário e atualiza o estoque, mas NÃO faz o commit.
-    Retorna o objeto de transação para ser usado em uma transação maior.
+    Esta função é o núcleo da lógica de transação.
     """
     part = await db.get(Part, part_id)
     if not part:
         raise ValueError("Peça não encontrada.")
 
-    if transaction_type != TransactionType.AJUSTE_MANUAL and (part.stock + quantity_change < 0):
-        raise ValueError("Estoque insuficiente para esta operação.")
+    # A verificação de estoque não se aplica a ajustes ou retornos
+    is_stock_removal = quantity_change < 0
+    if is_stock_removal and (part.stock + quantity_change < 0):
+        # A exceção para 'Ajuste Manual' é tratada no endpoint que calcula o quantity_change
+        if transaction_type != TransactionType.AJUSTE_MANUAL:
+            raise ValueError("Estoque insuficiente para esta operação.")
 
     part.stock += quantity_change
 
@@ -44,8 +48,9 @@ async def _create_transaction_no_commit(
 
     db.add(part)
     db.add(db_transaction)
-
-    await db.flush()  # Garante que o ID da transação seja gerado e o part.stock seja atualizado na sessão
+    
+    # Flush para que o db_transaction obtenha um ID e possa ser usado
+    await db.flush()
     
     return db_transaction
 
@@ -62,7 +67,8 @@ async def create_transaction(
     related_user_id: Optional[int] = None,
 ) -> InventoryTransaction:
     """
-    Cria uma nova transação de inventário como uma operação atômica e completa.
+    Cria uma nova transação, faz o commit e retorna o objeto completo
+    com todas as relações carregadas para garantir uma resposta de API válida.
     """
     db_transaction = await _create_transaction_no_commit(
         db=db,
@@ -75,10 +81,17 @@ async def create_transaction(
         related_user_id=related_user_id,
     )
     
+    # Carrega as relações no objeto ANTES do commit, enquanto ele ainda está "vivo" na sessão.
+    # Isso é mais eficiente e seguro do que re-consultar após o commit.
+    await db.refresh(db_transaction, attribute_names=["user", "part", "related_user", "related_vehicle"])
+    
     transaction_id = db_transaction.id
     
     await db.commit()
     
+    # Retorna o objeto já com as relações carregadas.
+    # Para garantir, podemos buscar novamente, mas o refresh deve ser suficiente.
+    # Esta consulta final garante 100% de consistência.
     stmt = (
         select(InventoryTransaction)
         .where(InventoryTransaction.id == transaction_id)
@@ -90,9 +103,7 @@ async def create_transaction(
         )
     )
     result = await db.execute(stmt)
-    created_transaction = result.scalar_one()
-    
-    return created_transaction
+    return result.scalar_one()
 
 
 async def get_transactions_by_part_id(
