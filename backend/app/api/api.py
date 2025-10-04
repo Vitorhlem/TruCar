@@ -26,7 +26,8 @@ from app.api.v1.endpoints import (
     utils,
     parts,
     vehicle_components,
-    tires
+    tires,
+    costs
 )
 
 api_router = APIRouter()
@@ -57,5 +58,4 @@ api_router.include_router(utils.router, prefix="/utils", tags=["Utilities"])
 api_router.include_router(parts.router, prefix="/parts", tags=["Parts"]) 
 api_router.include_router(vehicle_components.router, tags=["Vehicle Components"])
 api_router.include_router(tires.router, prefix="/tires", tags=["Tire Management"])
-
-
+api_router.include_router(costs.router, prefix="/costs", tags=["Costs"])
