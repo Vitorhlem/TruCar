@@ -80,9 +80,17 @@ import { type PropType } from 'vue';
 import type { QTableColumn } from 'quasar';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable, { type UserOptions } from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import type { VehicleConsolidatedReport } from 'src/models/report-models';
+
+interface AutoTableOptions extends UserOptions {
+  startY?: number;
+}
+
+interface jsPDFWithLastTable extends jsPDF {
+  lastAutoTable: { finalY: number };
+}
 
 const props = defineProps({
   report: {
@@ -91,11 +99,9 @@ const props = defineProps({
   },
 });
 
-// Funções de formatação
 const formatDate = (dateString: string) => format(new Date(dateString.replace(/-/g, '/')), 'dd/MM/yyyy');
 const formatCurrency = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// Colunas das tabelas
 const costColumns: QTableColumn[] = [
   { name: 'date', label: 'Data', field: 'date', format: val => formatDate(val), align: 'left' },
   { name: 'cost_type', label: 'Tipo', field: 'cost_type', align: 'left' },
@@ -110,20 +116,19 @@ const fuelColumns: QTableColumn[] = [
   { name: 'total_cost', label: 'Custo Total', field: 'total_cost', format: val => formatCurrency(val), align: 'right' },
 ];
 
-// Funções de Exportação
 function exportToPDF() {
   const doc = new jsPDF();
   const report = props.report;
 
-  // Título e Cabeçalho
   doc.setFontSize(18);
   doc.text(`Relatório Consolidado: ${report.vehicle_model} (${report.vehicle_identifier})`, 14, 22);
   doc.setFontSize(11);
   doc.setTextColor(100);
   doc.text(`Período: ${formatDate(report.report_period_start)} a ${formatDate(report.report_period_end)}`, 14, 30);
-
-  // AutoTable para os resumos
-  (doc as any).autoTable({
+  
+  // --- INÍCIO DA CORREÇÃO ---
+  // Aplicamos o tipo 'AutoTableOptions' diretamente ao objeto de opções.
+  autoTable(doc, {
     startY: 40,
     head: [['Métrica', 'Valor']],
     body: [
@@ -132,18 +137,21 @@ function exportToPDF() {
       ['Distância Total', `${report.performance_summary.total_distance_km.toFixed(2)} km`],
       ['Consumo Médio', `${report.performance_summary.average_consumption.toFixed(2)} km/l`],
     ],
-  });
+  } as AutoTableOptions); // <-- A correção está aqui
 
-  // AutoTable para Detalhamento de Custos
   if (report.costs_detailed.length > 0) {
-    (doc as any).autoTable({
-      startY: (doc as any).lastAutoTable.finalY + 10,
+    const lastTable = doc as jsPDFWithLastTable;
+    const startY = lastTable.lastAutoTable.finalY + 10;
+    
+    autoTable(doc, {
+      startY: startY,
       head: [['Data', 'Tipo', 'Descrição', 'Valor']],
       body: report.costs_detailed.map(c => [
         formatDate(c.date), c.cost_type, c.description, formatCurrency(c.amount)
       ]),
       headStyles: { fillColor: [41, 128, 185] },
-    });
+    } as AutoTableOptions); // <-- E aqui também
+    // --- FIM DA CORREÇÃO ---
   }
   
   doc.save(`relatorio_${report.vehicle_identifier}.pdf`);
@@ -151,16 +159,13 @@ function exportToPDF() {
 
 function exportToXLSX() {
   const report = props.report;
-
-  // Criação da Planilha
   const wb = XLSX.utils.book_new();
   
-  // Aba de Resumo
   const summaryData = [
     ["Relatório Consolidado de Veículo"],
     [`${report.vehicle_model} (${report.vehicle_identifier})`],
     [`Período: ${formatDate(report.report_period_start)} a ${formatDate(report.report_period_end)}`],
-    [], // Linha em branco
+    [],
     ["Métrica", "Valor"],
     ['Custo Total', report.financial_summary.total_costs],
     ['Custo por KM', report.financial_summary.cost_per_km],
@@ -170,7 +175,6 @@ function exportToXLSX() {
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(wb, wsSummary, "Resumo");
 
-  // Aba de Custos Detalhados
   const costsData = report.costs_detailed.map(c => ({
     Data: formatDate(c.date),
     Tipo: c.cost_type,
