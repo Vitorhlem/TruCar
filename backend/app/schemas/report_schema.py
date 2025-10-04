@@ -1,40 +1,50 @@
 from pydantic import BaseModel
-from typing import List, Optional
-from datetime import date
+from typing import List, Optional, Dict
+from datetime import date, datetime
 
-from app.schemas.journey_schema import JourneyPublic
+from .vehicle_cost_schema import VehicleCostPublic
+from .fuel_log_schema import FuelLogPublic
+from .maintenance_schema import MaintenanceRequestPublic
 
-class KPI(BaseModel):
-    total_vehicles: int
-    available_vehicles: int
-    in_use_vehicles: int
-    maintenance_vehicles: int
-    total_fuel_cost_current_month: float
-    open_maintenance_requests: int
-    km_last_30_days: float # Este campo será usado para KM ou Horas
-
-
-class KmPerDay(BaseModel):
-    date: str
-    total_km: float
-
-class TopVehicle(BaseModel):
-    vehicle_info: str
-    total_km: int
-
-class FuelCostPerMonth(BaseModel):
-    month: str # Formato "YYYY-MM"
-    total_cost: float
-
-class UpcomingMaintenance(BaseModel):
-    vehicle_info: str
-    due_date: Optional[date] = None
-    due_km: Optional[int] = None
-
+# Mantém o schema do dashboard existente
 class DashboardSummary(BaseModel):
-    kpis: KPI
-    km_per_day_last_30_days: List[KmPerDay]
-    top_5_vehicles_by_km: List[TopVehicle]
-    fuel_cost_last_6_months: List[FuelCostPerMonth]
-    upcoming_maintenances: List[UpcomingMaintenance]
-    active_journeys: List[JourneyPublic]
+    total_vehicles: int
+    active_journeys: int
+    total_costs_last_30_days: float
+    maintenance_open_requests: int
+
+# --- NOVOS SCHEMAS PARA O RELATÓRIO CONSOLIDADO DE VEÍCULO ---
+
+class VehicleReportPerformanceSummary(BaseModel):
+    """Resumo de performance para o relatório."""
+    total_distance_km: float = 0.0
+    total_fuel_liters: float = 0.0
+    average_consumption: float = 0.0 # KM/L ou L/Hora, dependendo do setor
+
+class VehicleReportFinancialSummary(BaseModel):
+    """Resumo financeiro para o relatório."""
+    total_costs: float = 0.0
+    cost_per_km: float = 0.0
+    costs_by_category: Dict[str, float] = {}
+
+class VehicleConsolidatedReport(BaseModel):
+    """Schema principal para o Relatório Consolidado de Veículo."""
+    # --- Dados de Cabeçalho ---
+    vehicle_id: int
+    vehicle_identifier: str # Placa ou Identificador
+    vehicle_model: str
+    report_period_start: date
+    report_period_end: date
+    generated_at: datetime
+
+    # --- Seções de Dados ---
+    performance_summary: VehicleReportPerformanceSummary
+    financial_summary: VehicleReportFinancialSummary
+    
+    # --- Dados Detalhados ---
+    costs_detailed: List[VehicleCostPublic]
+    fuel_logs_detailed: List[FuelLogPublic]
+    maintenance_detailed: List[MaintenanceRequestPublic]
+    
+    class Config:
+        from_attributes = True

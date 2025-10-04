@@ -1,147 +1,176 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-my-md">Gerador de Relatórios</h1>
+    <h1 class="text-h4 text-weight-bold q-my-md">Central de Relatórios</h1>
 
-    <div v-if="isDemo" class="column flex-center text-center q-pa-md" style="min-height: 60vh;">
-      <div>
-        <q-icon name="workspace_premium" color="amber" size="100px" />
-        <div class="text-h5 q-mt-sm">Esta é uma funcionalidade do plano completo</div>
-        <div class="text-body1 text-grey-8 q-mt-sm">
-          Faça o upgrade da sua conta para aceder a relatórios detalhados,<br />
-          filtros por data, exportação para PDF e muito mais.
+    <q-card flat bordered>
+      <q-card-section class="row q-col-gutter-md items-center">
+        <div class="col-12 col-md-3">
+          <q-select
+            outlined
+            v-model="filters.reportType"
+            :options="reportOptions"
+            label="1. Selecione o Tipo de Relatório"
+            emit-value
+            map-options
+            dense
+          />
         </div>
-        <q-btn
-          @click="showUpgradeDialog"
-          color="primary"
-          label="Saber Mais sobre o Plano Completo"
-          unelevated
-          class="q-mt-lg"
-        />
-      </div>
+
+        <template v-if="filters.reportType === 'vehicle_consolidated'">
+          <div class="col-12 col-md-3">
+            <q-select
+              outlined
+              v-model="filters.vehicleId"
+              :options="vehicleOptions"
+              label="2. Selecione o Veículo"
+              emit-value
+              map-options
+              dense
+              use-input
+              @filter="filterVehicles"
+              :loading="vehicleStore.isLoading"
+            >
+              <template v-slot:no-option>
+                <q-item><q-item-section class="text-grey">Nenhum veículo encontrado</q-item-section></q-item>
+              </template>
+            </q-select>
+          </div>
+          <div class="col-12 col-md-4">
+            <q-input outlined v-model="dateRangeText" label="3. Selecione o Período" readonly dense>
+              <template v-slot:prepend><q-icon name="event" class="cursor-pointer" /></template>
+              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                <q-date v-model="filters.dateRange" range mask="YYYY-MM-DD" />
+              </q-popup-proxy>
+            </q-input>
+          </div>
+        </template>
+        
+        <div class="col-12 col-md-2 text-right">
+          <q-btn
+            @click="generateReport"
+            color="primary"
+            label="Gerar Relatório"
+            icon="summarize"
+            unelevated
+            :loading="reportStore.isLoading"
+            :disable="!isFormValid"
+            class="full-width"
+          />
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <div v-if="reportStore.isLoading" class="flex flex-center q-mt-xl">
+      <q-spinner-dots color="primary" size="3em" />
+      <div class="q-ml-md text-grey">Gerando dados...</div>
     </div>
 
-    <q-card v-else flat bordered class="floating-card">
-      <q-card-section class="q-gutter-md">
-        <q-select
-          outlined
-          v-model="reportType"
-          :options="reportOptions"
-          label="Tipo de Relatório"
-          emit-value map-options
-        />
-        <q-select
-          v-if="reportType === 'activity_by_driver'"
-          outlined
-          v-model="targetId"
-          :options="userOptions"
-          label="Selecione o Motorista"
-          emit-value map-options
-        />
+    <div v-else-if="reportStore.vehicleReport" class="q-mt-md">
+      <VehicleReportDisplay :report="reportStore.vehicleReport" />
+    </div>
 
-        <q-input outlined v-model="dateRangeText" label="Selecione o Período" readonly>
-          <template v-slot:append>
-            <q-icon name="event" class="cursor-pointer">
-              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                <q-date v-model="dateRange" range />
-              </q-popup-proxy> </q-icon>
-          </template>
-        </q-input>
-      </q-card-section>
-      <q-separator />
-      <q-card-actions align="right">
-        <q-btn
-          @click="generateReport"
-          color="primary"
-          label="Gerar Relatório em PDF"
-          icon="picture_as_pdf"
-          unelevated
-          :loading="isLoading"
-          :disable="!isFormValid"
-        />
-      </q-card-actions>
-    </q-card>
+    <div v-else class="flex flex-center column text-center q-pa-xl text-grey">
+      <q-icon name="insights" size="6em" />
+      <p class="text-h6 q-mt-md">Selecione os filtros acima para gerar um relatório.</p>
+    </div>
+
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useUserStore } from 'stores/user-store';
-import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'stores/auth-store';
-import type { User } from 'src/models/auth-models';
+import { format } from 'date-fns';
 
-const userStore = useUserStore();
+// Stores e Modelos
+import { useReportStore } from 'stores/report-store';
+import { useVehicleStore } from 'stores/vehicle-store';
+import type { Vehicle } from 'src/models/vehicle-models';
+
+// Componente de Visualização
+import VehicleReportDisplay from 'components/reports/VehicleReportDisplay.vue';
+
 const $q = useQuasar();
-const authStore = useAuthStore();
+const reportStore = useReportStore();
+const vehicleStore = useVehicleStore();
 
-const reportType = ref<string | null>(null);
-const targetId = ref<number | null>(null);
-const dateRange = ref<{ from: string, to: string } | null>(null);
-const isLoading = ref(false);
+// Estado dos Filtros
+const filters = ref({
+  reportType: null as 'vehicle_consolidated' | null,
+  vehicleId: null as number | null,
+  dateRange: null as { from: string, to: string } | null,
+});
 
 const reportOptions = [
-  { label: 'Relatório de Atividade por Motorista', value: 'activity_by_driver' },
+  { label: 'Relatório Consolidado de Veículo', value: 'vehicle_consolidated' },
+  // Futuramente, poderemos adicionar mais relatórios aqui
 ];
 
-const userOptions = computed(() => userStore.users
-  .filter(u => u.role === 'driver')
-  .map((u: User) => ({ label: u.full_name, value: u.id }))
-);
+// Opções do seletor de veículos (lista reativa)
+const vehicleOptions = ref<{ label: string, value: number }[]>([]);
 
 const dateRangeText = computed(() => {
-  if (dateRange.value) {
-    return `${dateRange.value.from} - ${dateRange.value.to}`;
+  if (filters.value.dateRange) {
+    // Usa replace para evitar problemas com fuso horário no new Date()
+    const from = format(new Date(filters.value.dateRange.from.replace(/-/g, '/')), 'dd/MM/yyyy');
+    const to = format(new Date(filters.value.dateRange.to.replace(/-/g, '/')), 'dd/MM/yyyy');
+    return `${from} - ${to}`;
   }
   return '';
 });
 
-const isFormValid = computed(() => reportType.value && targetId.value && dateRange.value);
+const isFormValid = computed(() => {
+  if (filters.value.reportType === 'vehicle_consolidated') {
+    return !!(filters.value.vehicleId && filters.value.dateRange);
+  }
+  return false;
+});
 
-const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
-
-function showUpgradeDialog() {
-  $q.dialog({
-    title: 'Desbloqueie o Potencial Máximo do TruCar',
-    message: 'Para liberar recursos avançados como relatórios detalhados e cadastro ilimitado de veículos e motoristas, entre em contato com nossa equipe comercial.',
-    ok: {
-      label: 'Entendido',
-      color: 'primary',
-      unelevated: true
-    },
-    persistent: false
+// Função para filtrar a lista de veículos conforme o usuário digita
+function filterVehicles(val: string, update: (callback: () => void) => void) {
+  update(() => {
+    const needle = val.toLowerCase();
+    vehicleOptions.value = vehicleStore.vehicles
+      .filter((v: Vehicle) => 
+        (v.license_plate?.toLowerCase().includes(needle) || 
+         v.identifier?.toLowerCase().includes(needle) ||
+         `${v.brand} ${v.model}`.toLowerCase().includes(needle))
+      )
+      .map((v: Vehicle) => ({
+        label: `${v.brand} ${v.model} (${v.license_plate || v.identifier})`,
+        value: v.id,
+      }));
   });
 }
 
+// Função principal que aciona a geração do relatório
 async function generateReport() {
-  if (!isFormValid.value) return;
-  isLoading.value = true;
-  try {
-    const payload = {
-      report_type: reportType.value,
-      target_id: targetId.value,
-      date_from: dateRange.value?.from.replace(/\//g, '-'),
-      date_to: dateRange.value?.to.replace(/\//g, '-')
-    };
-    const response = await api.post('/report-generator/generate', payload, { responseType: 'blob' });
-    
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.download = `relatorio_${reportType.value}_${targetId.value}.pdf`;
-    link.click();
-    window.URL.revokeObjectURL(link.href);
-
-  } catch {
-    $q.notify({ type: 'negative', message: 'Erro ao gerar o relatório.' });
-  } finally {
-    isLoading.value = false;
+  if (!isFormValid.value) {
+    $q.notify({ type: 'warning', message: 'Por favor, preencha todos os filtros.' });
+    return;
+  }
+  
+  if (filters.value.reportType === 'vehicle_consolidated' && filters.value.vehicleId && filters.value.dateRange) {
+    await reportStore.generateVehicleConsolidatedReport(
+      filters.value.vehicleId,
+      filters.value.dateRange.from,
+      filters.value.dateRange.to
+    );
   }
 }
 
+// Lógica executada quando o componente é montado
 onMounted(() => {
-  if (userStore.users.length === 0) {
-    void userStore.fetchAllUsers();
+  // Limpa qualquer relatório anterior para começar do zero
+  reportStore.clearReport();
+  
+  // Busca a lista completa de veículos para popular o seletor
+  if (vehicleStore.vehicles.length === 0) {
+    // Usamos um truque de paginação para buscar todos os itens de uma vez
+    void vehicleStore.fetchAllVehicles({ page: 1, rowsPerPage: 9999 });
+  } else {
+    // Se os veículos já estão na store, apenas popula as opções do filtro
+    filterVehicles('', (fn) => fn());
   }
 });
 </script>

@@ -11,6 +11,8 @@ declare module '@vue/runtime-core' {
   }
 }
 
+
+
 export default boot(({ app, store }) => {
   // Use o tipo 'InternalAxiosRequestConfig' que é o correto para interceptors
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {

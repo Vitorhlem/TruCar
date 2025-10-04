@@ -1,5 +1,7 @@
-// --- Interfaces Legadas (Mantidas para compatibilidade e reutilização) ---
-// Estas são as interfaces que você já tinha, e que ainda são úteis.
+import type { VehicleCost } from './vehicle-cost-models';
+import type { FuelLog } from './fuel-log-models';
+import type { MaintenanceRequest } from './maintenance-models';
+
 export interface KPI {
   total_vehicles: number;
   available_vehicles: number;
@@ -101,4 +103,34 @@ export interface DriverDashboardResponse {
   metrics: DriverMetrics;
   ranking_context: DriverRankEntry[];
   achievements: AchievementStatus[];
+}
+
+export interface VehicleReportPerformanceSummary {
+  total_distance_km: number;
+  total_fuel_liters: number;
+  average_consumption: number;
+}
+
+// Corresponde ao schema VehicleReportFinancialSummary do backend
+export interface VehicleReportFinancialSummary {
+  total_costs: number;
+  cost_per_km: number;
+  costs_by_category: Record<string, number>;
+}
+
+// Corresponde ao schema principal VehicleConsolidatedReport do backend
+export interface VehicleConsolidatedReport {
+  vehicle_id: number;
+  vehicle_identifier: string;
+  vehicle_model: string;
+  report_period_start: string; // vem como string 'YYYY-MM-DD'
+  report_period_end: string;
+  generated_at: string; // vem como string ISO
+
+  performance_summary: VehicleReportPerformanceSummary;
+  financial_summary: VehicleReportFinancialSummary;
+  
+  costs_detailed: VehicleCost[];
+  fuel_logs_detailed: FuelLog[];
+  maintenance_detailed: MaintenanceRequest[];
 }
