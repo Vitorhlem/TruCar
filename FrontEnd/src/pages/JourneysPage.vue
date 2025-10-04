@@ -63,7 +63,7 @@
           para aceder a todos os dados.
         </div>
       </q-banner>
-      <q-card v-if="journeyStore.currentUserActiveJourney" class="bg-blue-1 q-mb-lg" flat bordered>
+      <q-card v-if="journeyStore.currentUserActiveJourney" class="bg-black-9 q-mb-lg" flat bordered>
         <q-card-section>
           <div class="text-h6">Você tem uma {{ terminologyStore.journeyNoun.toLowerCase() }} em andamento</div>
           <div class="text-subtitle2" v-if="journeyStore.currentUserActiveJourney.vehicle">{{ terminologyStore.vehicleNoun }}: {{ journeyStore.currentUserActiveJourney.vehicle.brand }} {{ journeyStore.currentUserActiveJourney.vehicle.model }}</div>

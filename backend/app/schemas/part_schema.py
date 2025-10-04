@@ -4,7 +4,7 @@ from typing import Optional
 class PartBase(BaseModel):
     name: str
     category: str
-    serial_number: Optional[str] = None # Adicionando serial_number que é usado noutros locais
+    serial_number: Optional[str] = None
     part_number: Optional[str] = None
     brand: Optional[str] = None
     stock: int
@@ -29,7 +29,6 @@ class PartUpdate(BaseModel):
     value: Optional[float] = None
     lifespan_km: Optional[int] = None
 
-# CORRIGIDO: Renomeado de PartPublic para Part
 class Part(PartBase):
     id: int
     photo_url: Optional[str] = None
@@ -38,6 +37,5 @@ class Part(PartBase):
     class Config:
         from_attributes = True
 
-# Criado um PartPublic que é igual ao Part, para manter a compatibilidade
 class PartPublic(Part):
     pass

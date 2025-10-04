@@ -101,8 +101,15 @@
               <q-select outlined v-model="formData.category" :options="categoryOptions" label="Categoria *" :rules="[val => !!val || 'Campo obrigatório']" />
               <q-input v-if="formData.category === 'Pneu'" outlined v-model="formData.serial_number" label="Nº de Série / Fogo *" :rules="[val => !!val || 'Obrigatório para pneus']" />
               
-              <!-- CAMPO DE VIDA ÚTIL ADICIONADO -->
-              <q-input v-if="formData.category === 'Pneu'" outlined v-model.number="formData.lifespan_km" type="number" label="Vida Útil em KM (Opcional)" hint="KM esperado de durabilidade para gerar alertas" clearable />
+              <q-input 
+                v-if="formData.category === 'Pneu'" 
+                outlined 
+                v-model.number="formData.lifespan_km" 
+                type="number" 
+                :label="lifespanLabel" 
+                :hint="`Unidade de durabilidade esperada para gerar alertas`" 
+                clearable 
+              />
 
               <q-input outlined v-model.number="formData.value" type="number" label="Custo do Item (R$)" prefix="R$" step="0.01" />
               <q-input outlined v-model="formData.part_number" label="Código / Part Number" />
@@ -146,6 +153,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useQuasar, type QTableProps } from 'quasar';
 import { usePartStore, type PartCreatePayload } from 'stores/part-store';
+import { useTerminologyStore } from 'stores/terminology-store';
 import type { Part, PartCategory } from 'src/models/part-models';
 import ManageStockDialog from 'components/ManageStockDialog.vue';
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
@@ -153,6 +161,7 @@ import api from 'src/services/api';
 
 const $q = useQuasar();
 const partStore = usePartStore();
+const terminologyStore = useTerminologyStore();
 
 const isDialogOpen = ref(false);
 const isStockDialogOpen = ref(false);
@@ -167,6 +176,11 @@ const invoiceFile = ref<File | null>(null);
 
 const categoryOptions: PartCategory[] = ["Peça", "Pneu", "Fluído", "Consumível", "Outro"];
 
+const lifespanLabel = computed(() => {
+  const unit = terminologyStore.distanceUnit.toUpperCase();
+  return `Vida Útil em ${unit} (Opcional)`;
+});
+
 const initialFormData: Partial<Part> = {
   name: '',
   category: 'Peça' as PartCategory,
@@ -180,7 +194,7 @@ const initialFormData: Partial<Part> = {
   value: null,
   invoice_url: null,
   serial_number: null,
-  lifespan_km: null, // --- ADICIONADO ---
+  lifespan_km: null,
 };
 const formData = ref({ ...initialFormData });
 
@@ -230,7 +244,10 @@ function resetForm() {
 function openDialog(part: Part | null = null) {
   if (part) {
     editingPart.value = { ...part };
-    formData.value = { ...part };
+    formData.value = {
+      ...initialFormData,
+      ...part,
+    };
   } else {
     resetForm();
   }
@@ -283,4 +300,3 @@ onMounted(() => {
   void partStore.fetchParts();
 });
 </script>
-

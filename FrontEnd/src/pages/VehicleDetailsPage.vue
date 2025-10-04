@@ -210,7 +210,7 @@
           <div class="col-12 col-md-7">
             <q-table :rows="filteredCosts" :columns="costColumns" row-key="id" :loading="costStore.isLoading" no-data-label="Nenhum custo encontrado para os filtros aplicados." flat bordered>
               <template v-slot:bottom-row>
-                <q-tr class="text-weight-bold" :class="$q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'">
+                <q-tr class="text-weight-bold" :class="$q.dark.isActive ? 'bg-black-9' : 'bg-grey-2'">
                   <q-td colspan="2" class="text-right">Total (Filtrado):</q-td>
                   <q-td class="text-right">
                     {{ new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCost) }}
