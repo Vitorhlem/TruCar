@@ -67,7 +67,7 @@
           <q-card-section class="q-py-sm">
             <div class="flex justify-between items-center text-caption text-grey-8">
               <span>{{ terminologyStore.distanceUnit === 'km' ? 'Odómetro' : 'Horímetro' }}</span>
-              <span class="text-weight-bold text-black">{{
+              <span class="text-weight-bold text-white-9">{{
                 formatDistance(
                   terminologyStore.distanceUnit === 'km' ? vehicle.current_km : vehicle.current_engine_hours,
                   terminologyStore.distanceUnit as 'km' | 'Horas'

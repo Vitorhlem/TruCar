@@ -74,23 +74,29 @@ async function handleSubmit() {
 
   let success = false;
 
-  // --- LÓGICA UNIFICADA AQUI ---
-  // Se for uma 'Saída para Uso' e um veículo for selecionado, usamos a lógica completa de instalação.
+  // Cenário 1: Instalação em um veículo. Usa a store de componentes.
   if (formData.value.transaction_type === 'Saída para Uso' && formData.value.related_vehicle_id) {
     if (props.part.stock < (formData.value.quantity ?? 1)) {
         Notify.create({ type: 'negative', message: 'Estoque insuficiente para esta operação.' });
         return;
     }
     success = await componentStore.installComponent(formData.value.related_vehicle_id, {
-      part_id: props.part.id,
-      quantity: formData.value.quantity ?? 1,
+        part_id: props.part.id,
+        quantity: formData.value.quantity ?? 1,
     });
+    
+    // Se a instalação for bem-sucedida, a store de componentes já busca seus próprios dados.
+    // Agora, também mandamos a partStore buscar os dados dela, garantindo a reatividade.
+    if (success) {
+      await partStore.fetchParts();
+    }
   } else {
-    // Para todas as outras operações, usamos a transação simples.
+    // Cenário 2: TODAS as outras transações de estoque.
+    // Usam a mesma ação centralizada na partStore.
     success = await partStore.addTransaction(props.part.id, formData.value as TransactionCreate);
   }
-  // --- FIM DA LÓGICA ---
 
+  // Se qualquer uma das operações tiver sucesso, fecha o diálogo.
   if (success) {
     emit('update:modelValue', false);
   }
