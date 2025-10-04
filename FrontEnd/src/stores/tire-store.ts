@@ -17,7 +17,7 @@ export const useTireStore = defineStore('tire', {
       try {
         const response = await api.get<TireLayout>(`/tires/vehicles/${vehicleId}/tires`);
         this.tireLayout = response.data;
-      } catch (error) {
+      } catch { // Variável de erro removida
         Notify.create({ type: 'negative', message: 'Falha ao carregar a configuração de pneus.' });
       } finally {
         this.isLoading = false;
@@ -29,7 +29,7 @@ export const useTireStore = defineStore('tire', {
       try {
         const response = await api.get<VehicleTireHistory[]>(`/tires/vehicles/${vehicleId}/removed-tires`);
         this.removedTiresHistory = response.data;
-      } catch (error) {
+      } catch { // Variável de erro removida
         Notify.create({ type: 'negative', message: 'Falha ao carregar o histórico de pneus removidos.' });
       } finally {
         this.isLoading = false;
@@ -54,7 +54,6 @@ export const useTireStore = defineStore('tire', {
     async removeTire(tireId: number, removal_km: number, removal_engine_hours?: number): Promise<boolean> {
       this.isLoading = true;
       try {
-        // CORRIGIDO: Cria o corpo da requisição e garante que 'removal_engine_hours' só é enviado se tiver um valor.
         const payload: { removal_km: number, removal_engine_hours?: number } = { removal_km };
         if (removal_engine_hours !== undefined && removal_engine_hours !== null) {
           payload.removal_engine_hours = removal_engine_hours;
@@ -73,4 +72,4 @@ export const useTireStore = defineStore('tire', {
       }
     },
   },
-});
+}); 
