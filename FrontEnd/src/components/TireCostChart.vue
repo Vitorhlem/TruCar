@@ -1,3 +1,14 @@
+<template>
+  <div>
+    <apexchart
+      type="bar"
+      height="250"
+      :options="chartOptions"
+      :series="chartSeries"
+    ></apexchart>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { PropType } from 'vue';
