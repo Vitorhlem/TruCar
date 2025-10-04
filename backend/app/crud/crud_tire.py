@@ -108,29 +108,47 @@ async def remove_tire(
     db: AsyncSession,
     *,
     tire_id: int,
-    removal_km: int,
+    removal_km: int, # KM atual do odômetro do veículo
     user_id: int,
-    removal_engine_hours: Optional[float] = None
+    removal_engine_hours: Optional[float] = None # Horas atuais do motor do veículo
 ):
-    """Remove um pneu, desativando-o e registrando o descarte."""
-    tire_to_remove = await db.get(VehicleTire, tire_id, options=[selectinload(VehicleTire.part)])
+    """
+    Remove um pneu, desativando-o, calculando o total rodado e registrando o descarte.
+    """
+    tire_to_remove = await db.get(VehicleTire, tire_id, options=[selectinload(VehicleTire.part), selectinload(VehicleTire.vehicle)])
     if not tire_to_remove or not tire_to_remove.is_active:
         raise ValueError("Pneu não encontrado ou já foi removido.")
+
+    # --- LÓGICA DE CÁLCULO CENTRALIZADA ---
+    # Valida o KM de remoção
     if removal_km < tire_to_remove.install_km:
         raise ValueError("O KM de remoção deve ser maior ou igual ao KM de instalação.")
+
+    # Calcula o total rodado para pneus normais
+    calculated_km_run = float(removal_km - tire_to_remove.install_km)
+
+    # Se for Agro, calcula as horas de uso
+    if removal_engine_hours is not None and tire_to_remove.install_engine_hours is not None:
+        if removal_engine_hours < tire_to_remove.install_engine_hours:
+            raise ValueError("As Horas do Motor de remoção devem ser maiores ou iguais às de instalação.")
+        # Para o setor Agro, o "km_run" armazenará as horas de uso.
+        calculated_km_run = float(removal_engine_hours - tire_to_remove.install_engine_hours)
+    
+    # --- FIM DA LÓGICA DE CÁLCULO ---
 
     tire_to_remove.is_active = False
     tire_to_remove.removal_km = removal_km
     tire_to_remove.removal_engine_hours = removal_engine_hours
     tire_to_remove.removal_date = datetime.datetime.now(datetime.timezone.utc)
-    
+    tire_to_remove.km_run = calculated_km_run # Salva o valor calculado no banco de dados
+
     # Esta função faz o commit final
     await crud_inventory_transaction.create_transaction(
         db=db, 
         part_id=tire_to_remove.part_id,
         user_id=user_id,
         transaction_type=TransactionType.DESCARTE,
-        quantity_change=0, # Descarte não afeta o estoque geral
+        quantity_change=0,
         notes=f"Descarte do pneu (Série: {tire_to_remove.part.serial_number}) removido do veículo ID {tire_to_remove.vehicle_id}",
         related_vehicle_id=tire_to_remove.vehicle_id
     )

@@ -348,7 +348,7 @@ import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
 import type { Part } from 'src/models/part-models';
 import type { MaintenanceRequest } from 'src/models/maintenance-models';
-import type { VehicleTire, TireWithStatus, VehicleTireHistory } from 'src/models/tire-models';
+import type { VehicleTire, TireWithStatus, VehicleTireHistory, TireInstallPayload } from 'src/models/tire-models';
 import type { VehicleCost } from 'src/models/vehicle-cost-models';
 
 // Components
@@ -527,11 +527,11 @@ const filteredMaintenances = computed(() => {
 
 // COLUNAS DAS TABELAS
 const historyTireColumns: QTableColumn<VehicleTireHistory>[] = [
-    { name: 'part', label: 'Pneu (Série)', field: row => row.part.serial_number || 'N/A', align: 'left', sortable: true },
-    { name: 'position', label: 'Posição', field: (row) => row.position_code || 'N/A', align: 'center' },
-{ name: 'dates', label: 'Inst./Remoção', field: row => `${row.install_date ? format(new Date(row.install_date), 'dd/MM/yy') : 'N/A'} - ${row.removal_date ? format(new Date(row.removal_date), 'dd/MM/yy') : 'Em uso'}`, align: 'left' },
-    { name: 'km_run', label: 'KM Rodados', field: 'km_run', align: 'right', sortable: true, format: (val: number) => val > 0 ? val.toLocaleString('pt-BR') : 'N/A' },
-    { name: 'cost_per_km', label: 'Custo/KM', field: row => (row.km_run > 0 && row.part.value) ? `R$ ${(row.part.value / row.km_run).toFixed(2)}` : 'N/A', align: 'right', sortable: true },
+  { name: 'part', label: 'Pneu (Série)', field: row => row.part.serial_number || 'N/A', align: 'left', sortable: true },
+  { name: 'position', label: 'Posição', field: (row) => row.position_code || 'N/A', align: 'center' },
+  { name: 'dates', label: 'Inst./Remoção', field: row => `${row.installation_date ? format(new Date(row.installation_date), 'dd/MM/yy') : 'N/A'} - ${row.removal_date ? format(new Date(row.removal_date), 'dd/MM/yy') : 'Em uso'}`, align: 'left' },
+  { name: 'km_run', label: 'KM Rodados', field: 'km_run', align: 'right', sortable: true, format: (val: number) => val > 0 ? val.toLocaleString('pt-BR') : 'N/A' },
+  { name: 'cost_per_km', label: 'Custo/KM', field: row => (row.km_run > 0 && row.part.value) ? `R$ ${(row.part.value / row.km_run).toFixed(2)}` : 'N/A', align: 'right', sortable: true },
 ];
 
 const historyColumns: QTableColumn[] = [
@@ -591,12 +591,20 @@ async function handleInstallTire() {
     $q.notify({ type: 'negative', message: 'Por favor, selecione um pneu.' });
     return;
   }
-  const payload = {
+
+  // --- LÓGICA DE CRIAÇÃO DO PAYLOAD CORRIGIDA ---
+  const payload: TireInstallPayload = {
     position_code: targetPosition.value,
     part_id: installTireForm.value.part_id,
-    install_km: installTireForm.value.install_km ?? 0,
-    install_engine_hours: installTireForm.value.install_engine_hours ?? undefined
+    install_km: installTireForm.value.install_km ?? 0
   };
+
+  // Adiciona as horas do motor apenas se o valor for um número válido
+  if (isAgro.value && typeof installTireForm.value.install_engine_hours === 'number') {
+    payload.install_engine_hours = installTireForm.value.install_engine_hours;
+  }
+  // --- FIM DA CORREÇÃO ---
+
   const success = await tireStore.installTire(vehicleId, payload);
   if (success) {
     isInstallTireDialogOpen.value = false;
@@ -617,7 +625,7 @@ function openRemoveDialog(tire: VehicleTire) {
     message,
     prompt: { model, type: 'number' },
     cancel: true,
-    persistent: true,
+    persistent: false,
   }).onOk((valueStr: string) => {
     void (async () => {
       const value = Number(valueStr);

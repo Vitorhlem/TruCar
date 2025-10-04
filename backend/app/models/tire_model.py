@@ -9,14 +9,17 @@ class VehicleTire(Base):
     id = Column(Integer, primary_key=True, index=True)
     vehicle_id = Column(Integer, ForeignKey('vehicles.id'), nullable=False)
     part_id = Column(Integer, ForeignKey('parts.id'), nullable=False)
-    position_code = Column(String(20), nullable=False) # <-- AUMENTE O VALOR PARA 20
+    position_code = Column(String(20), nullable=False)
 
     install_km = Column(Integer, nullable=False)
     removal_km = Column(Integer, nullable=True)
     
-    # --- NOVOS CAMPOS ADICIONADOS ---
     install_engine_hours = Column(Float, nullable=True)
     removal_engine_hours = Column(Float, nullable=True)
+
+    # --- CAMPO ADICIONADO ---
+    # Armazena o total de KM ou Horas que o pneu rodou durante sua vida útil.
+    km_run = Column(Float, nullable=True)
     # --- FIM DA ADIÇÃO ---
 
     is_active = Column(Boolean, default=True, nullable=False)
@@ -28,4 +31,3 @@ class VehicleTire(Base):
     vehicle = relationship("Vehicle", back_populates="tires")
     part = relationship("Part")
     inventory_transaction = relationship("InventoryTransaction")
-

@@ -75,16 +75,9 @@ async def get_removed_tires_history(
     current_user: models.User = Depends(deps.get_current_active_user),
 ):
     """Obtém o histórico de pneus removidos para um veículo específico."""
-    # Esta chamada agora funcionará porque a função foi adicionada ao crud_tire.py
     history_db = await crud.tire.get_removed_tires_for_vehicle(db=db, vehicle_id=vehicle_id)
     
-    response = []
-    for tire_model in history_db:
-        history_item = VehicleTireHistory.model_validate(tire_model)
-        if tire_model.removal_km is not None:
-            history_item.km_run = float(tire_model.removal_km) - float(tire_model.install_km)
-        else:
-            history_item.km_run = 0
-        response.append(history_item)
-        
+    # A conversão agora é direta, sem cálculos, pois o `km_run` já vem pronto do banco.
+    response = [VehicleTireHistory.model_validate(tire) for tire in history_db]
+    
     return response
