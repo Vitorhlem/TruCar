@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from jinja2 import Environment, FileSystemLoader
 from xhtml2pdf import pisa
 import io
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 
 from app import crud
 from app.api import deps
 from app.models.user_model import User
 from app.schemas.report_generator_schema import ReportRequest
-from app.schemas.report_schema import DashboardSummary
+from app.schemas.report_schema import DashboardSummary, VehicleConsolidatedReport # <-- IMPORTAR O NOVO SCHEMA
+
 
 router = APIRouter()
 
@@ -74,3 +75,31 @@ async def generate_report_pdf(
         )
     else:
         raise HTTPException(status_code=500, detail="Erro ao gerar o PDF.")
+    
+@router.post("/vehicle-consolidated", response_model=VehicleConsolidatedReport)
+async def generate_vehicle_consolidated_report(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    vehicle_id: int = Body(..., embed=True),
+    start_date: date = Body(..., embed=True),
+    end_date: date = Body(..., embed=True),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Gera um relatório consolidado com todos os dados de um veículo
+    para um determinado período e retorna os dados em JSON.
+    """
+    try:
+        report_data = await crud.report.get_vehicle_consolidated_data(
+            db=db,
+            vehicle_id=vehicle_id,
+            start_date=start_date,
+            end_date=end_date,
+            organization_id=current_user.organization_id
+        )
+        return report_data
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        # Captura outros erros inesperados
+        raise HTTPException(status_code=500, detail=f"Ocorreu um erro ao gerar o relatório: {e}")

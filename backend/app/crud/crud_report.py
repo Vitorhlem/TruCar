@@ -15,6 +15,9 @@ from app.models.journey_model import Journey
 from app.models.organization_model import Organization
 from app.models.report_models import DashboardKPIs, KmPerDay, UpcomingMaintenance, CostByCategory, DashboardPodiumDriver
 from app.models.vehicle_cost_model import VehicleCost
+from app.schemas.report_schema import VehicleConsolidatedReport, VehicleReportPerformanceSummary, VehicleReportFinancialSummary
+from app.models.fuel_log_model import FuelLog
+from app.models.maintenance_model import MaintenanceRequest
 
 
 # --- NOVA FUNÇÃO HELPER ---
@@ -247,3 +250,83 @@ async def get_vehicle_positions(db: AsyncSession, *, organization_id: int) -> Li
     vehicles = result.scalars().all()
     return [VehiclePosition.from_orm(v) for v in vehicles]
     
+async def get_vehicle_consolidated_data(
+    db: AsyncSession, *, vehicle_id: int, start_date: date, end_date: date, organization_id: int
+) -> VehicleConsolidatedReport:
+
+    # 1. Busca o veículo para garantir que ele existe e pertence à organização
+    vehicle = await db.get(Vehicle, vehicle_id)
+    if not vehicle or vehicle.organization_id != organization_id:
+        raise ValueError("Veículo não encontrado ou não pertence à organização.")
+
+    # 2. Busca os dados detalhados dentro do período
+    costs_stmt = select(VehicleCost).where(
+        VehicleCost.vehicle_id == vehicle_id,
+        VehicleCost.date.between(start_date, end_date)
+    )
+    fuel_logs_stmt = select(FuelLog).where(
+        FuelLog.vehicle_id == vehicle_id,
+        func.date(FuelLog.timestamp).between(start_date, end_date)
+    )
+    maintenance_stmt = select(MaintenanceRequest).where(
+        MaintenanceRequest.vehicle_id == vehicle_id,
+        func.date(MaintenanceRequest.created_at).between(start_date, end_date)
+    )
+    
+    costs = (await db.execute(costs_stmt)).scalars().all()
+    fuel_logs = (await db.execute(fuel_logs_stmt)).scalars().all()
+    maintenances = (await db.execute(maintenance_stmt)).scalars().all()
+
+    # 3. Calcula os resumos de performance e financeiro
+    # Performance
+    total_liters = sum(log.liters for log in fuel_logs if log.liters)
+    
+    # Para distância, consideramos o odômetro dos abastecimentos
+    if len(fuel_logs) > 1:
+        # Ordena por odômetro para pegar o primeiro e o último registro no período
+        sorted_logs = sorted(fuel_logs, key=lambda log: log.odometer or 0)
+        min_odometer = sorted_logs[0].odometer or 0
+        max_odometer = sorted_logs[-1].odometer or 0
+        total_distance = max_odometer - min_odometer
+    else:
+        total_distance = 0
+
+    avg_consumption = (total_distance / total_liters) if total_liters > 0 else 0
+
+    performance_summary = VehicleReportPerformanceSummary(
+        total_distance_km=total_distance,
+        total_fuel_liters=total_liters,
+        average_consumption=avg_consumption
+    )
+
+    # Financeiro
+    total_costs = sum(cost.amount for cost in costs)
+    cost_per_km = (total_costs / total_distance) if total_distance > 0 else 0
+    
+    costs_by_category = {}
+    for cost in costs:
+        category_key = str(cost.cost_type.value)
+        costs_by_category[category_key] = costs_by_category.get(category_key, 0) + cost.amount
+
+    financial_summary = VehicleReportFinancialSummary(
+        total_costs=total_costs,
+        cost_per_km=cost_per_km,
+        costs_by_category=costs_by_category
+    )
+
+    # 4. Monta o objeto final do relatório
+    report_data = VehicleConsolidatedReport(
+        vehicle_id=vehicle.id,
+        vehicle_identifier=vehicle.license_plate or vehicle.identifier,
+        vehicle_model=f"{vehicle.brand} {vehicle.model}",
+        report_period_start=start_date,
+        report_period_end=end_date,
+        generated_at=datetime.utcnow(),
+        performance_summary=performance_summary,
+        financial_summary=financial_summary,
+        costs_detailed=costs,
+        fuel_logs_detailed=fuel_logs,
+        maintenance_detailed=maintenances
+    )
+
+    return report_data

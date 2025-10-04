@@ -22,6 +22,8 @@
     "axios": "^1.2.1",
     "date-fns": "^4.1.0",
     "echarts": "^5.6.0",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
     "leaflet": "^1.9.4",
     "pinia": "^3.0.1",
     "quasar": "^2.16.0",
@@ -29,7 +31,8 @@
     "vue-echarts": "^7.0.3",
     "vue-router": "^4.0.12",
     "vue3-apexcharts": "^1.8.0",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@electron/packager": "^18.4.4",

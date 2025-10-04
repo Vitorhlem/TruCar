@@ -26,7 +26,7 @@ from app.api.v1.endpoints import (
     utils,
     parts,
     vehicle_components,
-    tires  
+    tires
 )
 
 api_router = APIRouter()
