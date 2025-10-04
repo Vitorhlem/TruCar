@@ -43,6 +43,8 @@ async def create_part(
     location: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     value: Optional[float] = Form(None),
+    serial_number: Optional[str] = Form(None), # <-- ADICIONADO
+    lifespan_km: Optional[int] = Form(None),   # <-- ADICIONADO
     file: Optional[UploadFile] = File(None),
     invoice_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(deps.get_current_active_manager)
@@ -50,7 +52,9 @@ async def create_part(
     """Cria uma nova peça no inventário, com valor e nota fiscal opcionais."""
     part_in = PartCreate(
         name=name, category=category, stock=stock, min_stock=min_stock,
-        part_number=part_number, brand=brand, location=location, notes=notes, value=value
+        part_number=part_number, brand=brand, location=location, notes=notes, value=value,
+        serial_number=serial_number, # <-- ADICIONADO
+        lifespan_km=lifespan_km      # <-- ADICIONADO
     )
     
     photo_url, invoice_url = None, None
@@ -59,7 +63,6 @@ async def create_part(
     if invoice_file:
         invoice_url = await save_upload_file(invoice_file, UPLOAD_INVOICE_DIRECTORY)
     
-    # --- CORREÇÃO: Bloco try/except para capturar erros de negócio ---
     try:
         part_db = await crud.part.create(
             db=db, part_in=part_in, organization_id=current_user.organization_id, 
@@ -81,6 +84,8 @@ async def update_part(
     location: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     value: Optional[float] = Form(None),
+    serial_number: Optional[str] = Form(None), # <-- ADICIONADO
+    lifespan_km: Optional[int] = Form(None),   # <-- ADICIONADO
     file: Optional[UploadFile] = File(None),
     invoice_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(deps.get_current_active_manager)
@@ -92,7 +97,9 @@ async def update_part(
         
     part_in = PartUpdate(
         name=name, category=category, min_stock=min_stock, part_number=part_number, 
-        brand=brand, location=location, notes=notes, value=value
+        brand=brand, location=location, notes=notes, value=value,
+        serial_number=serial_number, # <-- ADICIONADO
+        lifespan_km=lifespan_km      # <-- ADICIONADO
     )
     
     photo_url = db_part.photo_url
@@ -151,7 +158,6 @@ async def add_stock_transaction(
     quantity_change = -transaction_in.quantity if transaction_in.transaction_type in [TransactionType.SAIDA_USO, TransactionType.SAIDA_FIM_DE_VIDA] else transaction_in.quantity
 
     try:
-        # A chamada está correta, passando os argumentos um a um
         transaction = await crud.inventory_transaction.create_transaction(
             db=db,
             part_id=part_id,
