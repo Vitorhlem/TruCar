@@ -27,6 +27,25 @@ export interface DashboardPodiumDriver {
   primary_metric_value: number;
 }
 
+export interface DriverPerformanceEntry {
+  driver_id: number;
+  driver_name: string;
+  total_journeys: number;
+  total_distance_km: number;
+  total_fuel_liters: number;
+  average_consumption: number;
+  total_fuel_cost: number;
+  cost_per_km: number;
+  maintenance_requests: number;
+}
+
+export interface DriverPerformanceReport {
+  report_period_start: string;
+  report_period_end: string;
+  generated_at: string;
+  drivers_performance: DriverPerformanceEntry[];
+}
+
 // ===================================================================
 // NOVAS INTERFACES PARA O DASHBOARD AVANÇADO
 // (Correspondem a app/schemas/dashboard_schema.py)

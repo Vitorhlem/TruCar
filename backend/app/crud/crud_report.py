@@ -15,7 +15,7 @@ from app.models.journey_model import Journey
 from app.models.organization_model import Organization
 from app.models.report_models import DashboardKPIs, KmPerDay, UpcomingMaintenance, CostByCategory, DashboardPodiumDriver
 from app.models.vehicle_cost_model import VehicleCost
-from app.schemas.report_schema import VehicleConsolidatedReport, VehicleReportPerformanceSummary, VehicleReportFinancialSummary
+from app.schemas.report_schema import DriverPerformanceEntry, VehicleConsolidatedReport, VehicleReportPerformanceSummary, VehicleReportFinancialSummary, DriverPerformanceReport  # <-- ImportarDriverPerformanceEntry
 from app.models.fuel_log_model import FuelLog
 from app.models.maintenance_model import MaintenanceRequest
 
@@ -327,6 +327,80 @@ async def get_vehicle_consolidated_data(
         costs_detailed=costs,
         fuel_logs_detailed=fuel_logs,
         maintenance_detailed=maintenances
+    )
+
+    return report_data
+
+async def get_driver_performance_data(
+    db: AsyncSession, *, start_date: date, end_date: date, organization_id: int
+) -> DriverPerformanceReport:
+    """
+    Busca e agrega dados de desempenho para todos os motoristas de uma organização
+    em um período específico.
+    """
+    # 1. Busca todos os motoristas da organização
+    drivers_stmt = select(User).where(
+        User.organization_id == organization_id, 
+        User.role == 'driver'
+    )
+    drivers = (await db.execute(drivers_stmt)).scalars().all()
+
+    drivers_performance_data: List[DriverPerformanceEntry] = []
+
+    # 2. Itera sobre cada motorista para coletar e agregar seus dados
+    for driver in drivers:
+        # Métricas de Viagens (Journeys)
+        journeys_stmt = select(func.count(Journey.id), func.sum(Journey.distance_km)).where(
+            Journey.driver_id == driver.id,
+            func.date(Journey.start_time).between(start_date, end_date)
+        )
+        journey_metrics = (await db.execute(journeys_stmt)).first()
+        total_journeys = journey_metrics[0] or 0
+        total_distance = float(journey_metrics[1] or 0.0)
+
+        # Métricas de Combustível (FuelLog)
+        fuel_stmt = select(func.sum(FuelLog.liters), func.sum(FuelLog.total_cost)).where(
+            FuelLog.user_id == driver.id,
+            func.date(FuelLog.timestamp).between(start_date, end_date)
+        )
+        fuel_metrics = (await db.execute(fuel_stmt)).first()
+        total_liters = float(fuel_metrics[0] or 0.0)
+        total_fuel_cost = float(fuel_metrics[1] or 0.0)
+
+        # Métricas de Manutenção
+        maintenance_stmt = select(func.count(MaintenanceRequest.id)).where(
+            MaintenanceRequest.reported_by_id == driver.id,
+            func.date(MaintenanceRequest.created_at).between(start_date, end_date)
+        )
+        maintenance_count = (await db.execute(maintenance_stmt)).scalar_one_or_none() or 0
+        
+        # Cálculos derivados
+        avg_consumption = (total_distance / total_liters) if total_liters > 0 else 0
+        cost_per_km = (total_fuel_cost / total_distance) if total_distance > 0 else 0
+
+        drivers_performance_data.append(
+            DriverPerformanceEntry(
+                driver_id=driver.id,
+                driver_name=driver.full_name,
+                total_journeys=total_journeys,
+                total_distance_km=total_distance,
+                total_fuel_liters=total_liters,
+                average_consumption=avg_consumption,
+                total_fuel_cost=total_fuel_cost,
+                cost_per_km=cost_per_km,
+                maintenance_requests=maintenance_count,
+            )
+        )
+
+    # 3. Ordena o ranking pelo principal indicador (ex: Custo por KM)
+    sorted_performance_data = sorted(drivers_performance_data, key=lambda d: d.cost_per_km, reverse=True)
+
+    # 4. Monta o objeto final do relatório
+    report_data = DriverPerformanceReport(
+        report_period_start=start_date,
+        report_period_end=end_date,
+        generated_at=datetime.utcnow(),
+        drivers_performance=sorted_performance_data
     )
 
     return report_data

@@ -48,3 +48,25 @@ class VehicleConsolidatedReport(BaseModel):
     
     class Config:
         from_attributes = True
+
+class DriverPerformanceEntry(BaseModel):
+    """Representa a linha de dados para um único motorista no relatório."""
+    driver_id: int
+    driver_name: str
+    total_journeys: int = 0
+    total_distance_km: float = 0.0
+    total_fuel_liters: float = 0.0
+    average_consumption: float = 0.0
+    total_fuel_cost: float = 0.0
+    cost_per_km: float = 0.0
+    maintenance_requests: int = 0
+
+class DriverPerformanceReport(BaseModel):
+    """Schema principal para o Relatório de Desempenho de Motoristas."""
+    report_period_start: date
+    report_period_end: date
+    generated_at: datetime
+    drivers_performance: List[DriverPerformanceEntry]
+
+    class Config:
+        from_attributes = True
