@@ -8,6 +8,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.models.vehicle_component_model import VehicleComponent
+from app.models.tire_model import VehicleTire
+from app.models.fine_model import Fine # <-- ADICIONE APENAS ESTA LINHA
+
 # Importações da sua aplicação
 from app.api.api import api_router
 from app.core.config import settings

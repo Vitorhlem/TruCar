@@ -17,4 +17,5 @@ from . import crud_freight_order as freight_order
 from . import crud_implement as implement
 from . import crud_notification as notification
 from . import crud_report as report
-from . import crud_tire as tire # <-- ESTA É A ÚNICA LINHA NECESSÁRIA PARA O CRUD TIRE
+from . import crud_tire as tire #
+from . import crud_fine as fine # <-- ADICIONE ESTA LINHA

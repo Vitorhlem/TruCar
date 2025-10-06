@@ -66,6 +66,7 @@
             <div>
               <div class="text-weight-bold">Limites do Plano de Demonstração</div>
               <q-list dense>
+                
                 <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="local_shipping" /></q-item-section><q-item-section>Veículos: {{ demoStore.stats?.vehicle_count }} / {{ demoStore.stats?.vehicle_limit }}</q-item-section></q-item>
                 <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="engineering" /></q-item-section><q-item-section>Motoristas: {{ demoStore.stats?.driver_count }} / {{ demoStore.stats?.driver_limit }}</q-item-section></q-item>
                 <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="route" /></q-item-section><q-item-section>Jornadas este mês: {{ demoStore.stats?.journey_count }} / {{ demoStore.stats?.journey_limit }}</q-item-section></q-item>
@@ -222,6 +223,8 @@ if (isManager) {
         { title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' },
         { title: 'Relatórios', icon: 'summarize', to: '/reports' },
         { title: 'Manutenções', icon: 'build', to: '/maintenance' },
+        { title: 'Gestão de Multas', icon: 'receipt_long', to: '/fines' },
+
       ]
     };
     menu.push(analysis);

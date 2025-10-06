@@ -1,4 +1,3 @@
-import type { User } from './auth-models';
 
 // O tipo 'UserRole' é importado implicitamente através do tipo 'User'
 type UserRole = User['role'];
@@ -61,4 +60,15 @@ export interface LeaderboardUser {
   avatar_url: string | null;
   primary_metric_value: number;
   total_journeys: number;
+}
+
+export interface User {
+  id: number;
+  full_name: string;
+  email: string;
+  role: 'cliente_ativo' | 'cliente_demo' | 'driver';
+  is_active: boolean;
+  avatar_url?: string | null;
+  organization_id: number;
+  employee_id: string;
 }

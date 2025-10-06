@@ -11,8 +11,8 @@ class CostType(str, enum.Enum):
     PEDAGIO = "Pedágio"
     SEGURO = "Seguro"
     PNEU = "Pneu"
-    # --- NOVA OPÇÃO ADICIONADA ---
     PECAS_COMPONENTES = "Peças e Componentes"
+    MULTA = "Multa"  # <-- ADICIONADO
     OUTROS = "Outros"
 
 class VehicleCost(Base):
