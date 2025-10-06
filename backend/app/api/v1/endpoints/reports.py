@@ -9,10 +9,35 @@ from app import crud
 from app.api import deps
 from app.models.user_model import User
 from app.schemas.report_generator_schema import ReportRequest
-from app.schemas.report_schema import DashboardSummary, VehicleConsolidatedReport # <-- IMPORTAR O NOVO SCHEMA
+from app.schemas.report_schema import DashboardSummary, VehicleConsolidatedReport, DriverPerformanceReport, FleetManagementReport# <-- IMPORTAR O NOVO SCHEMA
 
 
 router = APIRouter()
+
+@router.post("/fleet-management", response_model=FleetManagementReport)
+async def generate_fleet_management_report(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    start_date: date = Body(..., embed=True),
+    end_date: date = Body(..., embed=True),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Gera um relatório gerencial com KPIs e rankings de toda a frota
+    para um determinado período.
+    """
+    try:
+        report_data = await crud.report.get_fleet_management_data(
+            db=db,
+            start_date=start_date,
+            end_date=end_date,
+            organization_id=current_user.organization_id
+        )
+        return report_data
+    except Exception as e:
+        # Adicionar log do erro pode ser útil para depuração
+        print(f"Erro ao gerar relatório gerencial: {e}")
+        raise HTTPException(status_code=500, detail="Ocorreu um erro interno ao gerar o relatório gerencial.")
 
 @router.get("/dashboard-summary", response_model=DashboardSummary)
 async def get_dashboard_summary_data(
@@ -25,6 +50,29 @@ async def get_dashboard_summary_data(
         db, current_user=current_user, start_date=thirty_days_ago
     )
     return summary_data
+
+@router.post("/driver-performance", response_model=DriverPerformanceReport)
+async def generate_driver_performance_report(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    start_date: date = Body(..., embed=True),
+    end_date: date = Body(..., embed=True),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Gera um relatório de desempenho com ranking de todos os motoristas
+    para um determinado período e retorna os dados em JSON.
+    """
+    try:
+        report_data = await crud.report.get_driver_performance_data(
+            db=db,
+            start_date=start_date,
+            end_date=end_date,
+            organization_id=current_user.organization_id
+        )
+        return report_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocorreu um erro ao gerar o relatório: {e}")
 
 @router.post("/generate-pdf", response_class=Response) # Mudei o nome da rota para ser mais específico
 async def generate_report_pdf(

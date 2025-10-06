@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
-import type { VehicleConsolidatedReport, DriverPerformanceReport } from 'src/models/report-models';
+import type { VehicleConsolidatedReport, DriverPerformanceReport, FleetManagementReport } from 'src/models/report-models';
 
 interface ReportState {
   isLoading: boolean;
   vehicleReport: VehicleConsolidatedReport | null;
   driverPerformanceReport: DriverPerformanceReport | null; // <-- ADICIONADO
+  fleetManagementReport: FleetManagementReport | null; // <-- ADICIONADO
+
 }
 
 export const useReportStore = defineStore('report', {
@@ -14,6 +16,8 @@ export const useReportStore = defineStore('report', {
     isLoading: false,
     vehicleReport: null,
     driverPerformanceReport: null, // <-- ADICIONADO
+    fleetManagementReport: null, // <-- ADICIONADO
+
   }),
 
   actions: {
@@ -21,6 +25,8 @@ export const useReportStore = defineStore('report', {
     clearReports() {
       this.vehicleReport = null;
       this.driverPerformanceReport = null;
+      this.fleetManagementReport = null; // <-- ADICIONADO
+
     },
 
     async generateVehicleConsolidatedReport(vehicleId: number, startDate: string, endDate: string) {
@@ -50,6 +56,22 @@ export const useReportStore = defineStore('report', {
         Notify.create({ type: 'positive', message: 'Relatório de Desempenho gerado com sucesso!' });
       } catch (error) {
         console.error("Erro ao gerar relatório de desempenho:", error);
+        Notify.create({ type: 'negative', message: 'Falha ao gerar o relatório.' });
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
+  async generateFleetManagementReport(startDate: string, endDate: string) {
+      this.clearReports();
+      this.isLoading = true;
+      try {
+        const payload = { start_date: startDate, end_date: endDate };
+        const response = await api.post<FleetManagementReport>('/reports/fleet-management', payload);
+        this.fleetManagementReport = response.data;
+        Notify.create({ type: 'positive', message: 'Relatório Gerencial gerado com sucesso!' });
+      } catch (error) {
+        console.error("Erro ao gerar relatório gerencial:", error);
         Notify.create({ type: 'negative', message: 'Falha ao gerar o relatório.' });
       } finally {
         this.isLoading = false;

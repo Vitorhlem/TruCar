@@ -15,12 +15,105 @@ from app.models.journey_model import Journey
 from app.models.organization_model import Organization
 from app.models.report_models import DashboardKPIs, KmPerDay, UpcomingMaintenance, CostByCategory, DashboardPodiumDriver
 from app.models.vehicle_cost_model import VehicleCost
-from app.schemas.report_schema import DriverPerformanceEntry, VehicleConsolidatedReport, VehicleReportPerformanceSummary, VehicleReportFinancialSummary, DriverPerformanceReport  # <-- ImportarDriverPerformanceEntry
+from app.schemas.report_schema import FleetManagementReport, VehicleRankingEntry, FleetReportSummary, DriverPerformanceEntry, VehicleConsolidatedReport, VehicleReportPerformanceSummary, VehicleReportFinancialSummary, DriverPerformanceReport  # <-- ImportarDriverPerformanceEntry
 from app.models.fuel_log_model import FuelLog
 from app.models.maintenance_model import MaintenanceRequest
 
 
 # --- NOVA FUNÇÃO HELPER ---
+
+async def get_fleet_management_data(
+    db: AsyncSession, *, start_date: date, end_date: date, organization_id: int
+) -> FleetManagementReport:
+    """
+    Agrega dados de custo e performance de toda a frota para um período.
+    """
+    # 1. Obter todos os veículos da organização
+    vehicles_stmt = select(Vehicle).where(Vehicle.organization_id == organization_id)
+    vehicles = (await db.execute(vehicles_stmt)).scalars().all()
+    
+    vehicle_ids = [v.id for v in vehicles]
+
+    # 2. Obter todos os custos e abastecimentos do período em consultas otimizadas
+    costs_stmt = select(VehicleCost).where(
+        VehicleCost.organization_id == organization_id,
+        VehicleCost.date.between(start_date, end_date)
+    )
+    fuel_logs_stmt = select(FuelLog).where(
+        FuelLog.organization_id == organization_id,
+        func.date(FuelLog.timestamp).between(start_date, end_date)
+    )
+    
+    all_costs = (await db.execute(costs_stmt)).scalars().all()
+    all_fuel_logs = (await db.execute(fuel_logs_stmt)).scalars().all()
+
+    # 3. Calcular Resumos e Agregações Gerais
+    total_fleet_cost = sum(c.amount for c in all_costs)
+    
+    costs_by_category: Dict[str, float] = {}
+    for cost in all_costs:
+        category_key = str(cost.cost_type.value)
+        costs_by_category[category_key] = costs_by_category.get(category_key, 0) + cost.amount
+
+    # 4. Processar dados por veículo para criar os rankings
+    vehicle_metrics: List[Dict] = []
+    total_fleet_distance = 0.0
+
+    for vehicle in vehicles:
+        costs = [c for c in all_costs if c.vehicle_id == vehicle.id]
+        fuel_logs = [f for f in all_fuel_logs if f.vehicle_id == vehicle.id]
+        
+        total_cost = sum(c.amount for c in costs)
+        
+        distance = 0.0
+        if len(fuel_logs) > 1:
+            sorted_logs = sorted(fuel_logs, key=lambda log: log.odometer or 0)
+            min_odo = sorted_logs[0].odometer or 0
+            max_odo = sorted_logs[-1].odometer or 0
+            distance = float(max_odo - min_odo)
+        
+        total_fleet_distance += distance
+        
+        total_liters = sum(log.liters for log in fuel_logs if log.liters)
+        avg_consumption = (distance / total_liters) if total_liters > 0 else 0
+        cost_per_km = (total_cost / distance) if distance > 0 else 0
+
+        vehicle_metrics.append({
+            "id": vehicle.id,
+            "identifier": vehicle.license_plate or vehicle.identifier,
+            "total_cost": total_cost,
+            "cost_per_km": cost_per_km,
+            "avg_consumption": avg_consumption
+        })
+
+    # 5. Criar os Rankings
+    # Usamos `lambda` para ordenar pelo valor desejado. `or 0` trata casos nulos.
+    top_expensive = sorted(vehicle_metrics, key=lambda v: v.get('total_cost', 0), reverse=True)[:5]
+    top_cost_per_km = sorted(vehicle_metrics, key=lambda v: v.get('cost_per_km', 0), reverse=True)[:5]
+    top_efficient = sorted(vehicle_metrics, key=lambda v: v.get('avg_consumption', 0), reverse=True)[:5]
+    least_efficient = sorted([v for v in vehicle_metrics if v.get('avg_consumption', 0) > 0], key=lambda v: v.get('avg_consumption', 0))[:5]
+
+    # 6. Montar o objeto final do relatório
+    summary = FleetReportSummary(
+        total_cost=total_fleet_cost,
+        total_distance_km=total_fleet_distance,
+        overall_cost_per_km=(total_fleet_cost / total_fleet_distance) if total_fleet_distance > 0 else 0
+    )
+
+    report_data = FleetManagementReport(
+        report_period_start=start_date,
+        report_period_end=end_date,
+        generated_at=datetime.utcnow(),
+        summary=summary,
+        costs_by_category=costs_by_category,
+        top_5_most_expensive_vehicles=[VehicleRankingEntry(vehicle_id=v['id'], vehicle_identifier=v['identifier'], value=v['total_cost'], unit='R$') for v in top_expensive],
+        top_5_highest_cost_per_km_vehicles=[VehicleRankingEntry(vehicle_id=v['id'], vehicle_identifier=v['identifier'], value=v['cost_per_km'], unit='R$/km') for v in top_cost_per_km],
+        top_5_most_efficient_vehicles=[VehicleRankingEntry(vehicle_id=v['id'], vehicle_identifier=v['identifier'], value=v['avg_consumption'], unit='km/l') for v in top_efficient],
+        top_5_least_efficient_vehicles=[VehicleRankingEntry(vehicle_id=v['id'], vehicle_identifier=v['identifier'], value=v['avg_consumption'], unit='km/l') for v in least_efficient]
+    )
+    
+    return report_data
+
 def _format_relative_time(dt: datetime) -> str:
     """Formata um datetime em uma string de tempo relativo (ex: 'há 5 minutos')."""
     now = datetime.utcnow()

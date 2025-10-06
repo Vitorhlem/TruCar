@@ -70,3 +70,34 @@ class DriverPerformanceReport(BaseModel):
 
     class Config:
         from_attributes = True
+
+class FleetReportSummary(BaseModel):
+    """Resumo geral da frota no período."""
+    total_cost: float = 0.0
+    total_distance_km: float = 0.0
+    overall_cost_per_km: float = 0.0
+    
+class VehicleRankingEntry(BaseModel):
+    """Entrada para os rankings de veículos."""
+    vehicle_id: int
+    vehicle_identifier: str
+    value: float
+    unit: str
+
+class FleetManagementReport(BaseModel):
+    """Schema principal para o Relatório Gerencial da Frota."""
+    report_period_start: date
+    report_period_end: date
+    generated_at: datetime
+    
+    summary: FleetReportSummary
+    costs_by_category: Dict[str, float] = {}
+    
+    # Rankings
+    top_5_most_expensive_vehicles: List[VehicleRankingEntry]
+    top_5_highest_cost_per_km_vehicles: List[VehicleRankingEntry]
+    top_5_most_efficient_vehicles: List[VehicleRankingEntry]
+    top_5_least_efficient_vehicles: List[VehicleRankingEntry]
+
+    class Config:
+        from_attributes = True

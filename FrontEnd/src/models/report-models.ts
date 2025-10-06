@@ -67,6 +67,31 @@ export interface VehiclePosition {
   status: string;
 }
 
+export interface FleetReportSummary {
+  total_cost: number;
+  total_distance_km: number;
+  overall_cost_per_km: number;
+}
+
+export interface VehicleRankingEntry {
+  vehicle_id: number;
+  vehicle_identifier: string;
+  value: number;
+  unit: string;
+}
+
+export interface FleetManagementReport {
+  report_period_start: string;
+  report_period_end: string;
+  generated_at: string;
+  summary: FleetReportSummary;
+  costs_by_category: Record<string, number>;
+  top_5_most_expensive_vehicles: VehicleRankingEntry[];
+  top_5_highest_cost_per_km_vehicles: VehicleRankingEntry[];
+  top_5_most_efficient_vehicles: VehicleRankingEntry[];
+  top_5_least_efficient_vehicles: VehicleRankingEntry[];
+}
+
 export interface AlertSummary {
   id: number;
   icon: string;

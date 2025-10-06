@@ -78,6 +78,10 @@
       <DriverPerformanceReportDisplay :report="reportStore.driverPerformanceReport" />
     </div>
 
+    <div v-else-if="reportStore.fleetManagementReport" class="q-mt-md">
+      <FleetManagementReportDisplay :report="reportStore.fleetManagementReport" />
+    </div>
+
     <div v-else class="flex flex-center column text-center q-pa-xl text-grey">
       <q-icon name="insights" size="6em" />
       <p class="text-h6 q-mt-md">Selecione os filtros acima para gerar um relatório.</p>
@@ -93,21 +97,20 @@ import { useReportStore } from 'stores/report-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import type { Vehicle } from 'src/models/vehicle-models';
 
-// Importa ambos os componentes de visualização
 import VehicleReportDisplay from 'components/reports/VehicleReportDisplay.vue';
 import DriverPerformanceReportDisplay from 'components/reports/DriverPerformanceReportDisplay.vue';
+import FleetManagementReportDisplay from 'components/reports/FleetManagementReportDisplay.vue';
 
 const $q = useQuasar();
 const reportStore = useReportStore();
 const vehicleStore = useVehicleStore();
 
 const filters = ref({
-  reportType: null as 'vehicle_consolidated' | 'driver_performance' | null,
+  reportType: null as 'vehicle_consolidated' | 'driver_performance' | 'fleet_management' | null,
   vehicleId: null as number | null,
   dateRange: null as { from: string, to: string } | null,
 });
 
-// Reseta filtros secundários e limpa relatórios ao trocar o tipo
 watch(() => filters.value.reportType, () => {
   filters.value.vehicleId = null;
   filters.value.dateRange = null;
@@ -117,6 +120,7 @@ watch(() => filters.value.reportType, () => {
 const reportOptions = [
   { label: 'Relatório Consolidado de Veículo', value: 'vehicle_consolidated' },
   { label: 'Relatório de Desempenho de Motoristas', value: 'driver_performance' },
+  { label: 'Relatório Gerencial da Frota', value: 'fleet_management' },
 ];
 
 const vehicleOptions = ref<{ label: string, value: number }[]>([]);
@@ -132,14 +136,10 @@ const dateRangeText = computed(() => {
 
 const isFormValid = computed(() => {
   if (!filters.value.reportType || !filters.value.dateRange) return false;
-
   if (filters.value.reportType === 'vehicle_consolidated') {
     return !!filters.value.vehicleId;
   }
-  if (filters.value.reportType === 'driver_performance') {
-    return true; // Para este relatório, só o período é obrigatório
-  }
-  return false;
+  return true;
 });
 
 function filterVehicles(val: string, update: (callback: () => void) => void) {
@@ -159,30 +159,24 @@ function filterVehicles(val: string, update: (callback: () => void) => void) {
 }
 
 async function generateReport() {
-  if (!isFormValid.value) {
+  if (!isFormValid.value || !filters.value.dateRange) {
     $q.notify({ type: 'warning', message: 'Por favor, preencha todos os filtros obrigatórios.' });
     return;
   }
-  
-  // Garante que dateRange não é nulo antes de desestruturar
-  const dateRange = filters.value.dateRange;
-  if (!dateRange) return;
 
-  const { from, to } = dateRange;
+  const { from, to } = filters.value.dateRange;
 
   if (filters.value.reportType === 'vehicle_consolidated' && filters.value.vehicleId) {
     await reportStore.generateVehicleConsolidatedReport(filters.value.vehicleId, from, to);
   } else if (filters.value.reportType === 'driver_performance') {
     await reportStore.generateDriverPerformanceReport(from, to);
+  } else if (filters.value.reportType === 'fleet_management') {
+    await reportStore.generateFleetManagementReport(from, to);
   }
 }
 
 onMounted(() => {
-  // --- CORREÇÃO APLICADA AQUI ---
-  // A função se chama 'clearReports' (plural) na store.
   reportStore.clearReports();
-  // --- FIM DA CORREÇÃO ---
-  
   if (vehicleStore.vehicles.length === 0) {
     void vehicleStore.fetchAllVehicles({ page: 1, rowsPerPage: 9999 });
   } else {
