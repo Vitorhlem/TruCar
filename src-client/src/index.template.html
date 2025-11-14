@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= productName %></title>
+    <meta charset="utf-8" />
+    <meta name="description" content="<%= productDescription %>" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta
+      name="viewport"
+      content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width<% if (ctx.mode.cordova || ctx.mode.capacitor) { %>, viewport-fit=cover<% } %>"
+    />
+    
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="128x128"
+      href="icons/favicon-128x128.png"
+    />
+
+    <!-- Estilos da tela de carregamento DO SISTEMA -->
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Poppins', sans-serif;
+      }
+      #q-app-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #f0f2f5;
+        z-index: 999999;
+      }
+      .loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .trucar-logo {
+        font-size: 48px;
+        font-weight: 700;
+        color: #333;
+        letter-spacing: -1px;
+      }
+      .trucar-logo span:nth-child(4) {
+        color: #0d6efd; /* Cor Primária */
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #d0d0d0;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-top: 24px;
+        margin-bottom: 16px;
+      }
+      .loading-text {
+        font-size: 16px;
+        color: #555;
+        font-weight: 400;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 
+      Este é o "Splash Screen" que o Quasar entende.
+      Ele será removido automaticamente quando o app estiver pronto.
+    -->
+    <div id="q-app-loading">
+      <div class="loader-content">
+        <div class="trucar-logo">
+          <span>T</span><span>r</span><span>u</span><span>C</span><span>a</span><span>r</span>
+        </div>
+        <div class="spinner"></div>
+        <div class="loading-text">Carregando sistema...</div>
+      </div>
+    </div>
+
+    <!-- Ponto de entrada do Quasar. NÃO REMOVA ISSO. -->
+    <!-- quasar:entry-point -->
+  </body>
+</html>

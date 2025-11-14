@@ -1,0 +1,123 @@
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.052ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="users"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.150ms] [34;1m[rows:5][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "users" AND sql IS NOT NULL order by type = "table" desc
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.069ms] [34;1m[rows:-][0m SELECT * FROM `users` LIMIT 1
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.041ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "table" AND tbl_name = "users" AND (sql LIKE "%CONSTRAINT ""fk_organizations_users"" %" OR sql LIKE "%CONSTRAINT fk_organizations_users %" OR sql LIKE "%CONSTRAINT `fk_organizations_users`%" OR sql LIKE "%CONSTRAINT [fk_organizations_users]%" OR sql LIKE "%CONSTRAINT 	fk_organizations_users	%")
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.018ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "users" AND name = "idx_users_full_name"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.016ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "users" AND name = "idx_users_email"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.015ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "users" AND name = "idx_users_employee_id"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.066ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "users" AND name = "idx_users_reset_password_token"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.021ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="organizations"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.080ms] [34;1m[rows:2][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "organizations" AND sql IS NOT NULL order by type = "table" desc
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.021ms] [34;1m[rows:-][0m SELECT * FROM `organizations` LIMIT 1
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.018ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "organizations" AND name = "idx_organizations_name"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.014ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="vehicles"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.054ms] [34;1m[rows:2][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "vehicles" AND sql IS NOT NULL order by type = "table" desc
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.074ms] [34;1m[rows:-][0m SELECT * FROM `vehicles` LIMIT 1
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.025ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "vehicles" AND name = "idx_vehicles_telemetry_device_id"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.023ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="journeys"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.053ms] [34;1m[rows:1][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "journeys" AND sql IS NOT NULL order by type = "table" desc
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.031ms] [34;1m[rows:-][0m SELECT * FROM `journeys` LIMIT 1
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.027ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="implements"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.064ms] [34;1m[rows:1][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "implements" AND sql IS NOT NULL order by type = "table" desc
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.030ms] [34;1m[rows:-][0m SELECT * FROM `implements` LIMIT 1
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.018ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="fuel_logs"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.057ms] [34;1m[rows:1][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "fuel_logs" AND sql IS NOT NULL order by type = "table" desc
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.030ms] [34;1m[rows:-][0m SELECT * FROM `fuel_logs` LIMIT 1
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.020ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="maintenance_requests"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[3.485ms] [34;1m[rows:0][0m CREATE TABLE `maintenance_requests` (`id` integer PRIMARY KEY AUTOINCREMENT,`problem_description` text NOT NULL,`status` maintenance_status NOT NULL DEFAULT "PENDENTE",`category` maintenance_category NOT NULL,`manager_notes` text,`reported_by_id` integer,`approved_by_id` integer,`vehicle_id` integer NOT NULL,`organization_id` integer NOT NULL,`created_at` datetime,`updated_at` datetime)
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.104ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="maintenance_comments"
+
+2025/11/13 14:29:50 [32m/app/go/internal/db/database.go:39
+[0m[33m[2.854ms] [34;1m[rows:0][0m CREATE TABLE `maintenance_comments` (`id` integer PRIMARY KEY AUTOINCREMENT,`comment_text` text NOT NULL,`file_url` text,`organization_id` integer NOT NULL,`request_id` integer NOT NULL,`user_id` integer,`created_at` datetime,CONSTRAINT `fk_maintenance_requests_comments` FOREIGN KEY (`request_id`) REFERENCES `maintenance_requests`(`id`))
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] POST   /api/v1/login/access-token --> go-api/internal/handlers.Login (3 handlers)
+[GIN-debug] GET    /api/v1/users             --> go-api/internal/handlers.GetUsers (4 handlers)
+[GIN-debug] POST   /api/v1/users             --> go-api/internal/handlers.CreateUserHandler (4 handlers)
+[GIN-debug] GET    /api/v1/users/:id         --> go-api/internal/handlers.GetUser (4 handlers)
+[GIN-debug] PUT    /api/v1/users/:id         --> go-api/internal/handlers.UpdateUserHandler (4 handlers)
+[GIN-debug] DELETE /api/v1/users/:id         --> go-api/internal/handlers.DeleteUserHandler (4 handlers)
+[GIN-debug] GET    /api/v1/vehicles          --> go-api/internal/handlers.GetVehicles (4 handlers)
+[GIN-debug] POST   /api/v1/vehicles          --> go-api/internal/handlers.CreateVehicleHandler (4 handlers)
+[GIN-debug] GET    /api/v1/vehicles/:id      --> go-api/internal/handlers.GetVehicle (4 handlers)
+[GIN-debug] PUT    /api/v1/vehicles/:id      --> go-api/internal/handlers.UpdateVehicleHandler (4 handlers)
+[GIN-debug] DELETE /api/v1/vehicles/:id      --> go-api/internal/handlers.DeleteVehicleHandler (4 handlers)
+[GIN-debug] GET    /api/v1/journeys          --> go-api/internal/handlers.GetJourneys (4 handlers)
+[GIN-debug] POST   /api/v1/journeys/start    --> go-api/internal/handlers.StartJourneyHandler (4 handlers)
+[GIN-debug] PUT    /api/v1/journeys/:id/end  --> go-api/internal/handlers.EndJourneyHandler (4 handlers)
+[GIN-debug] DELETE /api/v1/journeys/:id      --> go-api/internal/handlers.DeleteJourneyHandler (4 handlers)
+[GIN-debug] GET    /api/v1/fuel-logs         --> go-api/internal/handlers.GetFuelLogs (4 handlers)
+[GIN-debug] POST   /api/v1/fuel-logs         --> go-api/internal/handlers.CreateFuelLogHandler (4 handlers)
+[GIN-debug] GET    /api/v1/fuel-logs/:id     --> go-api/internal/handlers.GetFuelLog (4 handlers)
+[GIN-debug] PUT    /api/v1/fuel-logs/:id     --> go-api/internal/handlers.UpdateFuelLogHandler (4 handlers)
+[GIN-debug] DELETE /api/v1/fuel-logs/:id     --> go-api/internal/handlers.DeleteFuelLogHandler (4 handlers)
+[GIN-debug] GET    /api/v1/maintenance       --> go-api/internal/handlers.GetMaintenanceRequests (4 handlers)
+[GIN-debug] POST   /api/v1/maintenance       --> go-api/internal/handlers.CreateMaintenanceRequestHandler (4 handlers)
+[GIN-debug] GET    /api/v1/maintenance/:id   --> go-api/internal/handlers.GetMaintenanceRequest (4 handlers)
+[GIN-debug] PUT    /api/v1/maintenance/:id/status --> go-api/internal/handlers.UpdateMaintenanceRequestStatusHandler (4 handlers)
+[GIN-debug] DELETE /api/v1/maintenance/:id   --> go-api/internal/handlers.DeleteMaintenanceRequestHandler (4 handlers)
+[GIN-debug] GET    /api/v1/maintenance/:id/comments --> go-api/internal/handlers.GetMaintenanceCommentsHandler (4 handlers)
+[GIN-debug] POST   /api/v1/maintenance/:id/comments --> go-api/internal/handlers.CreateMaintenanceCommentHandler (4 handlers)
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080

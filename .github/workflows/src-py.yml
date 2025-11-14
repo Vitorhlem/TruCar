@@ -1,0 +1,29 @@
+name: CI - src-py
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src-py/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./src-py
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Test with pytest
+      run: pytest

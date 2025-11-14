@@ -1,0 +1,29 @@
+name: CI - src-go
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src-go/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./src-go
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: '1.24.3'
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Build
+      run: go build -v ./...

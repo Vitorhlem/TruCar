@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4; margin: 2cm; }
+        body { font-family: 'Helvetica', sans-serif; font-size: 12px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Relatório de Viagem #{{ journey.id }}</h1>
+    <p><strong>Status:</strong> {% if journey.is_active %}Ativa{% else %}Finalizada{% endif %}</p>
+    
+    <h2>Detalhes da Viagem</h2>
+    <table>
+        <tr><th>Motorista</th><td>{{ journey.driver.full_name }}</td></tr>
+        <tr><th>Veículo</th><td>{{ journey.vehicle.brand }} {{ journey.vehicle.model }} ({{ journey.vehicle.license_plate }})</td></tr>
+        <tr><th>Data de Início</th><td>{{ journey.start_time.strftime('%d/%m/%Y %H:%M') }}</td></tr>
+        <tr><th>Data de Fim</th><td>{% if journey.end_time %}{{ journey.end_time.strftime('%d/%m/%Y %H:%M') }}{% else %}N/A{% endif %}</td></tr>
+        <tr><th>KM Inicial</th><td>{{ journey.start_mileage }} km</td></tr>
+        <tr><th>KM Final</th><td>{% if journey.end_mileage %}{{ journey.end_mileage }} km{% else %}N/A{% endif %}</td></tr>
+        <tr><th>Distância Percorrida</th><td>{% if journey.end_mileage %}{{ journey.end_mileage - journey.start_mileage }} km{% else %}N/A{% endif %}</td></tr>
+        <tr><th>Tipo de Viagem</th><td>{{ journey.trip_type.value }}</td></tr>
+        <tr><th>Destino/Descrição</th><td>{{ journey.destination_address or journey.trip_description }}</td></tr>
+    </table>
+</body>
+</html>
