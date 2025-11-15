@@ -36,7 +36,7 @@ async def replace_component_atomic(
     request_id: int, 
     payload: ReplaceComponentPayload, 
     user: User
-) -> ReplaceComponentResponse:
+) -> MaintenanceComment: # <-- MUDE O TIPO DE RETORNO AQUI
     """
     Executa a substituição de um componente de forma atômica (sem commit).
     1. Remove o item antigo (muda status).
@@ -106,12 +106,10 @@ async def replace_component_atomic(
         request_id=request_id,
         user_id=user.id,
         organization_id=organization_id
-    )
+    ) # `create_comment` já faz flush e refresh em 'user'
 
-    return ReplaceComponentResponse(
-        message="Substituição realizada com sucesso.",
-        new_comment=new_comment
-    )
+    # MUDE AQUI: Retorne o modelo, não o schema de resposta
+    return new_comment
 
 
 async def get_request(

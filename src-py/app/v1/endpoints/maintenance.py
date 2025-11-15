@@ -254,31 +254,39 @@ async def replace_maintenance_component(
     Endpoint atômico para substituir um componente no contexto de um chamado.
     """
     try:
-        response = await crud.maintenance.replace_component_atomic(
+        # 1. AGORA 'new_comment_model' É O MODELO SQLAlchemy
+        new_comment_model = await crud.maintenance.replace_component_atomic(
             db=db,
             request_id=request_id,
             payload=payload,
             user=current_user
         )
         
-        # Se tudo deu certo nas funções CRUD (que usam flush), commitamos a transação.
+        # 2. Se tudo deu certo no CRUD (que usou flush), commitamos a transação.
         await db.commit()
         
-        # Recarregar o comentário com todas as relações (usuário)
-        await db.refresh(response.new_comment, ["user"])
-        await db.refresh(response.new_comment.user, ["organization"])
+        # 3. AGORA O REFRESH FUNCIONA, pois 'new_comment_model' é um modelo
+        # A função `create_comment` já carregou 'user', mas não 'user.organization'
+        await db.refresh(new_comment_model, ["user"])
+        if new_comment_model.user: # Garante que o usuário não é nulo
+             await db.refresh(new_comment_model.user, ["organization"])
         
-        # Notificar o motorista (em background)
+        # 4. Lógica de Notificação (usa o modelo)
         request_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user.organization_id)
         if request_obj:
              background_tasks.add_task(
-                crud.notification.create_notification, db=db, message=response.new_comment.comment_text,
+                crud.notification.create_notification, db=db, message=new_comment_model.comment_text,
                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
                 organization_id=current_user.organization_id, user_id=request_obj.reported_by_id,
                 related_entity_type="maintenance_request", related_entity_id=request_id
             )
 
-        return response
+        # 5. CONSTRÓI O SCHEMA DE RESPOSTA SÓ AQUI NO FINAL
+        return ReplaceComponentResponse(
+            success=True,
+            message="Substituição realizada com sucesso.",
+            new_comment=new_comment_model # Pydantic vai converter o modelo para o schema
+        )
 
     except ValueError as e:
         # Se qualquer passo da lógica de negócio falhar, damos rollback
