@@ -2,9 +2,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, cast, Integer
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-
+from app.models.vehicle_component_model import VehicleComponent
 from app.models.maintenance_model import MaintenanceRequest, MaintenanceComment
 from app.models.vehicle_model import Vehicle
+from app.models.inventory_transaction_model import InventoryTransaction
 from app.models.user_model import User
 from app.models.part_model import Part, InventoryItem # <-- 1. IMPORTAR MODELOS
 from app.schemas.maintenance_schema import ( # <-- 2. IMPORTAR NOVOS SCHEMAS
@@ -55,8 +56,8 @@ async def replace_component_atomic(
 
     # 2. Obter o item antigo (que está saindo)
     old_item = await crud_part.get_item_by_id(db, item_id=payload.old_item_id, organization_id=organization_id)
-    if not old_item or old_item.status != "Em Uso":
-        raise ValueError(f"Item antigo (ID: {payload.old_item_id}) não encontrado ou não está 'Em Uso'.")
+    if not old_item:
+        raise ValueError(f"Item antigo (ID: {payload.old_item_id}) não encontrado.")
 
     # 3. Obter o item novo (que está entrando)
     new_item = await crud_part.get_item_by_id(db, item_id=payload.new_item_id, organization_id=organization_id)
@@ -120,13 +121,71 @@ async def get_request(
     stmt = select(MaintenanceRequest).where(
         MaintenanceRequest.id == request_id, MaintenanceRequest.organization_id == organization_id
     ).options(
-        selectinload(MaintenanceRequest.reporter),
-        selectinload(MaintenanceRequest.approver),
+        # Carrega os usuários e seus relacionamentos
+        selectinload(MaintenanceRequest.reporter).options(
+            selectinload(User.organization)
+        ),
+        selectinload(MaintenanceRequest.approver).options(
+            selectinload(User.organization)
+        ),
+        
+        # Carrega o veículo
         selectinload(MaintenanceRequest.vehicle),
-        selectinload(MaintenanceRequest.comments).selectinload(MaintenanceComment.user)
+        
+        # Carrega os comentários E o usuário de cada comentário E 
+        # a organização de cada usuário.
+        selectinload(MaintenanceRequest.comments).options(
+            selectinload(MaintenanceComment.user).options(
+                selectinload(User.organization)
+            )
+        )
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+async def get_maintenance_request_for_api(
+    db: AsyncSession, *, request_id: int
+) -> Optional[MaintenanceRequest]:
+    """
+    Recarrega uma solicitação de manutenção com todas as
+    relações necessárias para o schema 'MaintenanceRequestPublic'.
+    """
+    stmt = (
+        select(MaintenanceRequest)
+        .where(MaintenanceRequest.id == request_id)
+        .options(
+            # Carrega o veículo
+            selectinload(MaintenanceRequest.vehicle),
+            
+            # Carrega o usuário que criou a solicitação
+            selectinload(MaintenanceRequest.user).options(
+                selectinload(User.organization) # <-- Carrega a organização do usuário
+            ),
+            
+            # Carrega a peça (template) relacionada
+            selectinload(MaintenanceRequest.part),
+            
+            # Carrega o componente que será substituído (e seus detalhes)
+            selectinload(MaintenanceRequest.component_to_replace).options(
+                selectinload(VehicleComponent.part),
+                selectinload(VehicleComponent.inventory_transaction).options(
+                    selectinload(InventoryTransaction.item)
+                )
+            ),
+            
+            # --- AQUI ESTÁ A CORREÇÃO PRINCIPAL ---
+            # Carrega os comentários E o usuário de cada comentário E 
+            # a organização de cada usuário de cada comentário.
+            selectinload(MaintenanceRequest.comments).options(
+                selectinload(MaintenanceComment.user).options(
+                    selectinload(User.organization)
+                )
+            )
+            # --- FIM DA CORREÇÃO ---
+        )
+    )
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 async def get_all_requests(
     db: AsyncSession, *, organization_id: int, search: str | None = None, skip: int = 0, limit: int = 100
@@ -196,7 +255,7 @@ async def create_comment(
         organization_id=organization_id
     )
     db.add(db_obj)
-    await db.commit()
+    await db.flush()
     await db.refresh(db_obj, ["user"])
     return db_obj
 

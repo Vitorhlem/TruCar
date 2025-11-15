@@ -266,7 +266,8 @@ async def replace_maintenance_component(
         
         # Recarregar o comentário com todas as relações (usuário)
         await db.refresh(response.new_comment, ["user"])
-
+        await db.refresh(response.new_comment.user, ["organization"])
+        
         # Notificar o motorista (em background)
         request_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user.organization_id)
         if request_obj:

@@ -188,11 +188,12 @@ async def change_item_status(
     
     # Validação de transição (lógica da nossa primeira correção)
     current_status = item.status
-    if new_status == InventoryItemStatus.EM_USO:
-        if current_status != InventoryItemStatus.DISPONIVEL:
-            raise ValueError(f"Item não está 'Disponível' e não pode ser colocado em uso (status atual: {current_status}).")
+    if current_status == new_status:
+        return item
         
     elif new_status == InventoryItemStatus.FIM_DE_VIDA:
+        # Esta verificação agora está segura, porque se o status já fosse
+        # FIM_DE_VIDA, a função teria retornado no bloco de código acima.
         if current_status not in [InventoryItemStatus.DISPONIVEL, InventoryItemStatus.EM_USO]:
              raise ValueError(f"Item não pode ser descartado pois seu status é '{current_status}'.")
     
@@ -376,15 +377,14 @@ async def get_items_for_part(
     stmt = select(InventoryItem).where(InventoryItem.part_id == part_id)
     if status:
         stmt = stmt.where(InventoryItem.status == status)
-    
-    # --- A CORREÇÃO ESTÁ AQUI ---
-    # Adicionamos .options(selectinload(InventoryItem.part)) 
-    # para carregar os detalhes da peça (template) junto.
+
+    # --- GARANTE QUE ESTA LINHA ESTÁ AQUI ---
     stmt = stmt.options(selectinload(InventoryItem.part))
-    # --- FIM DA CORREÇÃO ---
+    # --- FIM DA VERIFICAÇÃO ---
 
     items = (await db.execute(stmt.order_by(InventoryItem.item_identifier))).scalars().all()
     return items
+
 async def create(db: AsyncSession, *, part_in: PartCreate, organization_id: int, user_id: int, photo_url: Optional[str] = None, invoice_url: Optional[str] = None) -> Part:
     initial_quantity = part_in.initial_quantity
     part_data = part_in.model_dump(exclude={"initial_quantity"})

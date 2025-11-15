@@ -14,6 +14,7 @@ class InventoryItemPublic(BaseModel):
     installed_on_vehicle_id: Optional[int] = None
     created_at: datetime
     installed_at: Optional[datetime] = None
+    part: 'PartListPublic'
     
     class Config:
         from_attributes = True
