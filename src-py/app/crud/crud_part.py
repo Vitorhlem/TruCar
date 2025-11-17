@@ -191,41 +191,58 @@ async def change_item_status(
     if current_status == new_status:
         return item
         
+    # --- LÓGICA DE VALIDAÇÃO ATUALIZADA (mais robusta) ---
+    if new_status == InventoryItemStatus.EM_USO:
+        if current_status != InventoryItemStatus.DISPONIVEL:
+            raise ValueError(f"Não é possível instalar o item pois ele não está 'Disponível' (status atual: {current_status}).")
+        if not vehicle_id:
+            raise ValueError("vehicle_id é obrigatório para instalar um item (EM_USO).")
+            
     elif new_status == InventoryItemStatus.FIM_DE_VIDA:
-        # Esta verificação agora está segura, porque se o status já fosse
-        # FIM_DE_VIDA, a função teria retornado no bloco de código acima.
         if current_status not in [InventoryItemStatus.DISPONIVEL, InventoryItemStatus.EM_USO]:
              raise ValueError(f"Item não pode ser descartado pois seu status é '{current_status}'.")
-    
-    elif current_status != InventoryItemStatus.DISPONIVEL:
-         raise ValueError(f"Não é possível alterar o status do item pois ele não está 'Disponível' (status atual: {current_status}).")
+             
+    elif new_status == InventoryItemStatus.DISPONIVEL:
+         if current_status not in [InventoryItemStatus.EM_USO, InventoryItemStatus.FIM_DE_VIDA]:
+             raise ValueError(f"Item não pode ser retornado ao estoque (status atual: {current_status}).")
+    # --- FIM DA VALIDAÇÃO ---
 
 
     # Mapeamento do tipo de transação para o log
     transaction_type_map = {
         InventoryItemStatus.EM_USO: TransactionType.INSTALACAO,
-        InventoryItemStatus.FIM_DE_VIDA: TransactionType.FIM_DE_VIDA
+        InventoryItemStatus.FIM_DE_VIDA: TransactionType.FIM_DE_VIDA,
+        InventoryItemStatus.DISPONIVEL: TransactionType.ENTRADA # Usado para retorno ao estoque
     }
     
-    if new_status not in transaction_type_map:
-        raise ValueError("Tipo de transação inválido para mudança de status.")
+    # Determina o tipo de transação
+    transaction_type = transaction_type_map.get(new_status)
+    
+    # Se o status antigo era EM_USO, é uma desinstalação
+    if current_status == InventoryItemStatus.EM_USO:
+        if new_status == InventoryItemStatus.FIM_DE_VIDA:
+            transaction_type = TransactionType.FIM_DE_VIDA
+        elif new_status == InventoryItemStatus.DISPONIVEL:
+            transaction_type = TransactionType.ENTRADA # Retorno ao estoque
+    
+    if not transaction_type:
+         raise ValueError("Tipo de transação inválido para mudança de status.")
 
     # Atualiza o item
     item.status = new_status
     
-    # Se for "Em Uso", associa ao veículo. Se for "Fim de Vida", desassocia.
     if new_status == InventoryItemStatus.EM_USO:
         item.installed_on_vehicle_id = vehicle_id
         item.installed_at = func.now()
     else:
-        # Remove a associação do veículo ao ser descartado
+        # Remove a associação do veículo ao ser descartado ou retornar ao estoque
         item.installed_on_vehicle_id = None
         item.installed_at = None
     
     # Cria o registro de log
     log_entry = log_transaction( 
         db=db, item_id=item.id, part_id=item.part_id, user_id=user_id,
-        transaction_type=transaction_type_map[new_status],
+        transaction_type=transaction_type,
         notes=notes,
         # Mantém o vehicle_id no log para rastreabilidade
         related_vehicle_id=vehicle_id or item.installed_on_vehicle_id 
@@ -234,7 +251,7 @@ async def change_item_status(
     db.add(item)
     db.add(log_entry) # Adiciona o log à sessão
     
-    # --- LÓGICA DE CRIAÇÃO / DESATIVAÇÃO DO COMPONENTE ---
+    # --- LÓGICA DE CRIAÇÃO / DESATIVAÇÃO DO COMPONENTE (CORRIGIDA) ---
     
     if new_status == InventoryItemStatus.EM_USO and vehicle_id:
         # Se está entrando "EM USO", cria um novo VehicleComponent
@@ -242,23 +259,26 @@ async def change_item_status(
         # Garante que 'item.part' (o template) foi carregado
         part_template = item.part 
         if not part_template:
-            # Carrega se não estiver presente (fallback, idealmente já vem carregado)
             part_template = await db.get(Part, item.part_id)
 
         if part_template:
+            
+            # --- CORREÇÃO: MUDANÇA DE ORDEM ---
+            
+            # 1. Salva o item e o log_entry primeiro para obter o ID da transação
+            await db.flush() 
+            
+            # 2. Agora log_entry.id NÃO é None
             new_component = VehicleComponent(
                 vehicle_id=vehicle_id,
                 part_id=part_template.id,
                 is_active=True,
                 installation_date=func.now(),
-                # Associa o componente diretamente à transação que o criou
+                # 3. Atribui o ID da transação (que agora existe)
                 inventory_transaction_id=log_entry.id 
             )
-            # Precisamos salvar o log_entry primeiro para obter seu ID
-            await db.flush() # Salva o log_entry e o item para obter IDs
-            
-            new_component.inventory_transaction_id = log_entry.id
             db.add(new_component)
+            # --- FIM DA CORREÇÃO ---
             
             # Lógica para adicionar custo (como já existia)
             if part_template.value and part_template.value > 0:
@@ -272,9 +292,9 @@ async def change_item_status(
                 )
                 db.add(new_cost)
         
-    elif new_status == InventoryItemStatus.FIM_DE_VIDA:
-        # --- ESTA É A NOVA CORREÇÃO ---
-        # Se está indo para "FIM DE VIDA", desativa o VehicleComponent ativo
+    elif current_status == InventoryItemStatus.EM_USO and new_status in [InventoryItemStatus.FIM_DE_VIDA, InventoryItemStatus.DISPONIVEL]:
+        # Se estava "EM USO" e agora foi para FIM_DE_VIDA ou DISPONÍVEL (retorno),
+        # desativa o VehicleComponent ativo
         
         # 1. Encontra a transação de instalação (INSTALACAO ou SAIDA_USO) mais recente deste item
         install_transaction_stmt = select(InventoryTransaction.id).where(
@@ -298,9 +318,9 @@ async def change_item_status(
             )
             await db.execute(update_component_stmt)
             
-    # --- FIM DA CORREÇÃO ---
+    # --- FIM DA LÓGICA DO COMPONENTE ---
 
-    await db.flush() # Salva todas as alterações pendentes
+    await db.flush() # Salva todas as alterações pendentes (novo componente, custo, etc.)
     return item
 
 async def get_simple(db: AsyncSession, *, part_id: int, organization_id: int) -> Optional[Part]:

@@ -4,15 +4,16 @@ from typing import List
 from datetime import datetime
 import uuid
 import shutil
-from app.core.email_utils import send_email
-
 from app import crud, deps
+from app.core.email_utils import send_email
 from app.models.user_model import User, UserRole
 from app.schemas.maintenance_schema import (
     MaintenanceRequestPublic, MaintenanceRequestCreate, MaintenanceRequestUpdate,
     MaintenanceCommentPublic, MaintenanceCommentCreate,
-    ReplaceComponentPayload, ReplaceComponentResponse  # <-- 1. IMPORTAR NOVOS SCHEMAS
+    ReplaceComponentPayload, ReplaceComponentResponse # Schemas atualizados
 )
+from app.crud.crud_maintenance import MaintenancePartChange # Importar modelo de log
+
 from app.models.notification_model import NotificationType
 
 router = APIRouter()
@@ -250,55 +251,109 @@ async def replace_maintenance_component(
     payload: ReplaceComponentPayload,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """
-    Endpoint atômico para substituir um componente no contexto de um chamado.
-    """
     try:
-        # 1. AGORA 'new_comment_model' É O MODELO SQLAlchemy
-        new_comment_model = await crud.maintenance.replace_component_atomic(
+        log_entry, comment_entry, reported_by_id = await crud.maintenance.perform_component_replacement(
             db=db,
             request_id=request_id,
             payload=payload,
             user=current_user
         )
         
-        # 2. Se tudo deu certo no CRUD (que usou flush), commitamos a transação.
+        # --- CORREÇÃO DO MissingGreenlet ---
+        # 1. Lemos o texto ANTES do commit
+        comment_text_for_notification = comment_entry.comment_text
+        
+        # 2. Fazemos o commit
         await db.commit()
         
-        # 3. AGORA O REFRESH FUNCIONA, pois 'new_comment_model' é um modelo
-        # A função `create_comment` já carregou 'user', mas não 'user.organization'
-        await db.refresh(new_comment_model, ["user"])
-        if new_comment_model.user: # Garante que o usuário não é nulo
-             await db.refresh(new_comment_model.user, ["organization"])
-        
-        # 4. Lógica de Notificação (usa o modelo)
-        request_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user.organization_id)
-        if request_obj:
+        # 3. Lógica de Notificação (AGORA SEGURA)
+        if reported_by_id:
              background_tasks.add_task(
-                crud.notification.create_notification, db=db, message=new_comment_model.comment_text,
+                crud.notification.create_notification, 
+                # NUNCA passe 'db=db' para um background task
+                message=comment_text_for_notification, # <-- Usamos a variável local
                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                organization_id=current_user.organization_id, user_id=request_obj.reported_by_id,
-                related_entity_type="maintenance_request", related_entity_id=request_id
+                organization_id=current_user.organization_id, 
+                user_id=reported_by_id, 
+                related_entity_type="maintenance_request", 
+                related_entity_id=request_id
             )
+        # --- FIM DA CORREÇÃO ---
 
-        # 5. CONSTRÓI O SCHEMA DE RESPOSTA SÓ AQUI NO FINAL
         return ReplaceComponentResponse(
             success=True,
             message="Substituição realizada com sucesso.",
-            new_comment=new_comment_model # Pydantic vai converter o modelo para o schema
+            part_change_log=log_entry,
+            new_comment=comment_entry
         )
 
     except ValueError as e:
-        # Se qualquer passo da lógica de negócio falhar, damos rollback
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        # Erro genérico
         await db.rollback()
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro interno ao processar a substituição: {e}"
+        )
+
+
+# --- NOVO ENDPOINT DE REVERSÃO ---
+@router.post("/part-changes/{change_id}/revert", response_model=MaintenanceCommentPublic)
+async def revert_part_change(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    background_tasks: BackgroundTasks,
+    change_id: int,
+    current_user: User = Depends(deps.get_current_active_manager)
+):
+    """
+    Reverte uma troca de peça, devolvendo o item instalado ao estoque.
+    """
+    try:
+        # 1. O CRUD faz o flush e retorna o log e o ID do repórter
+        log_entry, new_comment, reported_by_id = await crud.maintenance.revert_part_change(
+            db=db,
+            change_id=change_id,
+            user=current_user
+        )
+        
+        # 2. Lemos o texto para a notificação ANTES do commit
+        comment_text_for_notification = new_comment.comment_text
+        
+        # 3. Commit
+        await db.commit()
+        
+        # 4. Lógica de Notificação (Escrita de forma segura)
+        if reported_by_id:
+             background_tasks.add_task(
+                crud.notification.create_notification, 
+                message=comment_text_for_notification,
+                notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                organization_id=current_user.organization_id, 
+                user_id=reported_by_id, 
+                related_entity_type="maintenance_request", 
+                related_entity_id=log_entry.maintenance_request_id
+            )
+        
+        return new_comment # Retorna o novo comentário de log
+
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno ao processar a reversão: {e}"
         )

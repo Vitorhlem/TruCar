@@ -6,7 +6,8 @@ from datetime import datetime
 from app.models.maintenance_model import MaintenanceStatus, MaintenanceCategory
 from .user_schema import UserPublic
 from .vehicle_schema import VehiclePublic
-from app.models.part_model import InventoryItemStatus # <-- 1. IMPORTAR STATUS DO ITEM
+from .vehicle_component_schema import VehicleComponentPublic 
+from app.models.part_model import InventoryItemStatus 
 
 class MaintenanceCommentBase(BaseModel):
     comment_text: str
@@ -18,26 +19,43 @@ class MaintenanceCommentCreate(MaintenanceCommentBase):
 class MaintenanceCommentPublic(MaintenanceCommentBase):
     id: int
     created_at: datetime
-    user: UserPublic
+    user: Optional[UserPublic] = None 
     model_config = { "from_attributes": True }
+
+
+class MaintenancePartChangePublic(BaseModel):
+    id: int
+    timestamp: datetime
+    user: UserPublic
+    notes: Optional[str] = None
+    
+    component_removed: VehicleComponentPublic 
+    component_installed: VehicleComponentPublic 
+    
+    # --- CAMPO NOVO (BÔNUS) ---
+    is_reverted: bool
+    # --- FIM DA ADIÇÃO ---
+    
+    model_config = { "from_attributes": True }
+
+
+class ReplaceComponentPayload(BaseModel):
+    component_to_remove_id: int 
+    new_item_id: int # <-- Já está correto
+    old_item_status: InventoryItemStatus = InventoryItemStatus.FIM_DE_VIDA
+    notes: Optional[str] = None
+
+
+class ReplaceComponentResponse(BaseModel):
+    success: bool = True
+    message: str
+    part_change_log: MaintenancePartChangePublic 
+    new_comment: MaintenanceCommentPublic
 
 class MaintenanceRequestBase(BaseModel):
     problem_description: str
     vehicle_id: int
     category: MaintenanceCategory
-
-class ReplaceComponentPayload(BaseModel):
-    old_item_id: int
-    new_item_id: int
-    # O status de remoção é validado pelo enum
-    old_item_status: InventoryItemStatus = InventoryItemStatus.FIM_DE_VIDA
-    notes: Optional[str] = None
-
-class ReplaceComponentResponse(BaseModel):
-
-    success: bool = True
-    message: str
-    new_comment: MaintenanceCommentPublic # Retorna o comentário criado para rastreabilidade
 
 class MaintenanceRequestCreate(MaintenanceRequestBase):
     pass
@@ -56,5 +74,7 @@ class MaintenanceRequestPublic(MaintenanceRequestBase):
     vehicle: VehiclePublic
     manager_notes: Optional[str] = None
     comments: List[MaintenanceCommentPublic] = []
+    
+    part_changes: List[MaintenancePartChangePublic] = []
     
     model_config = { "from_attributes": True }

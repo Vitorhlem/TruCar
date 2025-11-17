@@ -30,10 +30,10 @@
           <q-chat-message
             v-for="comment in request.comments"
             :key="comment.id"
-            :name="comment.user.full_name"
-            :sent="comment.user.id === authStore.user?.id"
+            :name="comment.user?.full_name"
+            :sent="comment.user?.id === authStore.user?.id"
             text-color="white"
-            :bg-color="comment.user.id === authStore.user?.id ? 'primary' : 'grey'"
+            :bg-color="comment.user?.id === authStore.user?.id ? 'primary' : 'grey'"
           >
             <div>{{ comment.comment_text }}</div>
           </q-chat-message>
