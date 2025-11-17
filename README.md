@@ -184,6 +184,7 @@ O backend do TruCar expõe uma API REST para gerenciamento da plataforma. A URL 
 
 Contribuições são bem-vindas! Se você tiver sugestões, correções de bugs ou novas funcionalidades, sinta-se à vontade para abrir uma issue ou enviar um pull request.
 
-## Licença
+## 📜 Licença (EULA)
 
-Este projeto está licenciado sob a Licença MIT.
+Este projeto é licenciado sob os termos do Acordo de Licença de Usuário Final (EULA).
+**[Clique aqui para ler a licença completa (EULA.txt)](./EULA.txt)**
