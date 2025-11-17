@@ -44,18 +44,18 @@ export const useAuthStore = defineStore('auth', () => {
   const isImpersonating = computed(() => !!originalUser.value);
 
   // --- AÇÕES ---
-  async function login(loginForm: LoginForm): Promise<boolean> {
+  async function login(loginForm: LoginForm): Promise<void> { // Mudança 1: O retorno agora é Promise<void>
     const params = new URLSearchParams();
     params.append('username', loginForm.email);
     params.append('password', loginForm.password);
     try {
       const response = await api.post<TokenData>('/login/token', params);
       _setSession(response.data.access_token, response.data.user);
-      return true;
-    } catch {
-      console.error('Falha no login:');
-      logout();
-      return false;
+      // Mudança 2: Não há mais 'return true'
+    } catch (error) { // Mudança 3: Capturamos o erro
+      console.error('Falha no login:', error);
+      logout(); // Fazemos o cleanup da sessão
+      throw error; // Mudança 4: Lançamos o erro para a página (LoginPage.vue)
     }
   }
 

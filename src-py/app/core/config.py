@@ -40,4 +40,22 @@ class Settings(BaseSettings):
     FERNET_KEY: str
     # --- FIM DA ADIÇÃO ---
 
+
+    DEMO_TOTAL_LIMITS: dict[str, int] = {
+        "vehicles": 3,
+        "users": 2,  # Unificado para o valor mais restritivo
+        "parts": 15,
+        "clients": 5,
+        "implements": 2,
+        "vehicle_components": 10,
+    }
+    DEMO_MONTHLY_LIMITS: dict[str, int] = {
+        "reports": 5,
+        "fines": 3,
+        "documents": 10,
+        "freight_orders": 10, # Unificado
+        "maintenance_requests": 5,
+        "fuel_logs": 20,
+    }
+
 settings = Settings()

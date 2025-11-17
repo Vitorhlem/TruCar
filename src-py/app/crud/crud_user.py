@@ -8,6 +8,7 @@ from typing import List, TYPE_CHECKING, Optional
 from app.core.security import get_password_hash, verify_password, create_password_reset_token, PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
 from app.models.user_model import User, UserRole
 from app.models.organization_model import Organization
+from app.core.config import settings  # <-- ADICIONE ESTA IMPORTAÇÃO
 
 if TYPE_CHECKING:
     from app.schemas.user_schema import UserCreate, UserUpdate, UserRegister
@@ -104,19 +105,20 @@ async def create_new_organization_and_user(db: AsyncSession, *, user_in: "UserRe
     """Cria uma nova organização e o primeiro utilizador (CLIENTE_DEMO) para ela."""
     from app.schemas.user_schema import UserRegister
     
-    # --- ATUALIZADO: Definindo os limites do plano DEMO aqui ---
+    # --- ATUALIZADO: Lendo os limites do 'settings' ---
     db_org = Organization(
         name=user_in.organization_name, 
         sector=user_in.sector,
-        vehicle_limit=3,          # Limite de 5 veículos
-        driver_limit=2,           # Limite de 2 motoristas
-        freight_order_limit=10,   # Limite de 10 jornadas/mês
-        maintenance_limit=5     # Limite de 5 manutenções
+        vehicle_limit=settings.DEMO_TOTAL_LIMITS.get("vehicles", 3),
+        driver_limit=settings.DEMO_TOTAL_LIMITS.get("users", 2),
+        freight_order_limit=settings.DEMO_MONTHLY_LIMITS.get("freight_orders", 10),
+        maintenance_limit=settings.DEMO_MONTHLY_LIMITS.get("maintenance_requests", 5)
     )
     # --- FIM DA ATUALIZAÇÃO ---
 
     user_role = UserRole.CLIENTE_DEMO
-
+    
+    # ... (resto da função) ...
     hashed_password = get_password_hash(user_in.password)
     db_user = User(
         full_name=user_in.full_name,
@@ -204,35 +206,64 @@ async def get_leaderboard_data(db: AsyncSession, *, organization_id: int) -> dic
 async def get_driver_metrics(db: AsyncSession, *, user: User) -> "DriverMetrics":
     from app.models.journey_model import Journey
     from app.models.alert_model import Alert
+    from app.models.fuel_log_model import FuelLog # <-- Importação adicionada
     from app.schemas.dashboard_schema import DriverMetrics
 
     today = datetime.utcnow()
     start_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     org = user.organization
     
+    total_distance = 0.0
+    total_hours = 0.0
+
+    # Calcula a métrica primária (Distância ou Horas)
     if org.sector == 'agronegocio':
         metric_col = func.sum(Journey.end_engine_hours - Journey.start_engine_hours)
+        metric_stmt = select(metric_col).where(
+            Journey.driver_id == user.id,
+            Journey.start_time >= start_of_month,
+            Journey.is_active == False # Garante que só pegue jornadas finalizadas
+        )
+        total_hours = (await db.execute(metric_stmt)).scalar_one_or_none() or 0.0
     else:
         metric_col = func.sum(Journey.end_mileage - Journey.start_mileage)
+        metric_stmt = select(metric_col).where(
+            Journey.driver_id == user.id,
+            Journey.start_time >= start_of_month,
+            Journey.is_active == False # Garante que só pegue jornadas finalizadas
+        )
+        total_distance = (await db.execute(metric_stmt)).scalar_one_or_none() or 0.0
 
-    metric_stmt = select(metric_col).where(
-        Journey.driver_id == user.id,
-        Journey.start_time >= start_of_month
-    )
-    primary_metric = (await db.execute(metric_stmt)).scalar_one_or_none() or 0
-    
+    # Calcula o total de alertas
     alerts_stmt = select(func.count(Alert.id)).where(
         Alert.driver_id == user.id,
         Alert.timestamp >= start_of_month
     )
     alert_count = (await db.execute(alerts_stmt)).scalar_one_or_none() or 0
 
-    fuel_efficiency = 8.5 
+    # --- Lógica de cálculo de combustível dinâmico ---
+    total_liters_stmt = select(func.sum(FuelLog.liters)).where(
+        FuelLog.user_id == user.id,
+        FuelLog.date >= start_of_month
+    )
+    total_liters = (await db.execute(total_liters_stmt)).scalar_one_or_none() or 0.0
+
+    fuel_efficiency = 0.0
+    if total_liters > 0:
+        if org.sector == 'agronegocio':
+            # Calcula Litros por Hora
+            if total_hours > 0:
+                fuel_efficiency = total_liters / total_hours
+        else:
+            # Calcula KM por Litro
+            if total_distance > 0:
+                fuel_efficiency = total_distance / total_liters
+    # --- Fim da lógica de cálculo ---
 
     return DriverMetrics(
-        distance=primary_metric if org.sector != 'agronegocio' else 0,
-        hours=primary_metric if org.sector == 'agronegocio' else 0,
-        fuel_efficiency=fuel_efficiency,
+        distance=total_distance, # Retorna a distância (será 0 para agro)
+        hours=total_hours,       # Retorna as horas (será 0 para frete/serviços)
+        fuel_efficiency=fuel_efficiency, # Valor agora é dinâmico
         alerts=alert_count
     )
 

@@ -97,17 +97,6 @@ async def get_current_super_admin(
         )
     return current_user
 
-# --- LÓGICA DE LIMITES (Sem mudança) ---
-DEMO_MONTHLY_LIMITS = {
-    "reports": 5, "fines": 3, "documents": 10, "freight_orders": 5,
-    "maintenance_requests": 5, 
-    "fuel_logs": 20,
-}
-DEMO_TOTAL_LIMITS = {
-    "vehicles": 3, "users": 3, "parts": 15, "clients": 5,
-    "implements": 2,          
-    "vehicle_components": 10, 
-}
 RESOURCE_TO_CRUD_MAP = {
     "vehicles": crud.vehicle, "users": crud.user,
     "parts": crud.part, "clients": crud.client,
@@ -123,8 +112,10 @@ def check_demo_limit(resource_type: str):
         if current_user.role != UserRole.CLIENTE_DEMO:
             return
         organization_id = current_user.organization_id
-        if resource_type in DEMO_MONTHLY_LIMITS:
-            limit = DEMO_MONTHLY_LIMITS[resource_type]
+        
+        # Use 'settings' em vez do dicionário local
+        if resource_type in settings.DEMO_MONTHLY_LIMITS:
+            limit = settings.DEMO_MONTHLY_LIMITS[resource_type]
             usage = await crud_demo_usage_instance.get_or_create_usage(
                 db, organization_id=organization_id, resource_type=resource_type
             )
@@ -133,8 +124,10 @@ def check_demo_limit(resource_type: str):
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Limite mensal de {limit} {resource_type.replace('_', ' ')} atingido para a conta demonstração. Considere migrar para um plano pago.",
                 )
-        if resource_type in DEMO_TOTAL_LIMITS:
-            limit = DEMO_TOTAL_LIMITS[resource_type]
+        
+        # Use 'settings' em vez do dicionário local
+        if resource_type in settings.DEMO_TOTAL_LIMITS:
+            limit = settings.DEMO_TOTAL_LIMITS[resource_type]
             crud_operation = RESOURCE_TO_CRUD_MAP.get(resource_type)
             if crud_operation:
                 current_count = await crud_operation.count_by_org(db, organization_id=organization_id)

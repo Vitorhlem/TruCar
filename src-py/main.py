@@ -1,9 +1,10 @@
 # backend/main.py
-
+import io
+from PIL import Image
 import os
 import shutil
 from fastapi import FastAPI, Request, status, UploadFile, File, HTTPException
-from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import RequestValidationError, HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -110,19 +111,44 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # 8. Servir arquivos estáticos
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 413:
+        return JSONResponse(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            content={"detail": "Arquivo muito grande. O limite máximo é de 5MB."},
+        )
+    # Mantém o comportamento padrão para outras exceções HTTP
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
 # 9. Endpoint de Upload
 @app.post("/upload-photo")
-async def upload_photo(file: UploadFile = File(...)):
+async def upload_photo(file: UploadFile = File(..., max_size=5 * 1024 * 1024)): # Limite de 5MB
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="O arquivo não é uma imagem válida.")
+
+    # --- Validação de conteúdo com Pillow ---
+    try:
+        # Lê o conteúdo do arquivo para um buffer de memória
+        contents = await file.read()
+        # Tenta abrir o buffer com o Pillow
+        img = Image.open(io.BytesIO(contents))
+        img.verify() # Verifica a integridade dos dados da imagem
+    except Exception:
+        raise HTTPException(status_code=400, detail="Falha ao processar. O arquivo pode estar corrompido ou não é uma imagem válida.")
+    # --- Fim da validação ---
 
     file_extension = os.path.splitext(file.filename)[1]
     unique_filename = f"{os.urandom(8).hex()}{file_extension}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
     try:
+        # Salva o conteúdo 'contents' que já lemos e validamos
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(contents)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao salvar a imagem: {e}")
 

@@ -323,13 +323,12 @@ const iconInUse = createQuasarIconPin('#F2C037', iconPaths.altRoute);
 const iconMaintenance = createQuasarIconPin('#C10015', iconPaths.build);
 const fuelCostTotal = computed(() => {
   const costs = managerData.value?.costs_by_category || [];
-  // Linha de diagnóstico adicionada
-  console.log("Dados de custo recebidos para cálculo de Combustível:", JSON.stringify(costs));
-  // Correção: a comparação agora ignora maiúsculas/minúsculas
-  const fuel = costs.find((cost: CostByCategory) => cost.cost_type.toLowerCase() === 'Combustível');
+  
+  // A correção está em comparar a string em minúsculas com 'combustível' (também em minúsculas).
+  const fuel = costs.find((cost: CostByCategory) => cost.cost_type.toLowerCase() === 'combustível');
+  
   return fuel ? fuel.total_amount : 0;
 });
-
 // INICIALIZAÇÃO
 const dashboardStore = useDashboardStore();
 const authStore = useAuthStore();
