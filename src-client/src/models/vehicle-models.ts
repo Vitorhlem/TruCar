@@ -21,7 +21,7 @@ export interface Vehicle {
   next_maintenance_date?: string | null;
   next_maintenance_km?: number | null;
   maintenance_notes?: string | null;
-  axle_configuration?: string | null; // <-- PROPRIEDADE ADICIONADA
+  axle_configuration?: string | null;
 }
 
 export interface VehicleCreate {

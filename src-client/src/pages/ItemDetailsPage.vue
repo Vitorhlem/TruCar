@@ -1,13 +1,9 @@
 <template>
   <q-page padding>
-    <!-- 
-      A CORREÇÃO ESTÁ AQUI:
-      Trocamos 'partStore.isItemDetailsLoading' pela variável 'isItemDetailsLoading' 
-      que foi desestruturada do storeToRefs no script.
-    -->
+
     <div v-if="!isItemDetailsLoading && item">
       
-      <!-- 1. CABEÇALHO -->
+
       <h1 class="text-h4 text-weight-bold q-my-none">
         {{ item.part.name }} (Cód. {{ item.item_identifier }})
       </h1>
@@ -18,7 +14,7 @@
         </a>
       </div>
 
-      <!-- 2. BLOCO DE KPIs/STATUS -->
+
       <div class="row q-col-gutter-md q-my-md">
         <div class="col-12 col-sm-6 col-md-3">
           <q-card flat bordered>
@@ -67,7 +63,7 @@
         </div>
       </div>
 
-      <!-- 3. LINHA DO TEMPO (O PONTO PRINCIPAL) -->
+
       <q-card flat bordered>
         <q-card-section>
           <div class="text-h6">Linha do Tempo do Item</div>
@@ -103,7 +99,7 @@
       </q-card>
     </div>
     
-    <!-- Skeleton Loading -->
+
     <div v-else>
       <q-skeleton type="text" class="text-h4" width="300px" />
       <q-skeleton type="text" class="text-subtitle1" width="200px" />
@@ -113,7 +109,7 @@
       <q-skeleton type="rect" height="300px" />
     </div>
 
-    <!-- Diálogo de Histórico do Template (Reutilizado) -->
+
     <PartHistoryDialog v-model="isPartHistoryDialogOpen" :part="item ? item.part : null" />
 
   </q-page>
@@ -127,15 +123,15 @@ import { storeToRefs } from 'pinia';
 import { format } from 'date-fns';
 import type { TransactionType } from 'src/models/inventory-transaction-models';
 import type { InventoryItemStatus } from 'src/models/inventory-item-models';
-import PartHistoryDialog from 'components/PartHistoryDialog.vue'; // <-- Importar diálogo
+import PartHistoryDialog from 'components/PartHistoryDialog.vue';
 
 const route = useRoute();
 const partStore = usePartStore();
-// Esta linha está correta e agora 'isItemDetailsLoading' será usada
+
 const { selectedItemDetails: item, isItemDetailsLoading } = storeToRefs(partStore);
 
 const itemId = Number(route.params.id);
-const isPartHistoryDialogOpen = ref(false); // <-- State para o diálogo
+const isPartHistoryDialogOpen = ref(false);
 
 onMounted(async () => {
   await partStore.fetchItemDetails(itemId);
@@ -143,15 +139,15 @@ onMounted(async () => {
 
 const sortedTransactions = computed(() => {
   if (!item.value?.transactions) return [];
-  // Ordena da mais recente para a mais antiga
+
   return [...item.value.transactions].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 });
 
-// --- Funções Utilitárias ---
+
 
 function openPartHistory() {
   if (!item.value) return;
-  // Carrega o histórico do "template" (part_id)
+
   void partStore.fetchHistory(item.value.part_id);
   isPartHistoryDialogOpen.value = true;
 }

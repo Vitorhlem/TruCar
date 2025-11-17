@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 
-// Define a estrutura da resposta do nosso backend
+
 interface AddressResponse {
   street: string;
   neighborhood: string;
@@ -14,7 +14,7 @@ export function useCepApi() {
   const isCepLoading = ref(false);
 
   const fetchAddressByCep = async (cep: string): Promise<AddressResponse | null> => {
-    // Limpa o CEP, deixando apenas os dígitos
+
     const numericCep = cep.replace(/\D/g, '');
 
     if (numericCep.length !== 8) {
@@ -26,7 +26,7 @@ export function useCepApi() {
       const response = await api.get<AddressResponse>(`/utils/cep/${numericCep}`);
       return response.data;
     } catch (error) {
-      // CORRIGIDO: Utiliza a variável 'error' para o log
+
       console.error("Erro ao buscar CEP:", error); 
       Notify.create({
         type: 'negative',

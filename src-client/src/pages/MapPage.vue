@@ -44,7 +44,7 @@
             :use-global-leaflet="false"
             style="height: 100%; border-radius: 4px;"
           >
-            <l-tile-layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" name="OpenStreetMap"></l-tile-layer>
+            <l-tile-layer url="https:
             <l-marker :lat-lng="[selectedVehicle.last_latitude, selectedVehicle.last_longitude]">
               <l-icon :icon-url="carIcon" :icon-size="[35, 35]" />
             </l-marker>
@@ -78,9 +78,9 @@
 
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
-// CORREÇÃO: Removido 'LPopup' dos imports
+
 import { LMap, LTileLayer, LMarker, LIcon } from "@vue-leaflet/vue-leaflet";
-// CORREÇÃO: Removido 'InstanceType' e 'watch' dos imports
+
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import { useJourneyStore } from 'stores/journey-store';
 import { useVehicleStore } from 'stores/vehicle-store';
@@ -94,7 +94,7 @@ const authStore = useAuthStore();
 const selectedVehicleId = ref<number | null>(null);
 const zoom = ref(5);
 const center = ref<[number, number]>([-14.2350, -51.9253]);
-// A anotação de tipo aqui está correta e funcionará sem o import
+
 const map = ref<InstanceType<typeof LMap> | null>(null);
 
 const activeJourneys = computed(() => journeyStore.activeJourneys);
@@ -104,7 +104,7 @@ const selectedVehicle = computed(() => {
   return vehicleStore.vehicles.find(v => v.id === selectedVehicleId.value);
 });
 
-// Observa quando os veículos são carregados para ajustar o mapa para o motorista
+
 watch(vehicleStore.vehicles, (newVehicles) => {
   const vehicle = newVehicles[0];
   if (newVehicles.length === 1 && !authStore.isManager && vehicle) {
@@ -140,7 +140,7 @@ function resetCardTransform(evt: MouseEvent) {
 }
 
 onMounted(async () => {
-  // Garante que ambas as stores tenham os dados mais recentes
+
   await journeyStore.fetchAllJourneys();
   await vehicleStore.fetchAllVehicles();
 });

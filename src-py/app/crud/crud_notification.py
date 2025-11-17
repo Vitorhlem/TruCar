@@ -1,4 +1,3 @@
-# Em backend/app/crud/crud_notification.py
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -11,7 +10,6 @@ from app.models.user_model import User, UserRole
 from app.models.vehicle_model import Vehicle
 from app.models.document_model import Document
 
-# --- FUNÇÃO DE CRIAÇÃO ATUALIZADA ---
 async def create_notification(
     db: AsyncSession,
     *,
@@ -56,10 +54,8 @@ async def create_notification(
         db.add(new_notification)
         
     await db.commit()
-# --- FIM DA ATUALIZAÇÃO ---
 
 
-# ... (o restante do arquivo, como run_system_checks_for_organization e outras funções, permanece o mesmo)
 async def get_notifications_for_user(db: AsyncSession, *, user_id: int, organization_id: int) -> list[Notification]:
     stmt = (
         select(Notification)

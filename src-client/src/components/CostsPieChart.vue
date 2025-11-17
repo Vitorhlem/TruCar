@@ -6,24 +6,24 @@
 import { ref, onMounted, watch, type PropType } from 'vue';
 import * as echarts from 'echarts';
 
-// --- INÍCIO DA CORREÇÃO ---
-// 1. Criamos uma interface mais genérica para os dados do gráfico.
-//    Ela só exige os campos que o gráfico realmente precisa.
+
+
+
 interface ChartCost {
   cost_type: string;
   amount: number;
 }
 
 const props = defineProps({
-  // 2. A prop 'costs' agora aceita um array deste novo tipo.
-  //    Como a interface VehicleCost também tem esses campos,
-  //    o componente continua compatível com a lista completa de custos.
+
+
+
   costs: {
     type: Array as PropType<ChartCost[]>,
     required: true,
   },
 });
-// --- FIM DA CORREÇÃO ---
+
 
 
 const chartRef = ref<HTMLElement | null>(null);

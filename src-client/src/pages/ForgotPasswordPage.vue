@@ -71,9 +71,9 @@ async function handleRecoveryRequest() {
   
   try {
     await authStore.requestPasswordReset({ email: email.value });
-    // A notificação de sucesso já é exibida pela store
+
     setTimeout(() => {
-      // Redireciona para o login após um tempo para o usuário ver a notificação
+
       void router.push({ name: 'login' });
     }, 4000);
   } finally {
@@ -83,7 +83,7 @@ async function handleRecoveryRequest() {
 </script>
 
 <style lang="scss" scoped>
-/* ESTES ESTILOS SÃO OS MESMOS DA LOGINPAGE.VUE PARA MANTER A CONSISTÊNCIA */
+
 .main-container {
   background-image: url('~assets/login-background.jpg');
   background-size: cover;

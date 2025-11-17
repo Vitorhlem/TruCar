@@ -1,7 +1,7 @@
 <template>
   <q-page class="flex overflow-hidden">
 
-    <!-- PAINEL LATERAL DE CONTROLO (ADAPTATIVO LOCALMENTE) -->
+
     <div 
       class="col-12 col-md-3 column no-wrap"
       :class="isMapDark ? 'glass-panel-dark' : 'glass-panel-light'"
@@ -50,7 +50,7 @@
       </q-scroll-area>
     </div>
 
-    <!-- MAPA PRINCIPAL (ADAPTATIVO LOCALMENTE) -->
+
     <div class="col relative-position">
       <div v-if="isLoading" class="absolute-center z-top text-center">
         <q-spinner-dots color="primary" size="40px" />
@@ -84,7 +84,7 @@
         </l-marker>
       </l-map>
 
-      <!-- BOTÃO DE MUDANÇA DE TEMA LOCAL -->
+
       <q-btn
         flat
         round
@@ -115,11 +115,11 @@ const isLoading = ref(true);
 const searchQuery = ref('');
 const selectedVehicleId = ref<number | null>(null);
 
-// LÓGICA DE PERSISTÊNCIA: Carrega o tema salvo ou usa o tema global como padrão
+
 const savedMapTheme = localStorage.getItem('trucar_map_theme');
 const isMapDark = ref(savedMapTheme ? savedMapTheme === 'dark' : $q.dark.isActive);
 
-// Salva a preferência do utilizador no localStorage sempre que ela for alterada
+
 watch(isMapDark, (isDark) => {
   localStorage.setItem('trucar_map_theme', isDark ? 'dark' : 'light');
 });
@@ -127,14 +127,14 @@ watch(isMapDark, (isDark) => {
 
 const mapUrl = computed(() => {
   return isMapDark.value
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    ? 'https:
+    : 'https:
 });
 
 const mapAttribution = computed(() => {
   return isMapDark.value
-    ? `&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>`
-    : `&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>`;
+    ? `&copy; <a href='https:
+    : `&copy; <a href='https:
 });
 
 const connectedVehicles = computed(() =>
@@ -192,7 +192,7 @@ function selectVehicle(vehicle: Vehicle & {id: number}) {
 </script>
 
 <style lang="scss" scoped>
-/* ESTILOS ADAPTATIVOS */
+
 .glass-panel-light {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);

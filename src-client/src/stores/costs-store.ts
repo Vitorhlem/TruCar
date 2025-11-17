@@ -8,7 +8,7 @@ interface CostsState {
   isLoading: boolean;
 }
 
-// Renomeie a store para evitar conflitos de nome
+
 export const useVehicleCostStore = defineStore('vehicleCost', {
   state: (): CostsState => ({
     costs: [],
@@ -16,7 +16,7 @@ export const useVehicleCostStore = defineStore('vehicleCost', {
   }),
 
   actions: {
-    // Ação para buscar todos os custos da organização (para a página de Análise)
+
     async fetchAllCosts(params?: { startDate?: Date, endDate?: Date }) {
       this.isLoading = true;
       try {
@@ -30,7 +30,7 @@ export const useVehicleCostStore = defineStore('vehicleCost', {
       }
     },
 
-    // Ação para buscar custos de um veículo específico
+
     async fetchCostsByVehicle(vehicleId: number) {
       this.isLoading = true;
       try {
@@ -44,14 +44,14 @@ export const useVehicleCostStore = defineStore('vehicleCost', {
       }
     },
 
-    // Ação para adicionar um novo custo a um veículo
+
     async addCost(vehicleId: number, costData: Omit<ICostCreate, 'vehicle_id'>) {
       try {
         const payload = { ...costData, vehicle_id: vehicleId };
         await api.post('/vehicle_costs/', payload);
         Notify.create({ type: 'positive', message: 'Custo adicionado com sucesso!' });
         
-        // Atualiza a lista de custos do veículo
+
         await this.fetchCostsByVehicle(vehicleId);
       } catch (error) {
         console.error('Erro ao adicionar custo:', error);

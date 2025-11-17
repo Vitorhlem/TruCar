@@ -2,8 +2,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 
-# --- NOVO SCHEMA ADICIONADO ---
-# Define a estrutura para cada motorista no mini pódio do dashboard
 class DashboardPodiumDriver(BaseModel):
     full_name: str
     avatar_url: Optional[str] = None

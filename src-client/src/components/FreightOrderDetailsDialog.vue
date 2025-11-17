@@ -1,14 +1,14 @@
 <template>
   <q-card v-if="order" style="width: 800px; max-width: 95vw;">
-    <!-- CABEÇALHO COM CONTEXTO -->
-    <q-img src="https://cdn.quasar.dev/img/material.png" style="height: 120px">
+
+    <q-img src="https:
       <div class="absolute-bottom bg-transparent">
         <div class="text-h5">{{ order.description || 'Detalhes da Ordem de Frete' }}</div>
         <div class="text-subtitle2">Cliente: {{ order.client.name }}</div>
       </div>
     </q-img>
 
-    <!-- ABAS PARA ORGANIZAÇÃO -->
+
     <q-tabs v-model="tab" dense class="text-grey" active-color="primary" indicator-color="primary" align="justify" narrow-indicator>
       <q-tab name="details" label="Detalhes e Ações" />
       <q-tab name="route" label="Rota e Paradas" />
@@ -17,10 +17,10 @@
     <q-separator />
 
     <q-tab-panels v-model="tab" animated>
-      <!-- PAINEL DE DETALHES E AÇÕES -->
+
       <q-tab-panel name="details" class="q-pa-md">
         <div class="row q-col-gutter-lg">
-          <!-- Coluna de Status e Informações -->
+
           <div class="col-12 col-sm-5">
             <q-list separator bordered padding class="rounded-borders">
               <q-item>
@@ -38,16 +38,16 @@
             </q-list>
           </div>
 
-          <!-- Coluna de Ações -->
+
           <div class="col-12 col-sm-7">
-            <!-- AÇÕES PARA O GESTOR -->
+
             <div v-if="authStore.isManager">
               <div class="text-subtitle1 text-weight-medium">Alocação (Gestor)</div>
               <q-select outlined dense v-model="allocationForm.vehicle_id" :options="vehicleOptions" label="Alocar Veículo" emit-value map-options clearable class="q-mt-sm" :loading="vehicleStore.isLoading" />
               <q-select outlined dense v-model="allocationForm.driver_id" :options="driverOptions" label="Alocar Motorista" emit-value map-options clearable class="q-mt-sm" :loading="userStore.isLoading" />
               <q-btn color="primary" label="Salvar Alocação" @click="handleManagerUpdate" class="q-mt-md full-width" :loading="isSubmitting" />
             </div>
-            <!-- AÇÕES PARA O MOTORISTA -->
+
             <div v-else-if="!authStore.isManager && order.status === 'Aberta'">
               <div class="text-subtitle1 text-weight-medium">Atribuir a Mim</div>
               <q-form @submit.prevent="handleDriverClaim">
@@ -59,7 +59,7 @@
         </div>
       </q-tab-panel>
 
-      <!-- PAINEL DA ROTA -->
+
       <q-tab-panel name="route" class="q-pa-md">
         <q-timeline color="secondary">
           <q-timeline-entry heading>Rota Programada</q-timeline-entry>

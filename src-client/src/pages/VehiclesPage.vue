@@ -167,7 +167,7 @@ const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
 const photoFile = ref<File | null>(null);
 
-// --- LÓGICA DE BLOQUEIO DE DEMO ADICIONADA ---
+
 const isVehicleLimitReached = computed(() => {
   if (!authStore.isDemo) {
     return false;
@@ -176,7 +176,7 @@ const isVehicleLimitReached = computed(() => {
   if (limit === undefined || limit === null || limit < 0) {
     return false;
   }
-  // Usar a contagem global da demoStore, não a contagem local da vehicleStore
+
   const currentCount = demoStore.stats?.vehicle_count ?? 0;
   return currentCount >= limit;
 });
@@ -189,7 +189,7 @@ function showUpgradeDialog() {
     persistent: false
   });
 }
-// --- FIM DA LÓGICA DE BLOQUEIO ---
+
 
 
 function goToVehicleDetails(vehicle: Vehicle, tab = 'details') {
@@ -213,12 +213,12 @@ function resetForm() {
 }
 
 function openCreateDialog() {
-  // --- VERIFICAÇÃO DE LIMITE ADICIONADA ---
+
   if (isVehicleLimitReached.value) {
     showUpgradeDialog();
-    return; // Impede a abertura do diálogo
+    return;
   }
-  // --- FIM DA VERIFICAÇÃO ---
+
   
   resetForm();
   isFormDialogOpen.value = true;

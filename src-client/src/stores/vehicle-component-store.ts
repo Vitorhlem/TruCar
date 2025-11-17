@@ -8,7 +8,7 @@ export const useVehicleComponentStore = defineStore('vehicleComponent', {
   state: () => ({
     components: [] as VehicleComponent[],
     isLoading: false,
-    currentVehicleId: null as number | null, // <-- ADICIONE ESTA LINHA
+    currentVehicleId: null as number | null,
   }),
   actions: {
     async fetchComponents(vehicleId: number) {
@@ -16,10 +16,10 @@ export const useVehicleComponentStore = defineStore('vehicleComponent', {
       try {
         const response = await api.get<VehicleComponent[]>(`/vehicles/${vehicleId}/components`);
         this.components = response.data;
-        this.currentVehicleId = vehicleId; // <-- ADICIONE ESTA LINHA
+        this.currentVehicleId = vehicleId;
       } catch {
         Notify.create({ type: 'negative', message: 'Falha ao carregar componentes do veículo.' });
-        this.currentVehicleId = null; // <-- Opcional: limpar em caso de falha
+        this.currentVehicleId = null;
       } finally {
         this.isLoading = false;
       }
@@ -30,7 +30,7 @@ export const useVehicleComponentStore = defineStore('vehicleComponent', {
       try {
         await api.post(`/vehicles/${vehicleId}/components`, payload);
         Notify.create({ type: 'positive', message: 'Componente instalado com sucesso!' });
-        await this.fetchComponents(vehicleId); // Recarrega a lista
+        await this.fetchComponents(vehicleId);
         return true;
       } catch (error) {
         const message = isAxiosError(error) ? error.response?.data?.detail : 'Erro ao instalar componente.';
@@ -47,7 +47,7 @@ export const useVehicleComponentStore = defineStore('vehicleComponent', {
         await api.put(`/vehicle-components/${componentId}/discard`);
         Notify.create({ type: 'positive', message: 'Componente marcado como descartado.' });
         await this.fetchComponents(vehicleId);
-        return true; // Recarrega a lista
+        return true;
       } catch {
         Notify.create({ type: 'negative', message: 'Erro ao descartar componente.' });
         return false;

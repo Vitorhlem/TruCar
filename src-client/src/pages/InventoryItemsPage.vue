@@ -82,13 +82,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { usePartStore } from 'stores/part-store';
-import { InventoryItemStatus } from 'src/models/inventory-item-models'; // <-- ADICIONE ESTA IMPORTAÇÃO
+import { InventoryItemStatus } from 'src/models/inventory-item-models';
 import type { QTableProps } from 'quasar';
 
 
 const partStore = usePartStore();
 
-// Filtros
+
 const filters = ref({
   search: null as string | null,
   status: null as InventoryItemStatus | null,
@@ -102,16 +102,16 @@ const statusOptions: { label: string, value: InventoryItemStatus }[] = [
   { label: 'Fim de Vida', value: InventoryItemStatus.FIM_DE_VIDA },
 ];
 
-// Paginação (controlada pelo servidor)
+
 const pagination = ref({
   page: 1,
   rowsPerPage: 10,
-  rowsNumber: 0, // Total de itens (virá da API)
-  sortBy: 'part_id', // Ordenação padrão
+  rowsNumber: 0,
+  sortBy: 'part_id',
   descending: false,
 });
 
-// Colunas da Tabela
+
 const columns: QTableProps['columns'] = [
   { name: 'item_identifier', label: 'Cód. Item', field: 'item_identifier', align: 'left', sortable: true },
   { name: 'part_name', label: 'Nome da Peça', field: (row) => row.part.name, align: 'left', sortable: true },
@@ -121,7 +121,7 @@ const columns: QTableProps['columns'] = [
   { name: 'actions', label: 'Ações', field: 'id', align: 'center' },
 ];
 
-// Função para carregar os dados
+
 async function fetchTableData() {
   await partStore.fetchMasterItems({
     page: pagination.value.page,
@@ -130,13 +130,13 @@ async function fetchTableData() {
     partId: filters.value.partId,
     vehicleId: filters.value.vehicleId,
     search: filters.value.search,
-    // TODO: Adicionar ordenação (sortBy, descending) se o backend suportar
+
   });
-  // Atualiza o total da paginação com o valor da store
+
   pagination.value.rowsNumber = partStore.masterListTotal;
 }
 
-// Chamado quando a paginação/ordenação da tabela muda
+
 const onTableRequest: QTableProps['onRequest'] = (props) => {
   pagination.value.page = props.pagination.page;
   pagination.value.rowsPerPage = props.pagination.rowsPerPage;
@@ -145,9 +145,9 @@ const onTableRequest: QTableProps['onRequest'] = (props) => {
   void fetchTableData();
 };
 
-// Chamado pelos botões de filtro
+
 function refreshTable() {
-  pagination.value.page = 1; // Reseta para a primeira página
+  pagination.value.page = 1;
   void fetchTableData();
 }
 
@@ -156,15 +156,15 @@ function resetFilters() {
   refreshTable();
 }
 
-// Observa mudanças nos filtros e atualiza a tabela
+
 watch(filters, refreshTable, { deep: true });
 
-// Carregamento inicial
+
 onMounted(() => {
   void fetchTableData();
 });
 
-// Função utilitária para cor do status
+
 function statusColor(status: InventoryItemStatus): string {
   const map: Record<InventoryItemStatus, string> = {
     'Disponível': 'positive',

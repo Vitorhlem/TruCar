@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
-// Importa todos os novos modelos que definimos
+
 import type {
   ManagerDashboardResponse,
   DriverDashboardResponse,
   VehiclePosition,
 } from 'src/models/report-models';
 
-// Definição do novo estado da store, mais completo
+
 export interface DashboardState {
   managerDashboard: ManagerDashboardResponse | null;
   driverDashboard: DriverDashboardResponse | null;
@@ -24,10 +24,7 @@ export const useDashboardStore = defineStore('dashboard', {
   }),
 
   actions: {
-    /**
-     * Busca os dados para o dashboard do GESTOR.
-     * @param period A string do período para o filtro (ex: 'last_30_days')
-     */
+
     async fetchManagerDashboard(period = 'last_30_days') {
       this.isLoading = true;
       try {
@@ -37,15 +34,13 @@ export const useDashboardStore = defineStore('dashboard', {
         this.managerDashboard = response.data;
       } catch (error) {
         console.error('Falha ao buscar dados do dashboard do gestor:', error);
-        // Opcional: adicionar notificação de erro para o usuário
+
       } finally {
         this.isLoading = false;
       }
     },
 
-    /**
-     * Busca os dados para o dashboard do MOTORISTA.
-     */
+
     async fetchDriverDashboard() {
       this.isLoading = true;
       try {
@@ -58,12 +53,9 @@ export const useDashboardStore = defineStore('dashboard', {
       }
     },
 
-    /**
-     * Busca as posições dos veículos para o MAPA.
-     * Esta ação é otimizada para ser chamada repetidamente (polling).
-     */
+
     async fetchVehiclePositions() {
-      // Não usamos 'isLoading' aqui para permitir uma atualização silenciosa em segundo plano.
+
       try {
         const response = await api.get<VehiclePosition[]>('/dashboard/vehicles/positions');
         this.vehiclePositions = response.data;
@@ -72,9 +64,7 @@ export const useDashboardStore = defineStore('dashboard', {
       }
     },
 
-    /**
-     * Limpa os dados do dashboard, útil ao fazer logout.
-     */
+
     clearDashboardData() {
       this.managerDashboard = null;
       this.driverDashboard = null;

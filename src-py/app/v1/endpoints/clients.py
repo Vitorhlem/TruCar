@@ -1,4 +1,3 @@
-# ARQUIVO: backend/app/api/v1/endpoints/clients.py
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,6 +87,5 @@ async def delete_client(
     if not db_client:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente não encontrado.")
     
-    # A exclusão irá apagar em cascata as ordens de frete associadas
     deleted_client = await crud.client.remove(db=db, db_obj=db_client)
     return deleted_client

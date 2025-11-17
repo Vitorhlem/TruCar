@@ -167,7 +167,7 @@ import { ref, watch } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { useAdminStore } from 'stores/admin-store';
 import type { User, UserSector } from 'src/models/auth-models';
-// Verifique se este arquivo foi atualizado conforme minha resposta anterior
+
 import type { Organization, OrganizationUpdate } from 'src/models/organization-models'; 
 
 const $q = useQuasar();
@@ -189,7 +189,7 @@ const sectorOptions: { label: string, value: UserSector }[] = [
 const userColumns: QTableColumn[] = [
   { name: 'full_name', label: 'Nome do Utilizador', field: 'full_name', align: 'left', sortable: true },
   { name: 'email', label: 'E-mail', field: 'email', align: 'left', sortable: true },
-  // --- CORRIGIDO AQUI ---
+
   { name: 'organization', label: 'Empresa', field: (row: User) => row.organization?.name, align: 'left', sortable: true },
   { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
 ];
@@ -201,21 +201,21 @@ const orgColumns: QTableColumn[] = [
   { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
 ];
 
-// --- NOVA TABELA DE UTILIZADORES ADICIONADA ---
+
 const allUsersColumns: QTableColumn[] = [
   { name: 'full_name', label: 'Nome', field: 'full_name', align: 'left', sortable: true },
   { name: 'email', label: 'E-mail', field: 'email', align: 'left', sortable: true },
   { name: 'role', label: 'Papel', field: 'role', align: 'center', sortable: true },
-  // --- CORRIGIDO AQUI ---
+
   { name: 'organization', label: 'Empresa', field: (row: User) => row.organization?.name, align: 'left', sortable: true },
   { name: 'actions', label: 'Ações', field: 'actions', align: 'center' },
 ];
-// --- FIM DA ADIÇÃO ---
+
 
 function promptToActivate(user: User) {
   $q.dialog({
     title: 'Confirmar Ativação',
-    // --- CORRIGIDO AQUI ---
+
     message: `Tem a certeza que deseja ativar a conta de <strong>${user.full_name}</strong> (${user.organization?.name ?? 'Empresa não definida'})? O papel dele será alterado para CLIENTE_ATIVO.`,
     html: true,
     cancel: { label: 'Cancelar', flat: true },
@@ -225,7 +225,7 @@ function promptToActivate(user: User) {
   });
 }
 
-// --- NOVA FUNÇÃO DE LOGIN SOMBRA ADICIONADA ---
+
 function promptToImpersonate(user: User) {
   $q.dialog({
     title: 'Login Sombra',
@@ -237,11 +237,11 @@ function promptToImpersonate(user: User) {
     void adminStore.impersonateUser(user);
   });
 }
-// --- FIM DA ADIÇÃO ---
+
 
 function openEditDialog(org: Organization) {
   editingOrg.value = org;
-  // --- MODIFICADO: Preencher o formulário com os novos limites ---
+
   editOrgForm.value = { 
     name: org.name, 
     sector: org.sector,
@@ -250,7 +250,7 @@ function openEditDialog(org: Organization) {
     freight_order_limit: org.freight_order_limit,
     maintenance_limit: org.maintenance_limit
   };
-  // --- FIM DA MODIFICAÇÃO ---
+
   isEditDialogOpen.value = true;
 }
 
@@ -258,7 +258,7 @@ async function handleEditOrg() {
   if (!editingOrg.value) return;
   isSubmitting.value = true;
   try {
-    // A store 'updateOrganization' já deve enviar o 'editOrgForm.value' completo
+
     await adminStore.updateOrganization(editingOrg.value.id, editOrgForm.value);
     isEditDialogOpen.value = false;
   } finally {

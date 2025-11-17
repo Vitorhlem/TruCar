@@ -1,14 +1,14 @@
-// ARQUIVO: src/models/freight-order-models.ts
+
 
 import type { Client } from './client-models';
 import type { User } from './auth-models';
 import type { Vehicle } from './vehicle-models';
-import type { Journey } from './journey-models'; // <-- 1. IMPORTE O TIPO JOURNEY
+import type { Journey } from './journey-models';
 
 
-// --- INÍCIO DA CORREÇÃO: Adicionamos os novos status ---
+
 export type FreightStatus = "Aberta" | "Atribuída" | "Em Trânsito" | "Entregue" | "Cancelado";
-// --- FIM DA CORREÇÃO ---
+
 
 export type StopPointType = "Coleta" | "Entrega";
 export type StopPointStatus = "Pendente" | "Concluído";

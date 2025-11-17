@@ -6,17 +6,11 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 
-# --- INÍCIO DA CONFIGURAÇÃO TRUCAR ---
 
-# Adiciona o diretório raiz do projeto (src-py) ao sys.path
-# para que possamos importar o módulo 'app'
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Importe a Base declarativa de onde ela está no seu projeto
 from app.db.base_class import Base
 
-# Importe TODOS os seus modelos aqui.
-# Isso é crucial para que o Alembic "veja" as tabelas.
 from app.models.user_model import User
 from app.models.organization_model import Organization
 from app.models.vehicle_model import Vehicle
@@ -40,31 +34,17 @@ from app.models.achievement_model import Achievement
 from app.models.location_history_model import LocationHistory
 from app.models.demo_usage_model import DemoUsage
 
-# --- CORREÇÃO (BASEADO NO SEU INPUT) ---
-# Importa o modelo correto do seu tire_model.py
 from app.models.tire_model import VehicleTire
-# Removemos a importação de report_models.py, pois ele contém schemas Pydantic, não modelos SQLAlchemy.
-# --- FIM DA CORREÇÃO ---
 
-# Defina o target_metadata com a Base dos seus modelos
 target_metadata = Base.metadata
 
-# --- FIM DA CONFIGURAÇÃO TRUCAR ---
 
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def run_migrations_offline() -> None:
@@ -99,7 +79,6 @@ def run_migrations_online() -> None:
 
     """
     
-    # Esta função usa a 'sqlalchemy.url' síncrona do alembic.ini
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

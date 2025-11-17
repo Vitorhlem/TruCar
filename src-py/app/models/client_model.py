@@ -1,4 +1,3 @@
-# ARQUIVO: backend/app/models/client_model.py
 
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
@@ -16,8 +15,6 @@ class Client(Base):
 
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     
-    # Relacionamento de volta para a Organização
     organization = relationship("Organization", back_populates="clients")
     
-    # Relacionamento com as Ordens de Frete
     freight_orders = relationship("FreightOrder", back_populates="client", cascade="all, delete-orphan")

@@ -6,11 +6,8 @@ from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# --- INÍCIO DA MODIFICAÇÃO: Constantes para o token de reset ---
 PASSWORD_RESET_SECRET_KEY = settings.REFRESH_TOKEN_SECRET_KEY
-# CORREÇÃO: O token agora expira em 10 minutos
 PASSWORD_RESET_TOKEN_EXPIRE_MINUTES = 10
-# --- FIM DA MODIFICAÇÃO ---
 
 def create_access_token(subject: str | Any) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)

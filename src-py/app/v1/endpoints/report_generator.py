@@ -26,7 +26,6 @@ async def generate_report(
         if report_request.report_type == "activity_by_driver":
             template = env.get_template("driver_activity_report.html")
             
-            # A CORREÇÃO DE SEGURANÇA: Passamos a organization_id do gestor logado
             data = await crud.report.get_driver_activity_data(
                 db,
                 driver_id=report_request.target_id,
@@ -39,7 +38,6 @@ async def generate_report(
             raise HTTPException(status_code=400, detail="Tipo de relatório inválido.")
 
     except ValueError as e:
-        # Captura o erro do CRUD se o motorista não for encontrado na organização
         raise HTTPException(status_code=404, detail=str(e))
 
     if not data:

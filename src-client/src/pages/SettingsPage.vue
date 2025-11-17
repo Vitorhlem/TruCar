@@ -188,7 +188,7 @@ const currentTab = ref('account');
 const isSubmittingPassword = ref(false);
 const passwordForm = ref({ current_password: '', new_password: '', confirm_password: '' });
 
-// --- LÓGICA DE DEMO ADICIONADA ---
+
 const isDemo = computed(() => authStore.isDemo);
 
 function showUpgradeDialog() {
@@ -199,7 +199,7 @@ function showUpgradeDialog() {
     persistent: false
   });
 }
-// --- FIM DA ADIÇÃO ---
+
 
 const notificationPrefs = ref({
   notify_in_app: authStore.user?.notify_in_app ?? true,
@@ -249,7 +249,7 @@ const tabs = computed(() => {
     { name: 'appearance', label: 'Aparência', icon: 'visibility' },
     { name: 'notifications', label: 'Notificações', icon: 'notifications' },
     { name: 'organization', label: 'Organização', icon: 'business', managerOnly: true },
-    { name: 'integrations', label: 'Integrações', icon: 'sync_alt', managerOnly: true }, // <-- NOVA ABA
+    { name: 'integrations', label: 'Integrações', icon: 'sync_alt', managerOnly: true },
   ];
 
   if (authStore.isManager) {
@@ -262,7 +262,7 @@ function updateDarkMode(value: boolean | 'auto') {
   settingsStore.setDarkMode(value);
 }
 
-// --- LÓGICA PARA A NOVA ABA DE INTEGRAÇÕES ---
+
 const integrationForm = ref({
   fuel_provider_name: '',
   fuel_provider_api_key: '',
@@ -272,14 +272,14 @@ const integrationForm = ref({
 watch(() => settingsStore.fuelIntegrationSettings, (newSettings) => {
   if (newSettings) {
     integrationForm.value.fuel_provider_name = newSettings.fuel_provider_name || '';
-    // Não preenchemos os campos de senha/chave para segurança, apenas mostramos o status
+
     integrationForm.value.fuel_provider_api_key = '';
     integrationForm.value.fuel_provider_api_secret = '';
   }
 }, { immediate: true });
 
 async function handleUpdateIntegration() {
-  // Apenas envia os campos que o usuário preencheu
+
   const payload: { [key: string]: string } = {};
   if (integrationForm.value.fuel_provider_name) {
     payload.fuel_provider_name = integrationForm.value.fuel_provider_name;

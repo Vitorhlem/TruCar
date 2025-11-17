@@ -1,4 +1,3 @@
-# ARQUIVO: backend/app/models/stop_point_model.py
 
 import enum
 from sqlalchemy import Column, Integer, String, Enum, DateTime, ForeignKey
@@ -30,5 +29,4 @@ class StopPoint(Base):
     scheduled_time = Column(DateTime, nullable=False)
     actual_arrival_time = Column(DateTime, nullable=True)
     
-    # Relacionamento de volta para a Ordem de Frete
     freight_order = relationship("FreightOrder", back_populates="stop_points")

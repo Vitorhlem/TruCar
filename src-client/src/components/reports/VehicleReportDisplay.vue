@@ -1,6 +1,6 @@
 <template>
   <q-card flat bordered>
-    <!-- Cabeçalho -->
+
     <q-card-section class="bg-primary text-white">
       <div class="flex items-center justify-between">
         <div>
@@ -18,10 +18,10 @@
     </q-card-section>
 
     <q-card-section>
-      <!-- Seção de Resumos -->
+
       <div class="row q-col-gutter-md">
         
-        <!-- Resumo Financeiro Dinâmico -->
+
         <div v-if="report.financial_summary" class="col-12 col-md-6">
           <q-card flat bordered>
             <q-card-section><div class="text-subtitle1">Resumo Financeiro</div></q-card-section>
@@ -30,10 +30,10 @@
                 <q-item-section>Custo Total no Período:</q-item-section>
                 <q-item-section side class="text-weight-bold">{{ formatCurrency(report.financial_summary.total_costs) }}</q-item-section>
               </q-item>
-              <!-- CORREÇÃO: Usar 'cost_per_metric' -->
+
               <q-item v-if="report.financial_summary.cost_per_metric > 0">
                 <q-item-section>
-                  <!-- CORREÇÃO: Usar 'metric_unit' -->
+
                   {{ report.financial_summary.metric_unit === 'km' ? 'Custo por KM (Período):' : 'Custo por Hora (Período):' }}
                 </q-item-section>
                 <q-item-section side class="text-weight-bold">
@@ -44,13 +44,13 @@
           </q-card>
         </div>
         
-        <!-- Resumo de Performance Dinâmico -->
+
         <div v-if="report.performance_summary" class="col-12 col-md-6">
           <q-card flat bordered>
             <q-card-section><div class="text-subtitle1">Resumo de Performance</div></q-card-section>
             <q-list separator dense>
               
-              <!-- CAMPO ADICIONADO (TOTAL DO VEÍCULO) -->
+
               <q-item>
                 <q-item-section>
                   {{ report.performance_summary.activity_unit === 'km' ? 'Odômetro Atual:' : 'Horímetro Atual:' }}
@@ -60,10 +60,10 @@
                 </q-item-section>
               </q-item>
 
-              <!-- CORREÇÃO: Usar 'period_total_activity' -->
+
               <q-item v-if="report.performance_summary.period_total_activity > 0">
                 <q-item-section>
-                  <!-- CORREÇÃO: Usar 'activity_unit' -->
+
                   {{ report.performance_summary.activity_unit === 'km' ? 'Distância (Período):' : 'Horas (Período):' }}
                 </q-item-section>
                 <q-item-section side class="text-weight-bold">
@@ -71,7 +71,7 @@
                 </q-item-section>
               </q-item>
               
-              <!-- CORREÇÃO: Usar 'period_total_fuel' -->
+
               <q-item v-if="report.performance_summary.period_total_fuel > 0">
                 <q-item-section>
                   {{ report.performance_summary.activity_unit === 'km' ? 'Consumo Médio (km/l):' : 'Consumo Médio (l/h):' }}
@@ -86,37 +86,37 @@
         </div>
       </div>
 
-      <!-- Seção de Custos -->
+
       <div v-if="report.costs_detailed && report.costs_detailed.length > 0" class="q-mt-lg">
         <q-table title="Detalhamento de Custos" :rows="report.costs_detailed" :columns="costColumns" row-key="id" flat dense bordered />
       </div>
 
-      <!-- Seção de Abastecimentos -->
+
       <div v-if="report.fuel_logs_detailed && report.fuel_logs_detailed.length > 0" class="q-mt-lg">
         <q-table title="Histórico de Abastecimentos" :rows="report.fuel_logs_detailed" :columns="fuelColumns" row-key="id" flat dense bordered />
       </div>
 
-      <!-- Seção de Manutenções -->
+
       <div v-if="report.maintenance_detailed && report.maintenance_detailed.length > 0" class="q-mt-lg">
         <q-table title="Histórico de Manutenções" :rows="report.maintenance_detailed" :columns="maintenanceColumns" row-key="id" flat dense bordered />
       </div>
 
-      <!-- Seção de Multas -->
+
       <div v-if="report.fines_detailed && report.fines_detailed.length > 0" class="q-mt-lg">
         <q-table title="Detalhamento de Multas" :rows="report.fines_detailed" :columns="finesColumns" row-key="id" flat dense bordered />
       </div>
 
-      <!-- Seção de Jornadas -->
+
       <div v-if="report.journeys_detailed && report.journeys_detailed.length > 0" class="q-mt-lg">
         <q-table title="Histórico de Jornadas" :rows="report.journeys_detailed" :columns="journeysColumns" row-key="id" flat dense bordered />
       </div>
       
-      <!-- Seção de Documentos -->
+
       <div v-if="report.documents_detailed && report.documents_detailed.length > 0" class="q-mt-lg">
         <q-table title="Documentos do Veículo" :rows="report.documents_detailed" :columns="documentsColumns" row-key="id" flat dense bordered />
       </div>
       
-      <!-- Seção de Pneus -->
+
       <div v-if="report.tires_detailed && report.tires_detailed.length > 0" class="q-mt-lg">
         <q-table title="Gestão de Pneus" :rows="report.tires_detailed" :columns="tiresColumns" row-key="id" flat dense bordered />
       </div>
@@ -151,7 +151,7 @@ const props = defineProps({
   },
 });
 
-// Funções de formatação
+
 const formatDate = (dateString: string | Date | null | undefined) => {
   if (!dateString) return 'N/A';
   const date = typeof dateString === 'string' ? new Date(dateString.replace(/-/g, '/')) : dateString;
@@ -167,7 +167,7 @@ const formatCurrency = (value: number | null | undefined) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-// --- DEFINIÇÕES DE COLUNAS (Baseadas nos seus models reais) ---
+
 
 const costColumns: QTableColumn<VehicleCost>[] = [
   { name: 'date', label: 'Data', field: 'date', format: val => formatDate(val), align: 'left', sortable: true },
@@ -220,7 +220,7 @@ const tiresColumns: QTableColumn<VehicleTire>[] = [
 ];
 
 
-// --- FUNÇÕES DE EXPORTAÇÃO (ATUALIZADAS) ---
+
 
 function exportToPDF() {
   const doc = new jsPDF() as jsPDFWithLastTable;
@@ -234,7 +234,7 @@ function exportToPDF() {
   
   let startY = 40;
 
-  // CORREÇÃO: Resumo dinâmico para PDF
+
   const summaryBody: (string | number)[][] = [];
   
   if (report.performance_summary) {
@@ -361,7 +361,7 @@ function exportToXLSX() {
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(wb, wsSummary, "Resumo");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const addSheet = (sheetName: string, data: Record<string, any>[] | undefined) => {
     if (data && data.length > 0) {
       const ws = XLSX.utils.json_to_sheet(data);

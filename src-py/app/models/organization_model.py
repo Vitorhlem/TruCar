@@ -1,5 +1,4 @@
 import enum
-# Import 'Integer' para os novos campos
 from sqlalchemy import Column, Integer, String, LargeBinary 
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
@@ -16,18 +15,14 @@ class Organization(Base):
     name = Column(String(100), unique=True, index=True, nullable=False)
     sector = Column(String(50), nullable=False)
     
-    # --- CAMPOS PARA INTEGRAÇÃO DE COMBUSTÍVEL ADICIONADOS ---
     fuel_provider_name = Column(String(100), nullable=True)
     encrypted_fuel_provider_api_key = Column(LargeBinary, nullable=True)
     encrypted_fuel_provider_api_secret = Column(LargeBinary, nullable=True)
-    # --- FIM DA ADIÇÃO ---
 
-    # --- CAMPOS DE LIMITE ADICIONADOS ---
     vehicle_limit = Column(Integer, nullable=False, default=-1) # -1 para Ilimitado
     driver_limit = Column(Integer, nullable=False, default=-1)
     freight_order_limit = Column(Integer, nullable=False, default=-1)
     maintenance_limit = Column(Integer, nullable=False, default=-1)
-    # --- FIM DA ADIÇÃO ---
 
     users = relationship("User", back_populates="organization")
     vehicles = relationship("Vehicle", back_populates="organization")

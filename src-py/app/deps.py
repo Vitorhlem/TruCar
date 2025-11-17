@@ -1,4 +1,3 @@
-# backend/app/api/deps.py
 from typing import Generator, Any
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
@@ -9,12 +8,7 @@ from fastapi.concurrency import run_in_threadpool
 from datetime import date
 
 from app.core.config import settings
-# --- MUDANÇA (ETAPA 2) ---
-# REMOVA A IMPORTAÇÃO DO SessionLocal
-# from app.db.session import SessionLocal 
-# IMPORTE O 'get_db' CORRETO DO ARQUIVO QUE ACABAMOS DE CORRIGIR
 from app.db.session import get_db
-# --- FIM DA MUDANÇA ---
 from app.models.user_model import User, UserRole
 from app import crud
 
@@ -25,19 +19,9 @@ oauth2_scheme = OAuth2PasswordBearer(
     auto_error=True
 )
 
-# --- MUDANÇA (ETAPA 2) ---
-# APAGUE A FUNÇÃO 'get_db' INCORRETA QUE ESTAVA AQUI
-#
-# async def get_db() -> Generator[AsyncSession, Any, None]:
-#     async with SessionLocal() as session:
-#         yield session
-#
-# --- FIM DA MUDANÇA ---
 
 
 async def get_current_user(
-    # Esta dependência 'Depends(get_db)' agora usa
-    # automaticamente a função correta que importamos.
     db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> User:
     credentials_exception = HTTPException(
@@ -97,7 +81,6 @@ async def get_current_super_admin(
         )
     return current_user
 
-# --- LÓGICA DE LIMITES (Sem mudança) ---
 DEMO_MONTHLY_LIMITS = {
     "reports": 5, "fines": 3, "documents": 10, "freight_orders": 5,
     "maintenance_requests": 5, 

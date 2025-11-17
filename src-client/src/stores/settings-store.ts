@@ -6,8 +6,8 @@ import { Notify } from 'quasar';
 import type { OrganizationFuelIntegrationPublic, OrganizationFuelIntegrationUpdate } from 'src/models/organization-models';
 
 export const useSettingsStore = defineStore('settings', () => {
-  // --- Dark Mode State ---
-  // Lê a preferência do localStorage ou usa 'auto' como padrão
+
+
   const darkMode = ref<boolean | 'auto'>(
     JSON.parse(localStorage.getItem('darkMode') || '"auto"')
   );
@@ -15,21 +15,21 @@ export const useSettingsStore = defineStore('settings', () => {
   function setDarkMode(value: boolean | 'auto') {
     darkMode.value = value;
     Dark.set(value);
-    // Salva a preferência no localStorage
+
     localStorage.setItem('darkMode', JSON.stringify(value));
   }
 
-  // --- FUNÇÃO INIT ADICIONADA ---
-  // Esta função é chamada pelo App.vue para garantir que o tema seja aplicado
+
+
   function init() {
     Dark.set(darkMode.value);
   }
 
-  // --- Fuel Integration State ---
+
   const fuelIntegrationSettings = ref<OrganizationFuelIntegrationPublic | null>(null);
   const isLoadingFuelSettings = ref(false);
 
-  // --- AÇÕES PARA INTEGRAÇÃO DE COMBUSTÍVEL ---
+
 
   async function fetchFuelIntegrationSettings() {
     isLoadingFuelSettings.value = true;
@@ -61,7 +61,7 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     darkMode,
     setDarkMode,
-    init, // <-- Exporta a função para ser usada pelo App.vue
+    init,
     fuelIntegrationSettings,
     isLoadingFuelSettings,
     fetchFuelIntegrationSettings,

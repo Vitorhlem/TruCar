@@ -145,16 +145,16 @@ function showUpgradeDialog() {
 
 const stats = computed(() => userStore.selectedUserStats as UserStats);
 
-// --- CORREÇÃO: Nome do usuário dinâmico ---
+
 const userName = computed(() => {
-    // Se for motorista vendo a própria página, usa o nome do authStore
+
     if (authStore.isDriver) {
         return authStore.user?.full_name;
     }
-    // Se for gestor, usa o nome do usuário que foi carregado no userStore
+
     return userStore.selectedUser?.full_name;
 });
-// --- FIM DA CORREÇÃO ---
+
 
 const shouldShowFuelChart = computed(() => {
   return stats.value?.primary_metric_unit === 'km' && stats.value?.avg_km_per_liter !== null;
@@ -222,7 +222,7 @@ function fetchData() {
   if (userId) {
     const promises = [userStore.fetchUserStats(userId)];
     
-    // CORREÇÃO: Apenas busca os dados do usuário se for um gestor
+
     if (authStore.isManager) {
         promises.push(userStore.fetchUserById(userId));
     }

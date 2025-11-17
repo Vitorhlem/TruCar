@@ -28,7 +28,6 @@ class VehicleStatus(str, enum.Enum):
 class Vehicle(Base):
     __tablename__ = "vehicles"
     
-    # --- COLUNAS ATUALIZADAS PARA A SINTAXE MODERNA ---
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     brand: Mapped[str] = mapped_column(String(50), nullable=False)
     model: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -51,7 +50,6 @@ class Vehicle(Base):
     
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), nullable=False)
     
-    # --- RELAÇÕES ATUALIZADAS PARA A NOVA SINTAXE ---
     organization: Mapped["Organization"] = relationship("Organization", back_populates="vehicles")
     journeys: Mapped[List["Journey"]] = relationship("Journey", back_populates="vehicle", cascade="all, delete-orphan")
     fuel_logs: Mapped[List["FuelLog"]] = relationship("FuelLog", back_populates="vehicle", cascade="all, delete-orphan")

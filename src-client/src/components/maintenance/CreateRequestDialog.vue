@@ -56,7 +56,7 @@ const vehicleStore = useVehicleStore();
 const formData = ref<MaintenanceRequestCreate>({
   vehicle_id: 0,
   problem_description: '',
-  category: MaintenanceCategory.MECHANICAL // Valor padrão
+  category: MaintenanceCategory.MECHANICAL
 });
 
 const vehicleOptions = computed(() => vehicleStore.vehicles.map(v => ({
@@ -64,7 +64,7 @@ const vehicleOptions = computed(() => vehicleStore.vehicles.map(v => ({
   value: v.id
 })));
 
-// Opções para o novo seletor de categoria
+
 const categoryOptions = Object.values(MaintenanceCategory);
 
 async function handleSubmit() {
@@ -72,7 +72,7 @@ async function handleSubmit() {
     await maintenanceStore.createRequest(formData.value);
     emit('update:modelValue', false);
   } catch {
-    // A store já notifica o erro
+
   }
 }
 </script>

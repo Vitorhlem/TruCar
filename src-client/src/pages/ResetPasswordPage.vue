@@ -95,7 +95,7 @@ onMounted(() => {
 async function handlePasswordReset() {
   if (isLoading.value || !token.value) return;
   if (newPassword.value !== confirmPassword.value) {
-    // A regra de validação no template já mostra a mensagem, mas podemos adicionar um notify se quisermos.
+
     return;
   }
   
@@ -112,7 +112,7 @@ async function handlePasswordReset() {
 </script>
 
 <style lang="scss" scoped>
-/* ESTES ESTILOS SÃO OS MESMOS DA LOGINPAGE.VUE PARA MANTER A CONSISTÊNCIA */
+
 .main-container {
   background-image: url('~assets/login-background.jpg');
   background-size: cover;

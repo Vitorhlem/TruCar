@@ -1,4 +1,3 @@
-# backend/app/crud/base.py
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession

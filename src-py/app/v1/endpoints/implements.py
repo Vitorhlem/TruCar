@@ -1,4 +1,3 @@
-# ARQUIVO: backend/app/api/v1/endpoints/implements.py
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +15,6 @@ async def create_implement(
     *,
     db: AsyncSession = Depends(deps.get_db),
     implement_in: ImplementCreate,
-    # A dependência foi trocada para exigir um usuário com role 'manager'
     current_user: User = Depends(deps.get_current_active_manager)
 ):
     """

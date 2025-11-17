@@ -8,21 +8,18 @@ from datetime import datetime, date, timedelta
 
 from app.models.journey_model import Journey
 from app.models.vehicle_model import Vehicle, VehicleStatus
-# A LINHA QUE FALTAVA PARA O EAGER LOADING:
 from app.models.user_model import User, UserRole
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate
 from app.models.implement_model import Implement, ImplementStatus
 
 
 
-# Exceções customizadas para uma arquitetura mais limpa
 class VehicleNotAvailableError(Exception):
     pass
 
 async def create_journey(
     db: AsyncSession, *, journey_in: JourneyCreate, driver_id: int, organization_id: int
 ) -> Journey:
-    # ... (o resto da sua função create_journey permanece igual)
     if journey_in.implement_id:
         implement = await db.get(Implement, journey_in.implement_id)
         if not implement or implement.organization_id != organization_id:
@@ -72,7 +69,6 @@ async def count_journeys_in_current_month(db: AsyncSession, *, organization_id: 
     today = date.today()
     start_of_month = today.replace(day=1)
     
-    # Lógica para encontrar o primeiro dia do próximo mês
     if start_of_month.month == 12:
         start_of_next_month = start_of_month.replace(year=start_of_month.year + 1, month=1)
     else:
@@ -93,10 +89,7 @@ async def end_journey(
     db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
 ) -> Tuple[Journey, Vehicle]:
     """Finaliza uma operação, atualiza o status E o odómetro/horímetro do veículo."""
-    # --- INÍCIO DA CORREÇÃO DEFINITIVA ---
 
-    # 1. ATUALIZAR A JORNADA
-    # Define os valores finais para a operação que está terminando.
     db_journey.end_time = datetime.utcnow()
     db_journey.is_active = False
     if journey_in.end_engine_hours is not None:
@@ -107,8 +100,6 @@ async def end_journey(
     db.add(db_journey)
     print(f"Jornada ID {db_journey.id} marcada como finalizada com end_engine_hours = {db_journey.end_engine_hours}")
 
-    # 2. ATUALIZAR O VEÍCULO (MAQUINÁRIO)
-    # O horímetro final da operação se torna o NOVO horímetro ATUAL do maquinário.
     updated_vehicle = None
     if db_journey.vehicle_id:
         vehicle = await db.get(Vehicle, db_journey.vehicle_id)
@@ -116,7 +107,6 @@ async def end_journey(
             print(f"Veículo ID {vehicle.id} encontrado. Horímetro ANTES: {vehicle.current_engine_hours}")
             vehicle.status = VehicleStatus.AVAILABLE
             
-            # A lógica principal:
             if journey_in.end_engine_hours is not None:
                 vehicle.current_engine_hours = journey_in.end_engine_hours
                 print(f"!!! ATUALIZANDO HORÍMETRO DO VEÍCULO PARA: {vehicle.current_engine_hours} !!!")
@@ -128,14 +118,12 @@ async def end_journey(
             db.add(vehicle)
             updated_vehicle = vehicle
 
-    # 3. ATUALIZAR O IMPLEMENTO
     if db_journey.implement_id:
         implement = await db.get(Implement, db_journey.implement_id)
         if implement:
             implement.status = ImplementStatus.AVAILABLE
             db.add(implement)
 
-    # --- FIM DA CORREÇÃO DEFINITIVA ---
 
     await db.commit()
     print("--- COMMIT REALIZADO COM SUCESSO ---")
@@ -168,19 +156,14 @@ async def get_all_journeys(
     """Busca todas as viagens de uma organização, com filtros e lógica de demo."""
     stmt = select(Journey).where(Journey.organization_id == organization_id)
 
-    # --- LÓGICA DE LIMITE DE HISTÓRICO PARA DEMO ---
     if requester_role == UserRole.CLIENTE_DEMO:
-        # Se for um cliente demo, ignoramos os filtros de data do utilizador
-        # e forçamos o filtro para os últimos 7 dias.
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
         stmt = stmt.where(Journey.start_time >= seven_days_ago)
     else:
-        # Apenas aplicamos os filtros de data se não for um cliente demo
         if date_from:
             stmt = stmt.where(Journey.start_time >= date_from)
         if date_to:
             stmt = stmt.where(Journey.start_time < date_to + timedelta(days=1))
-    # --- FIM DA LÓGICA ---
 
     if driver_id:
         stmt = stmt.where(Journey.driver_id == driver_id)

@@ -9,7 +9,6 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.db.base_class import Base
 from app.core.config import settings
 
-# Importações para verificação de tipo para quebrar o ciclo de importação
 if TYPE_CHECKING:
     from .inventory_transaction_model import InventoryTransaction
     from .fine_model import Fine
@@ -35,7 +34,6 @@ class UserRole(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    # --- COLUNAS ATUALIZADAS PARA A SINTAXE MODERNA ---
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     full_name: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
@@ -55,7 +53,6 @@ class User(Base):
     
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), nullable=False)
     
-    # --- RELAÇÕES ATUALIZADAS PARA A NOVA SINTAXE ---
     organization: Mapped["Organization"] = relationship("Organization", back_populates="users")
 
     inventory_transactions_performed: Mapped[List["InventoryTransaction"]] = relationship(

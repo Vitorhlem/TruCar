@@ -35,7 +35,7 @@ const routes: RouteRecordRaw[] = [
         path: 'users/:id/stats', 
         name: 'user-stats', 
         component: () => import('pages/UserDetailsPage.vue'),
-        meta: { roles: ['cliente_ativo', 'cliente_demo', 'driver'] } // Driver pode ver o seu
+        meta: { roles: ['cliente_ativo', 'cliente_demo', 'driver'] }
       },
       { 
         path: 'maintenance', 
@@ -47,7 +47,7 @@ const routes: RouteRecordRaw[] = [
         path: 'map', 
         name: 'map', 
         component: () => import('pages/MapPage.vue'),
-        meta: { roles: ['cliente_ativo', 'cliente_demo'] } // Geralmente só gestor
+        meta: { roles: ['cliente_ativo', 'cliente_demo'] }
       },
       { 
         path: 'fuel-logs', 
@@ -118,13 +118,13 @@ const routes: RouteRecordRaw[] = [
         meta: { roles: ['cliente_ativo', 'cliente_demo'] }
       },
       { 
-        path: 'inventory-items', // A nova URL
+        path: 'inventory-items',
         name: 'inventory-items', 
-        component: () => import('pages/InventoryItemsPage.vue'), // O novo arquivo de página
+        component: () => import('pages/InventoryItemsPage.vue'),
         meta: { roles: ['cliente_ativo', 'cliente_demo'] }
       },
       { 
-        path: 'inventory/item/:id', // :id é o ID global (ex: 11)
+        path: 'inventory/item/:id',
         name: 'item-details', 
         component: () => import('pages/ItemDetailsPage.vue'),
         meta: { roles: ['cliente_ativo', 'cliente_demo'] }
@@ -145,7 +145,7 @@ const routes: RouteRecordRaw[] = [
         path: 'admin',
         name: 'admin',
         component: () => import('pages/AdminPage.vue'),
-        meta: { requiresAuth: true } // Protegido por v-if no layout
+        meta: { requiresAuth: true }
       },
     ],
   },

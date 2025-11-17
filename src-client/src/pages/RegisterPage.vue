@@ -1,7 +1,7 @@
 <template>
   <q-page>
     <div class="row window-height">
-      <!-- Coluna Esquerda: REFORMULADA com tema escuro, glassmorphism e novas animações -->
+
       <div 
         ref="formPanel"
         class="col-12 col-md-6 flex flex-center form-panel"
@@ -9,11 +9,11 @@
         @mouseleave="handleMouseLeave"
       >
         <q-card ref="registerCard" flat class="register-card q-pa-md">
-          <!-- EFEITO DE BRILHO ADICIONADO -->
+
           <div class="card-shine"></div>
           
           <q-card-section class="text-center q-pb-none">
-            <!-- ANIMAÇÕES SEQUENCIAIS ADICIONADAS -->
+
             <img 
               src="~assets/trucar-logo-white.png" 
               alt="TruCar Logo" 
@@ -35,7 +35,7 @@
             class="q-mt-md transparent-stepper animated-form-element"
             style="animation-delay: 0.4s;"
           >
-            <!-- Etapa 1: Empresa -->
+
             <q-step
               :name="1"
               title="Sua Empresa"
@@ -73,7 +73,7 @@
               </q-stepper-navigation>
             </q-step>
 
-            <!-- Etapa 2: Utilizador -->
+
             <q-step
               :name="2"
               title="Seus Dados"
@@ -94,7 +94,7 @@
                     <q-btn flat @click="() => stepper?.previous()" color="primary" label="Voltar" class="full-width" />
                 </div>
                   <div class="col-6">
-                    <!-- BOTÃO COM MICRO-INTERAÇÃO -->
+
                     <q-btn 
                       @click="onSubmit" 
                       :color="getButtonColor" 
@@ -119,7 +119,7 @@
 
             <q-separator dark class="q-my-lg animated-form-element" style="animation-delay: 0.6s;" />
 
-            <!-- Selos de Segurança -->
+
             <div class="security-seals text-center animated-form-element" style="animation-delay: 0.7s;">
               <div class="seal-item">
                 <q-icon name="verified_user" color="positive" />
@@ -138,7 +138,7 @@
         </q-card>
       </div>
 
-      <!-- Coluna Direita: A Área Visual com ficheiros de imagem locais -->
+
       <div class="col-md-6 register-visual-container gt-sm">
         <div class="image-strip" :style="{ backgroundImage: `url(${visual1})` }"></div>
         <div class="image-strip" :style="{ backgroundImage: `url(${visual2})` }"></div>
@@ -338,7 +338,7 @@ function handleMouseLeave() {
   opacity: 0;
 }
 
-// Estilos para o painel visual direito (mantidos)
+
 .register-visual-container {
   position: relative;
   display: flex;

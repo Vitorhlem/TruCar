@@ -21,7 +21,6 @@ async def read_vehicle_costs(
     """
     Lista todos os custos associados a um veículo específico.
     """
-    # Primeiro, verificamos se o veículo pertence à organização do utilizador
     vehicle = await crud.vehicle.get(db, vehicle_id=vehicle_id, organization_id=current_user.organization_id)
     if not vehicle:
         raise HTTPException(
@@ -46,7 +45,6 @@ async def create_vehicle_cost(
     """
     Cria um novo registo de custo para um veículo específico.
     """
-    # Verificamos novamente se o veículo pertence à organização do utilizador
     vehicle = await crud.vehicle.get(db, vehicle_id=vehicle_id, organization_id=current_user.organization_id)
     if not vehicle:
         raise HTTPException(

@@ -20,12 +20,12 @@
         <q-card-section><div class="text-h6">Novo Cliente</div></q-card-section>
         <q-form @submit.prevent="handleSubmit">
           <q-card-section>
-            <!-- Adicionado q-gutter-y-md para espaçamento vertical -->
+
             <div class="q-gutter-y-md">
               <q-input outlined v-model="formData.name" label="Nome do Cliente *" :rules="[val => !!val || 'Campo obrigatório']" autofocus />
               <q-input outlined v-model="formData.contact_person" label="Pessoa de Contato" />
               
-              <!-- CAMPOS DE ENDEREÇO COM BUSCA DE CEP -->
+
               <q-input 
                 outlined 
                 v-model="formData.cep" 
@@ -35,7 +35,7 @@
                 :loading="isCepLoading"
                 @blur="handleCepBlur"
               >
-                <!-- Ícone corrigido para um mais apropriado -->
+
                 <template v-slot:prepend><q-icon name="location_pin" /></template>
               </q-input>
 
@@ -54,7 +54,7 @@
                 <div class="col-8"><q-input outlined v-model="formData.address_city" label="Cidade" /></div>
                 <div class="col-4"><q-input outlined v-model="formData.address_state" label="UF" /></div>
               </div>
-              <!-- FIM DOS CAMPOS DE ENDEREÇO -->
+
               
               <q-input outlined v-model="formData.phone" label="Telefone" mask="(##) #####-####" />
               <q-input outlined v-model="formData.email" label="Email" type="email" />

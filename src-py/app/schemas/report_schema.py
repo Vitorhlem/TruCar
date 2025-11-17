@@ -5,20 +5,17 @@ from datetime import date, datetime
 from .vehicle_cost_schema import VehicleCostPublic
 from .fuel_log_schema import FuelLogPublic
 from .maintenance_schema import MaintenanceRequestPublic
-# --- NOVOS IMPORTS ---
 from .fine_schema import FinePublic
 from .journey_schema import JourneyPublic
 from .document_schema import DocumentPublic
 from .tire_schema import VehicleTirePublic as TirePublic
 
-# Mantém o schema do dashboard existente
 class DashboardSummary(BaseModel):
     total_vehicles: int
     active_journeys: int
     total_costs_last_30_days: float
     maintenance_open_requests: int
 
-# --- NOVOS SCHEMAS PARA O PEDIDO DO RELATÓRIO ---
 
 class VehicleReportSections(BaseModel):
     """Define quais seções devem ser incluídas no relatório."""
@@ -39,14 +36,11 @@ class VehicleReportRequest(BaseModel):
     end_date: date
     sections: VehicleReportSections
 
-# --- SCHEMAS DE RESPOSTA ATUALIZADOS ---
 
 class VehicleReportPerformanceSummary(BaseModel):
     """Resumo de performance para o relatório."""
-    # Totais do Veículo
     vehicle_total_activity: float = 0.0   # <-- CAMPO ADICIONADO
     
-    # Totais do Período
     period_total_activity: float = 0.0  # Renomeado de total_activity_value
     activity_unit: str = "km"           # Renomeado de total_activity_unit
     period_total_fuel: float = 0.0      # Renomeado de total_fuel_liters
@@ -61,7 +55,6 @@ class VehicleReportFinancialSummary(BaseModel):
 
 class VehicleConsolidatedReport(BaseModel):
     """Schema principal para o Relatório Consolidado de Veículo."""
-    # --- Dados de Cabeçalho ---
     vehicle_id: int
     vehicle_identifier: str 
     vehicle_model: str
@@ -69,11 +62,9 @@ class VehicleConsolidatedReport(BaseModel):
     report_period_end: date
     generated_at: datetime
 
-    # --- Seções de Dados (Agora Opcionais) ---
     performance_summary: Optional[VehicleReportPerformanceSummary] = None
     financial_summary: Optional[VehicleReportFinancialSummary] = None
     
-    # --- Dados Detalhados (Agora Opcionais) ---
     costs_detailed: Optional[List[VehicleCostPublic]] = None
     fuel_logs_detailed: Optional[List[FuelLogPublic]] = None
     maintenance_detailed: Optional[List[MaintenanceRequestPublic]] = None
@@ -85,7 +76,6 @@ class VehicleConsolidatedReport(BaseModel):
     class Config:
         from_attributes = True
 
-# --- Schemas de outros relatórios (sem alteração) ---
 
 class DriverPerformanceEntry(BaseModel):
     """Representa a linha de dados para um único motorista no relatório."""
@@ -131,7 +121,6 @@ class FleetManagementReport(BaseModel):
     summary: FleetReportSummary
     costs_by_category: Dict[str, float] = {}
     
-    # Rankings
     top_5_most_expensive_vehicles: List[VehicleRankingEntry]
     top_5_highest_cost_per_km_vehicles: List[VehicleRankingEntry]
     top_5_most_efficient_vehicles: List[VehicleRankingEntry]

@@ -17,10 +17,7 @@ class VehicleTire(Base):
     install_engine_hours = Column(Float, nullable=True)
     removal_engine_hours = Column(Float, nullable=True)
 
-    # --- CAMPO ADICIONADO ---
-    # Armazena o total de KM ou Horas que o pneu rodou durante sua vida útil.
     km_run = Column(Float, nullable=True)
-    # --- FIM DA ADIÇÃO ---
 
     is_active = Column(Boolean, default=True, nullable=False)
     installation_date = Column(DateTime(timezone=True), server_default=func.now())

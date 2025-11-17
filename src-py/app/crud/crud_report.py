@@ -6,7 +6,6 @@ import logging
 from sqlalchemy.orm import selectinload
 
 from app import crud
-# --- IMPORTS DE MODELS ---
 from app.models.user_model import User, UserRole
 from app.models.alert_model import Alert, AlertLevel
 from app.models.goal_model import Goal
@@ -21,7 +20,6 @@ from app.models.fine_model import Fine
 from app.models.document_model import Document
 from app.models.tire_model import VehicleTire as Tire
 
-# --- IMPORTS DE SCHEMAS ---
 from app.schemas.dashboard_schema import KpiEfficiency, AlertSummary, GoalStatus, VehiclePosition
 from app.schemas.report_schema import (
     DashboardSummary,
@@ -36,21 +34,17 @@ from app.schemas.report_schema import (
     VehicleReportSections  # <-- Importa o schema das seções
 )
 
-# --- NOVA FUNÇÃO HELPER (get_fleet_management_data) ---
-# (Esta função já estava no seu arquivo, vou mantê-la)
 async def get_fleet_management_data(
     db: AsyncSession, *, start_date: date, end_date: date, organization_id: int
 ) -> FleetManagementReport:
     """
     Agrega dados de custo e performance de toda a frota para um período.
     """
-    # 1. Obter todos os veículos da organização
     vehicles_stmt = select(Vehicle).where(Vehicle.organization_id == organization_id)
     vehicles = (await db.execute(vehicles_stmt)).scalars().all()
     
     vehicle_ids = [v.id for v in vehicles]
 
-    # 2. Obter todos os custos e abastecimentos do período em consultas otimizadas
     costs_stmt = select(VehicleCost).where(
         VehicleCost.organization_id == organization_id,
         VehicleCost.date.between(start_date, end_date)
@@ -63,7 +57,6 @@ async def get_fleet_management_data(
     all_costs = (await db.execute(costs_stmt)).scalars().all()
     all_fuel_logs = (await db.execute(fuel_logs_stmt)).scalars().all()
 
-    # 3. Calcular Resumos e Agregações Gerais
     total_fleet_cost = sum(c.amount for c in all_costs)
     
     costs_by_category: Dict[str, float] = {}
@@ -71,7 +64,6 @@ async def get_fleet_management_data(
         category_key = str(cost.cost_type.value)
         costs_by_category[category_key] = costs_by_category.get(category_key, 0) + cost.amount
 
-    # 4. Processar dados por veículo para criar os rankings
     vehicle_metrics: List[Dict] = []
     total_fleet_distance = 0.0
 
@@ -102,13 +94,11 @@ async def get_fleet_management_data(
             "avg_consumption": avg_consumption
         })
 
-    # 5. Criar os Rankings
     top_expensive = sorted(vehicle_metrics, key=lambda v: v.get('total_cost', 0), reverse=True)[:5]
     top_cost_per_km = sorted(vehicle_metrics, key=lambda v: v.get('cost_per_km', 0), reverse=True)[:5]
     top_efficient = sorted(vehicle_metrics, key=lambda v: v.get('avg_consumption', 0), reverse=True)[:5]
     least_efficient = sorted([v for v in vehicle_metrics if v.get('avg_consumption', 0) > 0], key=lambda v: v.get('avg_consumption', 0))[:5]
 
-    # 6. Montar o objeto final do relatório
     summary = FleetReportSummary(
         total_cost=total_fleet_cost,
         total_distance_km=total_fleet_distance,
@@ -147,7 +137,6 @@ def _format_relative_time(dt: datetime) -> str:
         days = int(seconds / 86400)
         return f"há {days} dia{'s' if days > 1 else ''}"
 
-# --- FUNÇÕES EXISTENTES (sem alterações) ---
 async def get_dashboard_kpis(db: AsyncSession, *, organization_id: int) -> dict:
     stmt = select(Vehicle.status, func.count(Vehicle.id)).where(
         Vehicle.organization_id == organization_id
@@ -253,7 +242,6 @@ async def get_upcoming_maintenances(db: AsyncSession, *, organization_id: int) -
         ) for v in vehicles
     ]
 
-# --- NOVAS FUNÇÕES PARA O DASHBOARD AVANÇADO ---
 
 async def get_efficiency_kpis(db: AsyncSession, *, organization_id: int, start_date: date) -> KpiEfficiency:
     """Calcula KPIs de eficiência como custo por km e taxa de utilização."""
@@ -353,8 +341,6 @@ async def get_vehicle_positions(db: AsyncSession, *, organization_id: int) -> Li
     return [VehiclePosition.from_orm(v) for v in vehicles]
     
 
-# --- FUNÇÃO PRINCIPAL ATUALIZADA ---
-# (Substituindo a versão antiga que estava no seu arquivo)
 async def get_vehicle_consolidated_data(
     db: AsyncSession,
     vehicle_id: int,
@@ -364,18 +350,14 @@ async def get_vehicle_consolidated_data(
     organization_id: int
 ) -> VehicleConsolidatedReport:
     
-    # 1. Buscar Veículo
     vehicle = await db.get(Vehicle, vehicle_id)
     if not vehicle or vehicle.organization_id != organization_id:
         raise ValueError("Veículo não encontrado ou não pertence à organização.")
 
-    # 2. Buscar Organização para lógica de setor
     org = await db.get(Organization, organization_id)
     if not org:
         raise ValueError("Organização não encontrada.")
 
-    # 3. Buscar Dados Condicionais
-    # (custos, fuel_logs, maintenance, fines...)
     costs_data = []
     if sections.costs_detailed or sections.financial_summary:
         costs_stmt = select(VehicleCost).where(
@@ -432,7 +414,6 @@ async def get_vehicle_consolidated_data(
         )
         tires_data = (await db.execute(tires_stmt)).scalars().all()
 
-    # --- 4. CALCULAR MÉTRICAS (PERÍODO E TOTAL) ---
     
     period_total_activity = 0.0
     vehicle_total_activity = 0.0
@@ -440,22 +421,17 @@ async def get_vehicle_consolidated_data(
 
     if org.sector == 'agronegocio':
         activity_unit = "horas"
-        # Total do Veículo
         vehicle_total_activity = vehicle.current_engine_hours or 0.0
-        # Total do Período
         for j in journeys_data:
             if j.end_engine_hours and j.start_engine_hours and j.end_engine_hours > j.start_engine_hours:
                 period_total_activity += (j.end_engine_hours - j.start_engine_hours)
     else: 
         activity_unit = "km"
-        # Total do Veículo
         vehicle_total_activity = vehicle.current_km or 0.0
-        # Total do Período
         for j in journeys_data:
             if j.end_mileage and j.start_mileage and j.end_mileage > j.start_mileage:
                 period_total_activity += (j.end_mileage - j.start_mileage)
 
-    # --- 5. ATUALIZAR SUMÁRIOS ---
     
     performance_summary = None
     if sections.performance_summary:
@@ -491,7 +467,6 @@ async def get_vehicle_consolidated_data(
             costs_by_category=costs_by_category
         )
 
-    # --- 6. MONTAGEM FINAL ---
     return VehicleConsolidatedReport(
         vehicle_id=vehicle.id,
         vehicle_identifier=vehicle.license_plate or vehicle.identifier,
@@ -520,7 +495,6 @@ async def get_driver_performance_data(
     Busca e agrega dados de desempenho para todos os motoristas de uma organização
     em um período específico.
     """
-    # 1. Busca todos os motoristas da organização
     drivers_stmt = select(User).where(
         User.organization_id == organization_id, 
         User.role == 'driver'
@@ -529,9 +503,7 @@ async def get_driver_performance_data(
 
     drivers_performance_data: List[DriverPerformanceEntry] = []
 
-    # 2. Itera sobre cada motorista para coletar e agregar seus dados
     for driver in drivers:
-        # Métricas de Viagens (Journeys)
         journeys_stmt = select(func.count(Journey.id), func.sum(Journey.distance_km)).where(
             Journey.driver_id == driver.id,
             func.date(Journey.start_time).between(start_date, end_date)
@@ -540,7 +512,6 @@ async def get_driver_performance_data(
         total_journeys = journey_metrics[0] or 0
         total_distance = float(journey_metrics[1] or 0.0)
 
-        # Métricas de Combustível (FuelLog)
         fuel_stmt = select(func.sum(FuelLog.liters), func.sum(FuelLog.total_cost)).where(
             FuelLog.user_id == driver.id,
             func.date(FuelLog.timestamp).between(start_date, end_date)
@@ -549,14 +520,12 @@ async def get_driver_performance_data(
         total_liters = float(fuel_metrics[0] or 0.0)
         total_fuel_cost = float(fuel_metrics[1] or 0.0)
 
-        # Métricas de Manutenção
         maintenance_stmt = select(func.count(MaintenanceRequest.id)).where(
             MaintenanceRequest.reported_by_id == driver.id,
             func.date(MaintenanceRequest.created_at).between(start_date, end_date)
         )
         maintenance_count = (await db.execute(maintenance_stmt)).scalar_one_or_none() or 0
         
-        # Cálculos derivados
         avg_consumption = (total_distance / total_liters) if total_liters > 0 else 0
         cost_per_km = (total_fuel_cost / total_distance) if total_distance > 0 else 0
 
@@ -574,10 +543,8 @@ async def get_driver_performance_data(
             )
         )
 
-    # 3. Ordena o ranking pelo principal indicador (ex: Custo por KM)
     sorted_performance_data = sorted(drivers_performance_data, key=lambda d: d.cost_per_km, reverse=True)
 
-    # 4. Monta o objeto final do relatório
     report_data = DriverPerformanceReport(
         report_period_start=start_date,
         report_period_end=end_date,
@@ -587,7 +554,6 @@ async def get_driver_performance_data(
 
     return report_data
 
-# --- Adicionando a função de `get_driver_activity_data` que estava faltando ---
 async def get_driver_activity_data(db: AsyncSession, driver_id: int, organization_id: int, date_from: date, date_to: date) -> Dict[str, Any]:
     driver = await crud.user.get(db, id=driver_id)
     if not driver or driver.organization_id != organization_id:
@@ -607,7 +573,6 @@ async def get_driver_activity_data(db: AsyncSession, driver_id: int, organizatio
     }
 
 
-# --- Adicionando a simulação de `get_dashboard_summary` que estava no seu endpoint ---
 async def get_dashboard_summary(self, db: AsyncSession, current_user: User, start_date: datetime) -> DashboardSummary:
     try:
         total_vehicles_q = select(func.count(Vehicle.id)).where(Vehicle.organization_id == current_user.organization_id)

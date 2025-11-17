@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'; // ADICIONADO
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 const props = defineProps<{
@@ -28,23 +28,23 @@ const props = defineProps<{
   color: string;
   loading: boolean;
   to?: string;
-  // --- NOVA PROP ADICIONADA ---
-  limit?: number; // Opcional. Se não for passado ou for < 0, será "Ilimitado"
-  // --- FIM DA ADIÇÃO ---
+
+  limit?: number;
+
 }>();
 
 const router = useRouter();
 
-// --- NOVA LÓGICA ADICIONADA ---
+
 const formattedValue = computed(() => {
-  // Se o limite não for fornecido ou for -1 (Ilimitado), mostre apenas o valor
+
   if (props.limit === undefined || props.limit < 0) {
     return props.value;
   }
-  // Caso contrário, mostre "valor / limite"
+
   return `${props.value} / ${props.limit}`;
 });
-// --- FIM DA ADIÇÃO ---
+
 
 function handleClick() {
   if (props.to) {

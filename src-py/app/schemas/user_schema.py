@@ -54,9 +54,7 @@ class UserPublic(UserBase):
     notify_by_email: bool
     notification_email: Optional[str] = None
     
-    # --- CAMPO ADICIONADO PARA EXIBIÇÃO ---
     employee_id: Optional[str] = None
-    # --- FIM DA ADIÇÃO ---
 
     model_config = { "from_attributes": True }
 

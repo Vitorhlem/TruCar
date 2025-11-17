@@ -1,19 +1,19 @@
-// Em: src/models/organization-models.ts
+
 import type { UserRole, UserSector } from './auth-models';
 
-// --- ESTA INTERFACE PRECISA SER ATUALIZADA ---
+
 export interface OrganizationNestedInUser {
   id: number;
   name: string;
   sector: UserSector;
-  // --- CAMPOS ADICIONADOS ---
+
   vehicle_limit: number;
   driver_limit: number;
   freight_order_limit: number;
   maintenance_limit: number;
-  // --- FIM DA ADIÇÃO ---
+
 }
-// --- FIM DA ATUALIZAÇÃO ---
+
 
 export interface UserNestedInOrganization {
   id: number;
@@ -28,23 +28,23 @@ export interface OrganizationBase {
 export interface Organization extends OrganizationBase {
   id: number;
   users: UserNestedInOrganization[];
-  // --- CAMPOS ADICIONADOS ---
+
   vehicle_limit: number;
   driver_limit: number;
   freight_order_limit: number;
   maintenance_limit: number;
-  // --- FIM DA ADIÇÃO ---
+
 }
 
 export interface OrganizationUpdate {
   name?: string;
   sector?: UserSector;
-  // --- CAMPOS ADICIONADOS ---
+
   vehicle_limit?: number;
   driver_limit?: number;
   freight_order_limit?: number;
   maintenance_limit?: number;
-  // --- FIM DA ADIÇÃO ---
+
 }
 
 export interface OrganizationFuelIntegrationPublic {

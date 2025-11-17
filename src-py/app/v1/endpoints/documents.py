@@ -13,14 +13,12 @@ from app.models.document_model import DocumentType
 
 router = APIRouter()
 
-# Define o diretório de uploads
 UPLOAD_DIRECTORY = Path("static/uploads/documents")
 UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 
 async def save_upload_file(upload_file: UploadFile) -> str:
     """Salva um arquivo de upload e retorna sua URL pública."""
-    # Gera um nome de arquivo único para evitar conflitos
     extension = Path(upload_file.filename).suffix
     unique_filename = f"{uuid.uuid4()}{extension}"
     file_path = UPLOAD_DIRECTORY / unique_filename
@@ -28,7 +26,6 @@ async def save_upload_file(upload_file: UploadFile) -> str:
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(upload_file.file, buffer)
         
-    # Retorna a URL relativa que o frontend pode usar
     return f"/static/uploads/documents/{unique_filename}"
 
 
@@ -108,7 +105,6 @@ async def delete_document(
     if not doc_to_delete:
          raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado.")
 
-    # Tenta apagar o arquivo físico
     try:
         file_path_str = doc_to_delete.file_url.lstrip("/")
         file_path = Path(file_path_str)

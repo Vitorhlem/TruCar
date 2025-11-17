@@ -3,8 +3,6 @@ from datetime import datetime, timedelta
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Para uma integração real, você usaria uma biblioteca de requisições HTTP
-# import httpx
 
 from app import crud
 from app.schemas.fuel_log_schema import FuelProviderTransaction
@@ -56,50 +54,12 @@ async def _fetch_transactions_from_provider(db: AsyncSession, organization_id: i
     TEMPLATE PARA INTEGRAÇÃO REAL: Esta função conecta-se à API de um provedor
     de cartão de combustível e retorna as transações.
     """
-    # --- PASSO 1: Buscar as credenciais da API da organização ---
-    # No mundo real, você teria um local para armazenar as API keys do cliente.
-    # Ex: org_settings = await crud.organization.get_settings(db, id=organization_id)
-    # api_key = org_settings.fuel_provider_api_key
-    # api_secret = org_settings.fuel_provider_api_secret
     
-    # Se não houver credenciais, a integração não está ativa para esta empresa.
-    # if not api_key:
-    #     return []
 
-    # --- PASSO 2: Fazer a chamada à API real ---
-    # O código abaixo é um exemplo de como seria. A documentação do provedor
-    # (Ticket Log, Alelo, etc.) teria os detalhes exatos.
     
-    # async with httpx.AsyncClient() as client:
-    #     try:
-    #         response = await client.get(
-    #             "https://api.ticketlog.com.br/v1/transactions",
-    #             headers={"Authorization": f"Bearer {api_key}"},
-    #             params={"since": "2024-01-01T00:00:00Z"} # Exemplo de parâmetro
-    #         )
-    #         response.raise_for_status() # Lança um erro se a resposta for 4xx ou 5xx
-    #         raw_transactions = response.json()
-    #     except httpx.HTTPStatusError as e:
-    #         print(f"Erro ao buscar transações para a organização {organization_id}: {e}")
-    #         return []
 
-    # --- PASSO 3: Converter a resposta da API para o nosso schema ---
-    # Cada provedor tem um formato de resposta diferente. Aqui, você converteria
-    # o `raw_transactions` para uma lista de `FuelProviderTransaction`.
     
-    # processed_transactions = []
-    # for tx in raw_transactions:
-    #     processed_transactions.append(
-    #         FuelProviderTransaction(
-    #             transaction_id=tx.get("idTransacao"),
-    #             vehicle_license_plate=tx.get("placa"),
-    #             driver_employee_id=tx.get("codigoMotorista"),
-    #             ... # e assim por diante
-    #         )
-    #     )
-    # return processed_transactions
 
-    # --- ATENÇÃO: Enquanto a integração real não for implementada, usamos o simulador ---
     print("AVISO: Usando o simulador de transações de combustível.")
     return await _get_simulated_transactions(db, organization_id=organization_id)
 
@@ -115,14 +75,12 @@ async def sync_all_organizations_fuel_logs(db: AsyncSession):
     total_processed = 0
     for org in organizations:
         print(f"Buscando transações para a organização: {org.name}")
-        # 1. Busca as transações (do nosso template ou da API real)
         transactions = await _fetch_transactions_from_provider(db, organization_id=org.id)
         
         if not transactions:
             print(f"Nenhuma nova transação para {org.name}.")
             continue
             
-        # 2. Processa as transações encontradas usando a função CRUD existente
         result = await crud.fuel_log.process_provider_transactions(
             db=db, transactions=transactions, organization_id=org.id
         )

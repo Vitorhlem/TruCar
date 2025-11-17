@@ -10,13 +10,8 @@ from app.models.user_model import User, UserRole
 from app.models.notification_model import NotificationType
 from app.schemas.fine_schema import FineCreate, FineUpdate, FinePublic
 
-# Configuração do logger
 logger = logging.getLogger(__name__)
 
-# --- LOG DE INICIALIZAÇÃO ---
-# Este log DEVE aparecer no console QUANDO O SERVIDOR INICIAR.
-# Se ele não aparecer, o Uvicorn não está recarregando seus arquivos.
-# --- FIM DO LOG DE INICIALIZAÇÃO ---
 
 
 router = APIRouter()
@@ -135,14 +130,12 @@ async def update_fine(
 ):
     """Atualiza uma multa existente e seu custo associado (Apenas Gestores)."""
     
-    # --- 4. LER O JSON MANUALMENTE ---
     try:
         payload_dict = await request.json()
     except json.JSONDecodeError:
         logger.error(f"Erro ao ATUALIZAR multa ID {fine_id}: Payload não é um JSON válido.")
         raise HTTPException(status_code=400, detail="Payload JSON inválido.")
     
-    # --- FIM DA LEITURA MANUAL ---
 
     try:
         db_fine = await crud.fine.get(db, fine_id=fine_id, organization_id=current_user.organization_id)
@@ -151,7 +144,6 @@ async def update_fine(
             raise HTTPException(status_code=404, detail="Multa não encontrada.")
         
         
-        # 5. Passar o dicionário 'payload_dict' para o CRUD
         fine = await crud.fine.update(db=db, db_fine=db_fine, fine_in_dict=payload_dict)
         
         await db.commit()

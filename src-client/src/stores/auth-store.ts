@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
-import { isAxiosError } from 'axios'; // <-- ADIÇÃO CRÍTICA PARA CORRIGIR O ERRO
+import { isAxiosError } from 'axios';
 import type { UserNotificationPrefsUpdate } from 'src/models/user-models';
 import type {
   LoginForm,
@@ -27,14 +27,14 @@ function getFromLocalStorage<T>(key: string): T | null {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  // --- ESTADO PRINCIPAL ---
+
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'));
   const user = ref<User | null>(getFromLocalStorage<User>('user'));
 
-  // --- ESTADO PARA O LOGIN SOMBRA ---
+
   const originalUser = ref<User | null>(getFromLocalStorage<User>('original_user'));
 
-  // --- PROPRIEDADES COMPUTADAS (GETTERS) ---
+
   const isAuthenticated = computed(() => !!accessToken.value);
   const isManager = computed(() => ['cliente_ativo', 'cliente_demo'].includes(user.value?.role ?? ''));
   const isDriver = computed(() => user.value?.role === 'driver');
@@ -43,7 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isDemo = computed(() => user.value?.role === 'cliente_demo');
   const isImpersonating = computed(() => !!originalUser.value);
 
-  // --- AÇÕES ---
+
   async function login(loginForm: LoginForm): Promise<boolean> {
     const params = new URLSearchParams();
     params.append('username', loginForm.email);
@@ -84,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
     console.log('Logout concluído.');
   }
 
-  // --- AÇÕES DO LOGIN SOMBRA ---
+
   function startImpersonation(newToken: string, targetUser: User) {
     if (!user.value || !accessToken.value) {
       console.error('Não é possível iniciar a personificação sem um utilizador admin logado.');
@@ -116,7 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = '/admin';
   }
   
-  // --- AÇÕES DE RECUPERAÇÃO DE SENHA ---
+
   async function requestPasswordReset(payload: PasswordRecoveryRequest): Promise<void> {
     try {
       await api.post('/login/password-recovery', payload);
@@ -126,7 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
       });
     } catch (error) {
       console.error('Erro ao solicitar redefinição de senha:', error);
-      // Por segurança, mostramos a mesma mensagem no erro para não revelar se um e-mail existe ou não.
+
       Notify.create({
         type: 'positive',
         message: 'Se um usuário com este e-mail existir, um link para redefinição de senha será enviado.',
@@ -143,11 +143,11 @@ export const useAuthStore = defineStore('auth', () => {
         icon: 'o_lock_reset'
       });
       return true;
-    } catch (error: unknown) { // <-- CORRIGIDO AQUI
+    } catch (error: unknown) {
       console.error('Erro ao redefinir senha:', error);
       
       let detail = 'Ocorreu um erro. O token pode ser inválido ou ter expirado.';
-      // <-- CORRIGIDO AQUI
+
       if (isAxiosError(error) && error.response?.data?.detail) {
         detail = error.response.data.detail;
       }
@@ -161,15 +161,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // --- FUNÇÕES AUXILIARES ---
+
   function _setSession(token: string, userData: User) {
     accessToken.value = token;
     user.value = userData;
-    // --- CORRIGIDO AQUI ---
+
     if (userData.organization) {
       useTerminologyStore().setSector(userData.organization.sector);
     }
-    // --- FIM DA CORREÇÃO ---
+
     localStorage.setItem('accessToken', token);
     localStorage.setItem('user', JSON.stringify(userData));
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;

@@ -40,7 +40,6 @@ async def install_vehicle_component(
     (CORRIGIDO com Commit-e-Refetch)
     """
     try:
-        # 1. CRUD (NÃO FAZ COMMIT)
         new_component = await crud.vehicle_component.install_component(
             db=db,
             vehicle_id=vehicle_id,
@@ -50,10 +49,8 @@ async def install_vehicle_component(
         )
         component_id = new_component.id
         
-        # 2. ENDPOINT FAZ COMMIT
         await db.commit()
         
-        # 3. Recarregamos o componente com todos os dados para a API
         reloaded_component = await crud.vehicle_component.get_component_for_api(
             db=db, component_id=component_id
         )
@@ -79,7 +76,6 @@ async def discard_vehicle_component(
     (CORRIGIDO com Commit-e-Refetch)
     """
     try:
-        # 1. CRUD (NÃO FAZ COMMIT)
         discarded_component = await crud.vehicle_component.discard_component(
             db=db,
             component_id=component_id,
@@ -87,10 +83,8 @@ async def discard_vehicle_component(
             organization_id=current_user.organization_id
         )
         
-        # 2. ENDPOINT FAZ COMMIT
         await db.commit()
         
-        # 3. Recarregamos o componente com todos os dados para a API
         reloaded_component = await crud.vehicle_component.get_component_for_api(
             db=db, component_id=discarded_component.id
         )

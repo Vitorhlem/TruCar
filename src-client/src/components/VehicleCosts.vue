@@ -88,12 +88,12 @@ import { useVehicleCostStore } from 'stores/costs-store';
 import type { QTableProps } from 'quasar';
 import { format, parse } from 'date-fns';
 
-// 1. Definição das Props
+
 const props = defineProps<{
   vehicleId: number;
 }>();
 
-// 2. Setup das Stores e Refs
+
 const costsStore = useVehicleCostStore();
 const isDialogOpen = ref(false);
 const isSubmitting = ref(false);
@@ -105,7 +105,7 @@ const formData = ref({
   notes: '',
 });
 
-// 3. Definição das Colunas da Tabela
+
 const columns: QTableProps['columns'] = [
   { name: 'cost_type', label: 'Tipo de Custo', field: 'cost_type', align: 'left', sortable: true },
   { name: 'amount', label: 'Valor', field: 'amount', align: 'right', sortable: true },
@@ -113,7 +113,7 @@ const columns: QTableProps['columns'] = [
   { name: 'notes', label: 'Observações', field: 'notes', align: 'left' },
 ];
 
-// 4. Lógica do Componente
+
 function resetForm() {
   formData.value = {
     cost_type: '',
@@ -131,7 +131,7 @@ function openAddDialog() {
 async function onFormSubmit() {
   isSubmitting.value = true;
   try {
-    // Converte a data do formato DD/MM/YYYY para YYYY-MM-DD para o backend
+
     const parsedDate = parse(formData.value.date, 'dd/MM/yyyy', new Date());
     const payload = {
       ...formData.value,
@@ -144,7 +144,7 @@ async function onFormSubmit() {
   }
 }
 
-// 5. Lifecycle Hook para buscar os dados
+
 onMounted(() => {
   void costsStore.fetchCostsByVehicle(props.vehicleId);
 });

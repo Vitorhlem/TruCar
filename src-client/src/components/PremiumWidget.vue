@@ -1,17 +1,17 @@
 <template>
   <q-card class="dashboard-card">
-    <!-- Conteúdo para utilizadores com plano ativo -->
+
     <template v-if="!isDemo">
       <q-card-section>
         <div class="text-h6">{{ title }}</div>
       </q-card-section>
       <q-separator />
       <q-card-section>
-        <slot /> <!-- O gráfico real será inserido aqui -->
+        <slot />
       </q-card-section>
     </template>
     
-    <!-- Placeholder para utilizadores com plano demo -->
+
     <template v-else>
       <div class="premium-placeholder column flex-center full-height">
         <q-icon :name="icon" color="amber" size="60px" />
@@ -71,7 +71,7 @@ function showUpgradeDialog() {
 }
 
 .premium-placeholder {
-  min-height: 382px; // Garante que o placeholder tenha a mesma altura que o card do gráfico
+  min-height: 382px;
   background-color: rgba($grey-5, 0.1);
   border: 1px dashed $grey-7;
   color: $grey-5;

@@ -15,7 +15,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import * as echarts from 'echarts';
 
-// Props para receber os dados
+
 const props = defineProps<{
   data: { labels: string[], values: number[] }
 }>();
@@ -24,9 +24,9 @@ const $q = useQuasar();
 const chartRef = ref<HTMLElement | null>(null);
 let chartInstance: echarts.ECharts | null = null;
 
-// Computed property para os dados do gráfico, agora corrigida
+
 const chartData = computed(() => {
-  // CORRIGIDO: Criamos uma cópia com `[... ]` antes de reverter para evitar side-effects
+
   const reversedLabels = [...props.data.labels].reverse();
   const reversedValues = [...props.data.values].reverse();
   return { labels: reversedLabels, values: reversedValues };
@@ -42,13 +42,13 @@ const chartOptions = computed<echarts.EChartsOption>(() => ({
   },
   yAxis: {
     type: 'category',
-    data: chartData.value.labels, // Usa os dados já revertidos
+    data: chartData.value.labels,
     axisLabel: { color: $q.dark.isActive ? '#fff' : '#333' },
   },
   series: [{
     name: 'Custo Total',
     type: 'bar',
-    data: chartData.value.values, // Usa os dados já revertidos
+    data: chartData.value.values,
     itemStyle: {
       borderRadius: 5,
       color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
@@ -66,7 +66,7 @@ function initChart() {
   }
 }
 
-// Observa mudanças nas opções (como troca de tema dark/light) e atualiza o gráfico
+
 watch(chartOptions, () => {
   if (chartInstance) {
     chartInstance.setOption(chartOptions.value);

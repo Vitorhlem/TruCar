@@ -1,6 +1,6 @@
 <template>
   <q-page padding>
-    <!-- CABEÇALHO DA PÁGINA -->
+
     <div class="flex items-center justify-between q-mb-md">
       <h1 class="text-h4 text-weight-bold q-my-none">Ordens de Frete</h1>
       <q-btn
@@ -13,35 +13,35 @@
       />
     </div>
 
-    <!-- ESTADO DE CARREGAMENTO -->
+
     <div v-if="freightOrderStore.isLoading" class="text-center q-pa-xl">
       <q-spinner-dots color="primary" size="40px" />
     </div>
 
-    <!-- QUADRO KANBAN (ÚNICO PARA TODOS) -->
+
     <div v-else class="row q-col-gutter-md">
-      <!-- Coluna Aberta -->
+
       <div class="col-12 col-md-3">
         <q-item-label header class="text-overline">Aberta ({{ openOrders.length }})</q-item-label>
         <div class="kanban-column q-gutter-y-md">
           <FreightOrderCard v-for="order in openOrders" :key="order.id" :order="order" @click="openDetailsDialog(order)" />
         </div>
       </div>
-      <!-- Coluna Atribuída -->
+
       <div class="col-12 col-md-3">
         <q-item-label header class="text-overline">Atribuída ({{ claimedOrders.length }})</q-item-label>
         <div class="kanban-column q-gutter-y-md">
           <FreightOrderCard v-for="order in claimedOrders" :key="order.id" :order="order" @click="openDetailsDialog(order)" />
         </div>
       </div>
-      <!-- Coluna Em Trânsito -->
+
       <div class="col-12 col-md-3">
         <q-item-label header class="text-overline">Em Trânsito ({{ inTransitOrders.length }})</q-item-label>
         <div class="kanban-column q-gutter-y-md">
           <FreightOrderCard v-for="order in inTransitOrders" :key="order.id" :order="order" @click="openDetailsDialog(order)" />
         </div>
       </div>
-      <!-- Coluna Entregue -->
+
       <div class="col-12 col-md-3">
         <q-item-label header class="text-overline">Entregue ({{ deliveredOrders.length }})</q-item-label>
         <div class="kanban-column q-gutter-y-md">
@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <!-- DIÁLOGOS -->
+
     <q-dialog v-model="isCreateDialogOpen"  maximized>
       <CreateFreightOrderForm @close="isCreateDialogOpen = false" />
     </q-dialog>

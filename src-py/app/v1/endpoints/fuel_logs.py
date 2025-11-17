@@ -8,7 +8,6 @@ from app.schemas.fuel_log_schema import FuelLogPublic, FuelLogCreate, FuelLogUpd
 
 router = APIRouter()
 
-# --- ESTE ARQUIVO AGORA LIDA APENAS COM OPERAÇÕES MANUAIS ---
 
 @router.post("/", response_model=FuelLogPublic, status_code=status.HTTP_201_CREATED,
             dependencies=[Depends(deps.check_demo_limit("fuel_logs"))])
@@ -80,9 +79,6 @@ async def read_fuel_log_by_id(
         raise HTTPException(status_code=404, detail="Registo de abastecimento não encontrado.")
     return log
 
-#
-# --- NOVO ENDPOINT ADICIONADO ---
-#
 @router.put("/{log_id}", response_model=FuelLogPublic)
 async def update_fuel_log(
     *,
@@ -102,8 +98,6 @@ async def update_fuel_log(
     
     updated_log = await crud.fuel_log.update_fuel_log(db=db, db_obj=db_log, obj_in=log_in)
     return updated_log
-# --- FIM DO NOVO ENDPOINT ---
-#
 
 @router.delete("/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_fuel_log(

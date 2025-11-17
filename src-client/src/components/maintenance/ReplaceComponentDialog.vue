@@ -115,14 +115,14 @@ const partStore = usePartStore();
 const maintenanceStore = useMaintenanceStore();
 const isLoading = ref(false);
 
-// --- FORMULÁRIO ATUALIZADO (REVERTIDO) ---
+
 const form = ref<{
-  new_item_id: number | null; // <-- Revertido para 'new_item_id'
+  new_item_id: number | null;
   old_item_status: InventoryItemStatus;
   notes: string;
 }>({
   new_item_id: null,
-  old_item_status: InventoryItemStatus.FIM_DE_VIDA, // Padrão
+  old_item_status: InventoryItemStatus.FIM_DE_VIDA,
   notes: '',
 });
 
@@ -131,13 +131,13 @@ const oldItemStatusOptions = [
   { label: 'Disponível (Voltar ao Estoque)', value: InventoryItemStatus.DISPONIVEL },
 ];
 
-// --- LÓGICA DE FILTRO (REVERTIDA) ---
+
 const availableItemOptions = ref<{ label: string; value: number }[]>([]);
 
 async function loadAvailableItems(partId: number | undefined) {
   if (!partId) return;
-  // Assumindo que partStore.fetchAvailableItems(partId) busca
-  // itens disponíveis para aquele TIPO de peça.
+
+
   await partStore.fetchAvailableItems(partId);
   filterAvailableItems('');
 }
@@ -146,7 +146,7 @@ function filterAvailableItems(val: string, update?: (callbackFn: () => void) => 
   const needle = val.toLowerCase();
   const options = partStore.availableItems
     .filter(item =>
-        // Opcional: filtrar para garantir que o item está disponível
+
         item.status === InventoryItemStatus.DISPONIVEL && (
         !val || 
         String(item.item_identifier).includes(needle) ||
@@ -166,14 +166,14 @@ function filterAvailableItems(val: string, update?: (callbackFn: () => void) => 
     availableItemOptions.value = options;
   }
 }
-// --- FIM DA LÓGICA DE FILTRO ---
+
 
 async function handleSubmit() {
-  // --- VALIDAÇÃO ATUALIZADA ---
+
   if (
     !props.maintenanceRequest ||
-    !props.componentToReplace?.id || // Valida o ID do componente (correto)
-    !form.value.new_item_id // Valida o ID do item novo (revertido)
+    !props.componentToReplace?.id ||
+    !form.value.new_item_id
   ) {
     $q.notify({
       type: 'negative',
@@ -181,18 +181,18 @@ async function handleSubmit() {
     });
     return;
   }
-  // --- FIM DA VALIDAÇÃO ---
+
 
   isLoading.value = true;
 
-  // --- PAYLOAD ATUALIZADO ---
+
   const payload: ReplaceComponentPayload = {
     notes: form.value.notes,
     old_item_status: form.value.old_item_status,
-    component_to_remove_id: props.componentToReplace.id, // ID do Componente (correto)
-    new_item_id: form.value.new_item_id, // ID do Item (revertido)
+    component_to_remove_id: props.componentToReplace.id,
+    new_item_id: form.value.new_item_id,
   };
-  // --- FIM DO PAYLOAD ---
+
 
   const success = await maintenanceStore.replaceComponent(
     props.maintenanceRequest.id,
@@ -215,8 +215,8 @@ watch(
         old_item_status: InventoryItemStatus.FIM_DE_VIDA,
         notes: '',
       };
-      // Carrega os itens disponíveis do mesmo TIPO da peça antiga
-      // (Esta era a sua lógica original)
+
+
       void loadAvailableItems(props.componentToReplace.part?.id);
     }
   }

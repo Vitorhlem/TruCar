@@ -1,6 +1,6 @@
-//
-// ARQUIVO: src/stores/fuel-log-store.ts
-//
+
+
+
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
@@ -31,7 +31,7 @@ export const useFuelLogStore = defineStore('fuelLog', {
       try {
         const response = await api.put<FuelLog>(`/fuel-logs/${logId}`, payload);
         
-        // Atualiza o log na lista local
+
         const index = this.fuelLogs.findIndex(log => log.id === logId);
         if (index !== -1) {
           this.fuelLogs[index] = response.data;
@@ -42,7 +42,7 @@ export const useFuelLogStore = defineStore('fuelLog', {
       } catch (error) {
         Notify.create({ type: 'negative', message: 'Falha ao atualizar o registro.' });
         console.error('Erro ao atualizar:', error);
-        throw error; // Lança o erro para o componente saber que falhou
+        throw error;
       } finally {
         this.isLoading = false;
       }
@@ -62,9 +62,7 @@ export const useFuelLogStore = defineStore('fuelLog', {
       }
     },
 
-    /**
-     * [AÇÃO EXISTENTE] Inicia a sincronização com o provedor de combustível.
-     */
+
     async syncWithProvider() {
       this.isLoading = true;
       try {
@@ -86,17 +84,15 @@ export const useFuelLogStore = defineStore('fuelLog', {
       }
     },
 
-    // --- NOVA AÇÃO ADICIONADA ---
-    /**
-     * Exclui um registro de abastecimento.
-     */
+
+
     async deleteFuelLog(logId: number) {
       this.isLoading = true;
       try {
-        // Chama o endpoint DELETE que criamos no backend
+
         await api.delete(`/fuel-logs/${logId}`);
         
-        // Remove o log da lista no estado
+
         this.fuelLogs = this.fuelLogs.filter(log => log.id !== logId);
         
         Notify.create({ type: 'positive', message: 'Registro excluído com sucesso!' });

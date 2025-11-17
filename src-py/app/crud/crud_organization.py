@@ -3,7 +3,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
-# Importar as novas ferramentas
 from app.core.security_utils import encrypt_data, decrypt_data
 from app.models.organization_model import Organization
 from app.schemas.organization_schema import OrganizationCreate, OrganizationUpdate, OrganizationFuelIntegrationUpdate
@@ -67,7 +66,6 @@ async def update(
     return db_obj
 
 
-# --- NOVAS FUNÇÕES PARA GERENCIAR AS CREDENCIAIS DE INTEGRAÇÃO ---
 
 async def update_fuel_integration_settings(
     db: AsyncSession, *, db_obj: Organization, obj_in: OrganizationFuelIntegrationUpdate
@@ -76,15 +74,12 @@ async def update_fuel_integration_settings(
     Atualiza as configurações de integração de combustível,
     criptografando as chaves antes de salvar.
     """
-    # Atualiza o nome do provedor diretamente
     if obj_in.fuel_provider_name is not None:
         db_obj.fuel_provider_name = obj_in.fuel_provider_name
     
-    # Criptografa a chave de API se ela for fornecida
     if obj_in.fuel_provider_api_key is not None:
         db_obj.encrypted_fuel_provider_api_key = encrypt_data(obj_in.fuel_provider_api_key)
 
-    # Criptografa o segredo da API se ele for fornecido
     if obj_in.fuel_provider_api_secret is not None:
         db_obj.encrypted_fuel_provider_api_secret = encrypt_data(obj_in.fuel_provider_api_secret)
 

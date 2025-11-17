@@ -46,6 +46,4 @@ async def remove(db: AsyncSession, *, db_obj: Client) -> Client:
 
 async def count(db: AsyncSession, *, organization_id: int) -> int:
     """Implementa o método 'count' genérico para uso em APIs como demo-stats."""
-    # (Opcional: se o seu count_by_org em parts/clients aceitar 'search', 
-    # esta implementação simples ainda funciona, pois 'search' é opcional)
     return await count_by_org(db, organization_id=organization_id)

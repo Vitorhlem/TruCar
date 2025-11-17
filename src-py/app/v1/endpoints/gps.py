@@ -10,8 +10,6 @@ async def receive_gps_ping(
     *,
     db: AsyncSession = Depends(deps.get_db),
     location_in: LocationCreate,
-    # Em produção, a autenticação seria feita por um token de dispositivo, não de usuário
-    # current_user: models.user_model.User = Depends(deps.get_current_active_user)
 ):
     """
     Recebe um 'ping' de localização e atualiza o estado do veículo.
@@ -23,5 +21,4 @@ async def receive_gps_ping(
         lat=location_in.latitude,
         lon=location_in.longitude
     )
-    # Não retornamos conteúdo para máxima performance
     return

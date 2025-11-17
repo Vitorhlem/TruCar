@@ -88,7 +88,7 @@ const isEditing = computed(() => !!editingFine.value);
 const formData = ref<Partial<FineCreate>>({});
 const statusOptions: FineStatus[] = ["Pendente", "Paga", "Em Recurso", "Cancelada"];
 
-// Títulos dinâmicos
+
 const pageTitle = computed(() => authStore.isDriver ? 'Minhas Multas' : 'Gestão de Multas');
 const pageSubtitle = computed(() => authStore.isDriver ? 'Consulte suas infrações registradas.' : 'Registre e controle as infrações da sua frota.');
 
@@ -110,7 +110,7 @@ const baseColumns: QTableColumn<Fine>[] = [
   { name: 'value', label: 'Valor', field: 'value', format: val => val ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00', align: 'right', sortable: true },
 ];
 
-// Colunas da tabela dinâmicas
+
 const tableColumns = computed<QTableColumn<Fine>[]>(() => {
   if (authStore.isManager) {
     const driverColumn: QTableColumn<Fine> = { name: 'driver', label: 'Motorista', field: (row: Fine) => row.driver?.full_name || 'Não identificado', align: 'left' };
@@ -133,7 +133,7 @@ const getStatusColor = (status: FineStatus) => {
 }
 
 function openDialog(fine: Fine | null = null) {
-  if (fine && authStore.isManager) { // Apenas gestor pode editar
+  if (fine && authStore.isManager) {
     editingFine.value = fine;
     formData.value = {
       description: fine.description,

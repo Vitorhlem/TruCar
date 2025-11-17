@@ -8,12 +8,9 @@ from typing import Any
 from app import crud, deps
 from app.core import auth, email_utils, security
 from app.schemas.token_schema import TokenData
-# --- ADICIONADO ---
-# Importamos os schemas e o Enum necessários para a criação explícita
 from app.schemas.user_schema import UserRegister, UserPublic, UserCreate
 from app.schemas.organization_schema import OrganizationCreate
 from app.models.user_model import User, UserRole
-# --- FIM DA ADIÇÃO ---
 
 router = APIRouter()
 
@@ -47,10 +44,7 @@ async def register_new_user(
             detail="Um utilizador com este email já está registado.",
         )
 
-    # --- CHAMADA CORRETA ---
-    # Garantimos que a função com a lógica de negócio correta seja chamada.
     new_user = await crud.user.create_new_organization_and_user(db=db, user_in=user_in)
-    # --- FIM DA CHAMADA ---
     
     return new_user
 
@@ -113,7 +107,6 @@ async def reset_password(
     """
     Finaliza o processo de redefinição de senha usando o token.
     """
-    # CORREÇÃO: Chamada explícita para security.verify_password_reset_token
     email = security.verify_password_reset_token(token=reset_in.token)
     if not email:
         raise HTTPException(
@@ -150,17 +143,14 @@ async def reset_password(
             detail="O token de redefinição de senha é inválido ou expirou.",
         )
 
-    # Verifica se o token não expirou no banco de dados
     if user.reset_password_token_expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="O token de redefinição de senha é inválido ou expirou.",
         )
 
-    # Atualiza a senha e invalida o token
     await crud.user.update_password(db=db, db_user=user, new_password=reset_in.new_password)
     
-    # Limpa o token para que não possa ser reutilizado
     user.reset_password_token = None
     user.reset_password_token_expires_at = None
     db.add(user)

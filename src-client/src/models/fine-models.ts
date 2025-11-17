@@ -7,7 +7,7 @@ export interface Fine {
   id: number;
   description: string;
   infraction_code: string | null;
-  date: string; // YYYY-MM-DD
+  date: string;
   value: number;
   status: FineStatus;
   vehicle_id: number;
@@ -26,6 +26,6 @@ export interface FineCreate {
   infraction_code?: string | null;
 }
 
-// --- CORREÇÃO DO ESLINT ---
-// Usamos 'type' em vez de 'interface' para evitar o aviso de interface vazia.
+
+
 export type FineUpdate = Partial<FineCreate>;

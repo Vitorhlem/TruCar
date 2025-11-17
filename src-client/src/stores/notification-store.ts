@@ -46,7 +46,7 @@ export const useNotificationStore = defineStore('notification', {
       }
     },
 
-    // --- NOVA ACTION ADICIONADA ---
+
     async createNotification(payload: NotificationCreate): Promise<boolean> {
       try {
         await api.post('/notifications/', payload);
@@ -56,7 +56,7 @@ export const useNotificationStore = defineStore('notification', {
           icon: 'warning',
           position: 'top-right',
         });
-        // Após criar, atualiza a contagem para o "sininho"
+
         await this.fetchUnreadCount();
         return true;
       } catch (error) {

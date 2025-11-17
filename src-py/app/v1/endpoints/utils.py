@@ -7,9 +7,7 @@ import httpx
 
 router = APIRouter()
 
-# --- INÍCIO: LÓGICA DE UPLOAD DE FICHEIROS ---
 
-# Define o diretório de uploads e garante que ele exista
 UPLOAD_DIRECTORY = Path("static/uploads")
 UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
@@ -19,29 +17,22 @@ async def upload_photo(file: UploadFile = File(...)):
     Recebe um ficheiro de imagem, valida, guarda-o localmente com um nome único
     e retorna a URL de acesso público.
     """
-    # Validação do tipo de ficheiro para segurança
     if file.content_type not in ["image/jpeg", "image/png", "image/webp", "image/avif"]:
         raise HTTPException(status_code=400, detail="Tipo de ficheiro de imagem inválido. Apenas JPG, PNG, WEBP e AVIF são permitidos.")
 
     try:
-        # Gera um nome de ficheiro único para evitar conflitos
         file_extension = Path(file.filename).suffix
         unique_filename = f"{uuid.uuid4().hex}{file_extension}"
         file_path = UPLOAD_DIRECTORY / unique_filename
         
-        # Salva o ficheiro no disco
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # Retorna a URL relativa que o frontend pode usar
-        # O FastAPI irá servir este ficheiro por causa da configuração no main.py
         return {"file_url": f"/{file_path}"}
     except Exception as e:
-        # Para depuração, é útil imprimir o erro no log do servidor
         print(f"Erro durante o upload do ficheiro: {e}")
         raise HTTPException(status_code=500, detail="Não foi possível guardar o ficheiro.")
 
-# --- FIM: LÓGICA DE UPLOAD DE FICHEIROS ---
 
 
 @router.get("/cep/{cep}")

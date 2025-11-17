@@ -3,10 +3,10 @@ import type { FuelLog } from './fuel-log-models';
 import type { MaintenanceRequest } from './maintenance-models';
 import type { Fine } from './fine-models';
 import type { Journey } from './journey-models';
-import type { DocumentPublic } from './document-models'; // Este estava certo
-import type { VehicleTire } from './tire-models'; // Corrigido de Tire para VehicleTire
+import type { DocumentPublic } from './document-models';
+import type { VehicleTire } from './tire-models';
 
-// --- CORREÇÃO: Exportar DashboardSummary ---
+
 export interface DashboardSummary {
   total_vehicles: number;
   active_journeys: number;
@@ -57,12 +57,12 @@ export interface DriverPerformanceReport {
   drivers_performance: DriverPerformanceEntry[];
 }
 
-// ===================================================================
-// NOVAS INTERFACES PARA O DASHBOARD AVANÇADO
-// (Correspondem a app/schemas/dashboard_schema.py)
-// ===================================================================
 
-// --- Interfaces para o Dashboard do Gestor ---
+
+
+
+
+
 
 export interface KpiEfficiency {
   cost_per_km: number;
@@ -119,7 +119,7 @@ export interface GoalStatus {
   unit: string;
 }
 
-// --- Resposta Principal para o Dashboard do Gestor ---
+
 export interface ManagerDashboardResponse {
   kpis: KPI;
   efficiency_kpis: KpiEfficiency;
@@ -131,7 +131,7 @@ export interface ManagerDashboardResponse {
   active_goal: GoalStatus | null;
 }
 
-// --- Interfaces para o Dashboard do Motorista ---
+
 
 export interface DriverMetrics {
   distance: number;
@@ -153,7 +153,7 @@ export interface AchievementStatus {
   unlocked: boolean;
 }
 
-// --- Resposta Principal para o Dashboard do Motorista ---
+
 export interface DriverDashboardResponse {
   metrics: DriverMetrics;
   ranking_context: DriverRankEntry[];
@@ -161,46 +161,46 @@ export interface DriverDashboardResponse {
 }
 
 export interface VehicleReportPerformanceSummary {
-  total_activity_value: number; // Renomeado
-  total_activity_unit: string;  // Adicionado
+  total_activity_value: number;
+  total_activity_unit: string;
   total_fuel_liters: number;
   average_consumption: number;
 }
 
-// Corresponde ao schema VehicleReportFinancialSummary do backend
+
 export interface VehicleReportFinancialSummary {
   total_costs: number;
   cost_per_metric: number;
-  metric_unit: string;           // Renomeado
+  metric_unit: string;
   costs_by_category: Record<string, number>;
 }
 
-// Corresponde ao schema principal VehicleConsolidatedReport do backend
-// --- INTERFACE PRINCIPAL (ATUALIZADA) ---
+
+
 export interface VehicleConsolidatedReport {
-  // Cabeçalho
+
   vehicle_id: number;
   vehicle_identifier: string;
   vehicle_model: string;
-  report_period_start: string; // ou date
-  report_period_end: string; // ou date
-  generated_at: string; // ou date
+  report_period_start: string;
+  report_period_end: string;
+  generated_at: string;
 
-  // Resumos (Opcionais)
+
   performance_summary?: VehicleReportPerformanceSummary | null;
   financial_summary?: VehicleReportFinancialSummary | null;
 
-  // --- CORREÇÃO: Tipos corrigidos ---
+
   costs_detailed?: VehicleCost[] | null;
   fuel_logs_detailed?: FuelLog[] | null;
   maintenance_detailed?: MaintenanceRequest[] | null;
   fines_detailed?: Fine[] | null;
   journeys_detailed?: Journey[] | null;
   documents_detailed?: DocumentPublic[] | null;
-  tires_detailed?: VehicleTire[] | null; // Corrigido
+  tires_detailed?: VehicleTire[] | null;
 }
 
-// --- Outros Relatórios (Sem alteração) ---
+
 export interface DriverPerformanceEntry {
   driver_id: number;
   driver_name: string;
@@ -213,17 +213,17 @@ export interface DriverPerformanceEntry {
   maintenance_requests: number;
 }
 export interface VehicleReportPerformanceSummary {
-  vehicle_total_activity: number; // Adicionado
-  period_total_activity: number;  // Renomeado
-  activity_unit: string;          // Renomeado
-  period_total_fuel: number;      // Renomeado
+  vehicle_total_activity: number;
+  period_total_activity: number;
+  activity_unit: string;
+  period_total_fuel: number;
   average_consumption: number;
 }
 
 export interface DriverPerformanceReport {
-  report_period_start: string; // ou date
-  report_period_end: string; // ou date
-  generated_at: string; // ou date
+  report_period_start: string;
+  report_period_end: string;
+  generated_at: string;
   drivers_performance: DriverPerformanceEntry[];
 }
 
@@ -241,9 +241,9 @@ export interface VehicleRankingEntry {
 }
 
 export interface FleetManagementReport {
-  report_period_start: string; // ou date
-  report_period_end: string; // ou date
-  generated_at: string; // ou date
+  report_period_start: string;
+  report_period_end: string;
+  generated_at: string;
   summary: FleetReportSummary;
   costs_by_category: Record<string, number>;
   top_5_most_expensive_vehicles: VehicleRankingEntry[];

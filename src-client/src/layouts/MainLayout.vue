@@ -161,17 +161,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-// --- ATUALIZADO: Importar storeToRefs ---
+
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'stores/auth-store';
 import { useNotificationStore } from 'stores/notification-store';
 import { useTerminologyStore } from 'stores/terminology-store';
 import { useDemoStore } from 'stores/demo-store';
-// --- IMPORTAÇÕES ADICIONADAS ---
+
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Notification } from 'src/models/notification-models';
-// --- FIM DAS IMPORTAÇÕES ---
+
 
 const leftDrawerOpen = ref(false);
 const router = useRouter();
@@ -181,10 +181,10 @@ const notificationStore = useNotificationStore();
 const terminologyStore = useTerminologyStore();
 const demoStore = useDemoStore();
 
-// --- ATUALIZADO: Tornar o 'stats' reativo usando storeToRefs ---
-// Isso garante que o template será atualizado sempre que a store mudar.
+
+
 const { stats } = storeToRefs(demoStore);
-// --- FIM DA ATUALIZAÇÃO ---
+
 
 let pollTimer: number;
 
@@ -221,20 +221,20 @@ function showUpgradeDialog() {
   });
 }
 
-// --- FUNÇÃO ADICIONADA PARA FORMATAR O LIMITE ---
+
 function formatLimit(limit: number | undefined | null): string {
   if (limit === undefined || limit === null) {
-    return '--'; // Aguardando carregar
+    return '--';
   }
   if (limit < 0) {
     return 'Ilimitado';
   }
   return limit.toString();
 }
-// --- FIM DA FUNÇÃO ---
 
 
-// --- FUNÇÕES ADICIONADAS PARA O MENU DE NOTIFICAÇÕES ---
+
+
 function formatNotificationDate(date: string) {
   return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
 }
@@ -259,11 +259,11 @@ async function handleNotificationClick(notification: Notification) {
   }
   
   if (notification.related_entity_type === 'maintenance_request') {
-    void router.push('/maintenance'); // Navega para a página de manutenções
+    void router.push('/maintenance');
   }
-  // Adicione outras lógicas de navegação aqui conforme necessário
+
 }
-// --- FIM DAS FUNÇÕES ADICIONADAS ---
+
 
 const menuStructure = computed(() => {
     if (authStore.isManager) {
@@ -276,7 +276,7 @@ const menuStructure = computed(() => {
 });
 
 function getDriverMenu(): MenuCategory[] {
-// ... (função igual)
+
     const sector = authStore.userSector;
     const menu: MenuCategory[] = [];
 
@@ -353,10 +353,10 @@ management.children.push({ title: 'Implementos', icon: 'precision_manufacturing'
  management.children.push({ title: 'Clientes', icon: 'groups', to: '/clients' });
  }
  management.children.push({ title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' }); 
- // --- CORREÇÃO AQUI ---
+
  management.children.push({ title: 'Inventário', icon: 'inventory_2', to: '/parts' });
  management.children.push({ title: 'Rastreabilidade', icon: 'manage_search', to: '/inventory-items' });
- // --- FIM DA CORREÇÃO ---
+
 
  management.children.push({ title: 'Gestão de Custos', icon: 'monetization_on', to: '/costs' });
  management.children.push({ title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' });
@@ -394,7 +394,7 @@ onUnmounted(() => { clearInterval(pollTimer); });
 </script>
 
 <style lang="scss" scoped>
-/* ... (todo o seu CSS permanece igual) ... */
+
 .main-layout-container {
   background-color: #f4f6f9;
   

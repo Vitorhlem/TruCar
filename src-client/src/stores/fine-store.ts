@@ -54,7 +54,7 @@ export const useFineStore = defineStore('fine', {
       try {
         await api.delete(`/fines/${id}`);
         Notify.create({ type: 'positive', message: 'Multa excluída com sucesso!' });
-        // Otimização: remove da lista local em vez de buscar tudo de novo
+
         const index = this.fines.findIndex(f => f.id === id);
         if (index > -1) {
           this.fines.splice(index, 1);

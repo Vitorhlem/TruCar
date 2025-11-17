@@ -5,7 +5,6 @@ import enum
 from app.db.base_class import Base
 from typing import Optional, List
 
-# --- Enum de Categoria (Sem alteração) ---
 class PartCategory(str, enum.Enum):
     PECA = "Peça"
     FLUIDO = "Fluído"
@@ -13,9 +12,6 @@ class PartCategory(str, enum.Enum):
     PNEU = "Pneu"
     OUTRO = "Outro"
 
-#
-# --- MODELO PART (Sem alteração) ---
-#
 class Part(Base):
     __tablename__ = "parts"
 
@@ -41,9 +37,6 @@ class Part(Base):
     items = relationship("InventoryItem", back_populates="part", cascade="all, delete-orphan")
 
 
-#
-# --- NOVO MODELO: INVENTORY ITEM (ESTE É O ESTOQUE) ---
-#
 class InventoryItemStatus(str, enum.Enum):
     DISPONIVEL = "Disponível"
     EM_USO = "Em Uso"
@@ -52,13 +45,9 @@ class InventoryItemStatus(str, enum.Enum):
 class InventoryItem(Base):
     __tablename__ = "inventory_items"
 
-    # Este 'id' é o "código" global (1, 2, 3... 20)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     
-    # --- 2. ADICIONAR O NOVO CAMPO ---
-    # Este é o "ID local" que você pediu (1, 2, 3... por peça)
     item_identifier: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    # --- FIM DA ADIÇÃO ---
     
     status: Mapped[InventoryItemStatus] = mapped_column(SAEnum(InventoryItemStatus), nullable=False, default=InventoryItemStatus.DISPONIVEL, index=True)
     
@@ -70,15 +59,12 @@ class InventoryItem(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     installed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    # Relações
     part: Mapped["Part"] = relationship("Part", back_populates="items")
     organization: Mapped["Organization"] = relationship("Organization")
     installed_on_vehicle: Mapped[Optional["Vehicle"]] = relationship("Vehicle")
     
     transactions: Mapped[List["InventoryTransaction"]] = relationship("InventoryTransaction", back_populates="item", cascade="all, delete-orphan")
 
-    # --- 3. ADICIONAR RESTRIÇÃO ÚNICA ---
     __table_args__ = (
         UniqueConstraint('part_id', 'item_identifier', name='_part_item_identifier_uc'),
     )
-    # --- FIM DA ADIÇÃO --- 

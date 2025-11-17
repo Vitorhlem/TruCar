@@ -138,18 +138,18 @@ import { useQuasar } from 'quasar';
 import { useFuelLogStore } from 'stores/fuel-log-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useAuthStore } from 'stores/auth-store';
-import { useTerminologyStore } from 'stores/terminology-store'; // <-- IMPORT ADICIONADO
+import { useTerminologyStore } from 'stores/terminology-store';
 import type { QTableProps } from 'quasar';
 import type { FuelLog, FuelLogCreate, FuelLogUpdate } from 'src/models/fuel-log-models';
 
 const fuelLogStore = useFuelLogStore();
 const vehicleStore = useVehicleStore();
 const authStore = useAuthStore();
-const terminologyStore = useTerminologyStore(); // <-- STORE INSTANCIADA
+const terminologyStore = useTerminologyStore();
 const $q = useQuasar();
 
 const isCreateDialogOpen = ref(false);
-const editingLogId = ref<number | null>(null); // Ref para modo de edição
+const editingLogId = ref<number | null>(null);
 
 const formData = ref<FuelLogCreate>({
   vehicle_id: 0,
@@ -158,13 +158,13 @@ const formData = ref<FuelLogCreate>({
   total_cost: 0,
 });
 
-// O label do <q-select> também usa a terminologyStore agora
+
 const vehicleOptions = computed(() => vehicleStore.vehicles.map(v => ({
   label: `${v.brand} ${v.model} (${v.license_plate})`,
   value: v.id
 })));
 
-// Computed para checar se é Gestor (usando strings literais)
+
 const isManager = computed(() => {
   if (!authStore.user) return false;
   return ['cliente_ativo', 'cliente_demo'].includes(authStore.user.role);
@@ -181,7 +181,7 @@ const columns: QTableProps['columns'] = [
   { name: 'actions', label: 'Ações', field: '', align: 'center' },
 ];
 
-// Função auxiliar para estilizar o status da verificação
+
 function getVerificationStatusProps(status: FuelLog['verification_status']) {
   switch (status) {
     case 'VERIFIED':
@@ -197,29 +197,27 @@ function getVerificationStatusProps(status: FuelLog['verification_status']) {
   }
 }
 
-/**
- * Chamado quando um veículo é selecionado (auto-preenchimento).
- */
+
 function handleVehicleSelect(vehicleId: number) {
-  // Só preenche automaticamente se for um registro NOVO
+
   if (!vehicleId || editingLogId.value) return;
 
   const selectedVehicle = vehicleStore.vehicles.find(v => v.id === vehicleId);
   
   if (selectedVehicle) {
-    // Acessa o 'current_km' (que no agro será 'current_hr')
+
     formData.value.odometer = selectedVehicle.current_km ?? 0;
   }
 }
 
-// Abre o diálogo em modo de CRIAÇÃO
+
 function openCreateDialog() {
   editingLogId.value = null; 
   formData.value = { vehicle_id: 0, odometer: 0, liters: 0, total_cost: 0 };
   isCreateDialogOpen.value = true;
 }
 
-// Abre o diálogo em modo de EDIÇÃO
+
 function onEditLog(log: FuelLog) {
   editingLogId.value = log.id;
   
@@ -233,7 +231,7 @@ function onEditLog(log: FuelLog) {
   isCreateDialogOpen.value = true;
 }
 
-// Lida com o submit (criação ou atualização)
+
 async function handleSubmit() {
   console.log('Botão Salvar/Atualizar clicado. Iniciando handleSubmit.');
   
@@ -248,18 +246,18 @@ async function handleSubmit() {
     isCreateDialogOpen.value = false;
     editingLogId.value = null;
     
-  } catch (error) { // Correção do catch vazio
+  } catch (error) {
     console.error('Erro ao salvar o registro de abastecimento:', error);
-    // A store já deve ter notificado o usuário
+
   }
 }
 
-// Sincronização com provedor
+
 async function handleSync() {
   await fuelLogStore.syncWithProvider();
 }
 
-// Exclusão
+
 function onDeleteLog(logId: number) {
   $q.dialog({
     title: 'Confirmar Exclusão',
@@ -280,7 +278,7 @@ function onDeleteLog(logId: number) {
   });
 }
 
-// Carregamento inicial dos dados
+
 onMounted(() => {
   void fuelLogStore.fetchFuelLogs();
   if (vehicleStore.vehicles.length === 0) {

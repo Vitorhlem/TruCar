@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from .vehicle_model import Vehicle
     from .fine_model import Fine  # <-- Importar a Multa
 
-# Enum para padronizar os tipos de custo
 class CostType(str, enum.Enum):
     MANUTENCAO = "Manutenção"
     COMBUSTIVEL = "Combustível"
@@ -24,7 +23,6 @@ class CostType(str, enum.Enum):
 class VehicleCost(Base):
     __tablename__ = "vehicle_costs"
 
-    # --- REESCRITO COM SINTAXE MODERNA (Mapped) ---
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
@@ -36,10 +34,6 @@ class VehicleCost(Base):
 
     vehicle: Mapped["Vehicle"] = relationship("Vehicle", back_populates="costs")
     
-    # --- ADIÇÃO DA LIGAÇÃO DIRETA ---
-    # Isso cria a coluna vehicle_costs.fine_id
-    # O unique=True garante que um custo só pode estar ligado a UMA multa (1-para-1)
     fine_id: Mapped[Optional[int]] = mapped_column(ForeignKey("fines.id", ondelete="SET NULL"), nullable=True, unique=True)
     
-    # Isso permite acessar a multa a partir do custo (cost.fine)
     fine: Mapped[Optional["Fine"]] = relationship("Fine", back_populates="cost")

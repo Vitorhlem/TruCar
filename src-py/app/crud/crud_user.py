@@ -104,7 +104,6 @@ async def create_new_organization_and_user(db: AsyncSession, *, user_in: "UserRe
     """Cria uma nova organização e o primeiro utilizador (CLIENTE_DEMO) para ela."""
     from app.schemas.user_schema import UserRegister
     
-    # --- ATUALIZADO: Definindo os limites do plano DEMO aqui ---
     db_org = Organization(
         name=user_in.organization_name, 
         sector=user_in.sector,
@@ -113,7 +112,6 @@ async def create_new_organization_and_user(db: AsyncSession, *, user_in: "UserRe
         freight_order_limit=10,   # Limite de 10 jornadas/mês
         maintenance_limit=5     # Limite de 5 manutenções
     )
-    # --- FIM DA ATUALIZAÇÃO ---
 
     user_role = UserRole.CLIENTE_DEMO
 
@@ -300,7 +298,6 @@ async def count_by_org(db: AsyncSession, *, organization_id: int, role: UserRole
     result = await db.execute(stmt)
     return result.scalar_one()
 
-# Alias 'count' mantido para compatibilidade com a rota demo-stats
 async def count(db: AsyncSession, *, organization_id: int) -> int:
     """Implementa o método 'count' genérico para uso em APIs como demo-stats.
     Esta função NÃO passa 'role'.

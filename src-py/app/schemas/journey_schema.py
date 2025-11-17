@@ -29,13 +29,11 @@ class JourneyCreate(JourneyBase):
     start_engine_hours: Optional[float] = None
     implement_id: Optional[int] = None
     
-    # --- CAMPOS DE ENDEREÇO ADICIONADOS AO SCHEMA DE CRIAÇÃO ---
     destination_street: Optional[str] = None
     destination_neighborhood: Optional[str] = None
     destination_city: Optional[str] = None
     destination_state: Optional[str] = None
     destination_cep: Optional[str] = None
-    # --- FIM DA ADIÇÃO ---
 
 class JourneyUpdate(BaseModel):
     end_mileage: Optional[int] = None
@@ -54,13 +52,11 @@ class JourneyPublic(JourneyBase):
     vehicle: VehiclePublic
     implement: Optional[ImplementPublic] = None
     
-    # --- CAMPOS DE ENDEREÇO ADICIONADOS AO SCHEMA PÚBLICO ---
     destination_street: Optional[str] = None
     destination_neighborhood: Optional[str] = None
     destination_city: Optional[str] = None
     destination_state: Optional[str] = None
     destination_cep: Optional[str] = None
-    # --- FIM DA ADIÇÃO ---
     
     model_config = { "from_attributes": True }
 

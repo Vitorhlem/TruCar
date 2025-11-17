@@ -68,10 +68,10 @@ export const useVehicleStore = defineStore('vehicle', {
     updateVehicleInList(updatedVehicle: Vehicle) {
       const index = this.vehicles.findIndex(v => v.id === updatedVehicle.id);
       if (index !== -1) {
-        // Substitui o objeto antigo pelo novo na lista
+
         this.vehicles[index] = updatedVehicle;
       }
-      // Opcional: Se o veículo atualizado for o selecionado, atualize-o também
+
       if (this.selectedVehicle && this.selectedVehicle.id === updatedVehicle.id) {
         this.selectedVehicle = updatedVehicle;
       }

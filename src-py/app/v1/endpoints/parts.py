@@ -12,13 +12,11 @@ from app import crud, deps
 from app.models.user_model import User
 from app.models.part_model import PartCategory, InventoryItemStatus
 from app.models.notification_model import NotificationType
-# --- 1. ATUALIZAR IMPORTS ---
 from app.schemas.part_schema import (
     PartPublic, PartCreate, PartUpdate, 
     InventoryItemPublic, PartListPublic, InventoryItemDetails,
     InventoryItemPage, InventoryItemRow # <-- Adicionar estes
 )
-# --- FIM DA ATUALIZAÇÃO ---
 from app.schemas.inventory_transaction_schema import TransactionPublic
 from app.crud import crud_part 
 from app.models.inventory_transaction_model import TransactionType
@@ -254,7 +252,6 @@ async def set_inventory_item_status(
              raise HTTPException(status_code=400, detail=f"Item não pode ser descartado pois seu status é '{current_status}'. Somente itens 'Disponível' ou 'Em Uso' podem ser descartados.")
     
     elif current_status != InventoryItemStatus.DISPONIVEL:
-        # Bloqueio padrão para outras transições não mapeadas (ex: Manutenção)
          raise HTTPException(status_code=400, detail=f"Não é possível alterar o status do item pois ele não está 'Disponível' (status atual: {current_status}).")
     try:
         updated_item = await crud_part.change_item_status(
@@ -284,7 +281,6 @@ async def set_inventory_item_status(
         logging.error(f"Erro ao mudar status do item: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao mudar status do item: {e}")
 
-# --- 2. NOVO ENDPOINT DE DETALHES DO ITEM ---
 @router.get("/items/{item_id}", response_model=InventoryItemDetails)
 async def read_item_details(
     item_id: int,
@@ -300,7 +296,6 @@ async def read_item_details(
     if not item:
         raise HTTPException(status_code=404, detail="Item de inventário não encontrado.")
     return item
-# --- FIM DO NOVO ENDPOINT ---
 
 @router.get("/inventory/items/", response_model=InventoryItemPage)
 async def read_all_inventory_items(

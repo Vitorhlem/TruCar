@@ -63,7 +63,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['close']);
-const $q = useQuasar(); // Adicionado para a propriedade :dark
+const $q = useQuasar();
 
 const costStore = useVehicleCostStore();
 const isSubmitting = ref(false);
@@ -73,7 +73,7 @@ const costTypeOptions: CostType[] = ['Manutenção', 'Combustível', 'Pedágio',
 const formData = ref<VehicleCostCreate>({
   description: '',
   amount: 0,
-  // --- CORRIGIDO: Removemos a afirmação 'as string' desnecessária ---
+
   date: new Date().toISOString().split('T')[0] || '',
   cost_type: 'Outros',
 });

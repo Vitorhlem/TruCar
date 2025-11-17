@@ -15,13 +15,13 @@ import type { PropType } from 'vue';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Interface para os dados que vem como propriedade
+
 interface Cost {
   date: Date;
   amount: number;
 }
 
-// 1. Defina uma interface para o objeto da série do gráfico
+
 interface ChartSeriesItem {
   name: string;
   data: number[];
@@ -36,11 +36,11 @@ const props = defineProps({
 
 const monthlyCosts = computed(() => {
   const result: { [key: string]: number } = {};
-  // Crie uma cópia ordenada para não modificar a prop original
+
   const sortedCosts = [...props.costs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   sortedCosts.forEach(cost => {
-    // Garanta que 'cost.date' seja um objeto Date
+
     const costDate = new Date(cost.date);
     const month = format(costDate, 'MMM/yy', { locale: ptBR });
     if (!result[month]) {
@@ -51,7 +51,7 @@ const monthlyCosts = computed(() => {
   return result;
 });
 
-// 2. Aplique a nova interface à sua propriedade computada
+
 const chartSeries = computed<ChartSeriesItem[]>(() => {
   return [{
     name: 'Custos Mensais',

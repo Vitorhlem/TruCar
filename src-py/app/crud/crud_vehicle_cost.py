@@ -21,13 +21,11 @@ async def create_cost(
     
     if commit:
         await db.commit()
-        # Após o commit, recarregamos o objeto com a relação do veículo
         await db.refresh(db_obj, attribute_names=["vehicle"])
         
     return db_obj
 
 
-# --- FUNÇÃO CORRIGIDA ---
 async def get_costs_by_vehicle(
     db: AsyncSession, *, vehicle_id: int, skip: int = 0, limit: int = 100
 ) -> List[VehicleCost]:
@@ -42,7 +40,6 @@ async def get_costs_by_vehicle(
     )
     result = await db.execute(stmt)
     return result.scalars().all()
-# --- FIM DA CORREÇÃO ---
 
 
 async def get_costs_by_organization(

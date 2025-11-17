@@ -1,4 +1,3 @@
-# Em backend/app/api/v1/endpoints/costs.py
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession

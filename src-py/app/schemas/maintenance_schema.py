@@ -32,9 +32,7 @@ class MaintenancePartChangePublic(BaseModel):
     component_removed: VehicleComponentPublic 
     component_installed: VehicleComponentPublic 
     
-    # --- CAMPO NOVO (BÔNUS) ---
     is_reverted: bool
-    # --- FIM DA ADIÇÃO ---
     
     model_config = { "from_attributes": True }
 

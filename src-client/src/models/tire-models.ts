@@ -1,34 +1,34 @@
-// Em FrontEnd/src/models/tire-models.ts
+
 
 import type { Part } from './part-models';
 
-// Representa um pneu instalado em uma posição
+
 export interface VehicleTire {
   id: number;
   part_id: number;
   vehicle_id: number;
   position_code: string;
-  installation_date: string; // ISO string
+  installation_date: string;
   install_km: number;
   is_active: boolean;
   install_engine_hours?: number | null;
   part: Part;
 }
 
-// Representa a resposta da API com a configuração do veículo
+
 export interface TireLayout {
   vehicle_id: number;
   axle_configuration: string | null;
   tires: VehicleTire[];
 }
 
-// --- INTERFACE CORRIGIDA ---
-// Payload para instalar um pneu
+
+
 export interface TireInstallPayload {
   part_id: number;
   position_code: string;
   install_km: number;
-  install_engine_hours?: number; // Propriedade agora é opcional
+  install_engine_hours?: number;
 }
 
 export type TireWithStatus = VehicleTire & {
@@ -39,7 +39,7 @@ export type TireWithStatus = VehicleTire & {
   lifespan_km: number;
 }
 
-// Histórico de Pneus (já estava correto, mantemos)
+
 export interface VehicleTireHistory {
   id: number;
   part: Part;

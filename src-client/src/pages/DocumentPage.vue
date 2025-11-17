@@ -1,7 +1,7 @@
 <template>
   <q-page padding>
     <div class="q-pa-md">
-      <!-- Cabeçalho da Página -->
+
       <div class="flex items-center justify-between q-mb-md">
         <div>
           <h1 class="text-h4 text-weight-bold q-my-none">Gestão de Documentos</h1>
@@ -16,7 +16,7 @@
         />
       </div>
 
-      <!-- Tabela de Documentos -->
+
       <q-table
         :rows="documentStore.documents"
         :columns="columns"
@@ -27,7 +27,7 @@
         card-class="dashboard-card"
         :rows-per-page-options="[10, 25, 50]"
       >
-        <!-- Template para a coluna de Vencimento (com status de cor) -->
+
         <template v-slot:body-cell-expiry_date="props">
           <q-td :props="props">
             <q-chip
@@ -40,7 +40,7 @@
           </q-td>
         </template>
 
-        <!-- Template para a coluna de Ações -->
+
         <template v-slot:body-cell-actions="props">
 <q-td :props="props" class="q-gutter-sm">
 <q-btn :href="`${backendBaseUrl}${props.row.file_url}`" target="_blank" dense flat round color="primary" icon="visibility">
@@ -54,7 +54,7 @@
       </q-table>
     </div>
 
-    <!-- Diálogo para Adicionar Novo Documento -->
+
     <q-dialog v-model="isDialogOpen" >
       <q-card style="width: 600px; max-width: 90vw;">
         <q-card-section class="row items-center q-pb-none">
@@ -158,7 +158,7 @@ import { useUserStore } from 'stores/user-store';
 import type { DocumentPublic } from 'src/models/document-models';
 import type { User } from 'src/models/auth-models';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { api } from 'boot/axios'; // <--- ADICIONE ESTA LINHA
+import { api } from 'boot/axios';
 
 
 const $q = useQuasar();
@@ -168,7 +168,7 @@ const documentStore = useDocumentStore();
 const vehicleStore = useVehicleStore();
 const userStore = useUserStore();
 
-// --- Lógica da Tabela ---
+
 const columns: QTableProps['columns'] = [
   { name: 'document_type', required: true, label: 'Tipo', align: 'left', field: 'document_type', sortable: true },
   { name: 'expiry_date', label: 'Vencimento', field: 'expiry_date', align: 'center', sortable: true },
@@ -190,7 +190,7 @@ function getExpiryStatusColor(dateString: string): { color: string, textColor: s
 }
 
 
-// --- Lógica do Diálogo e Formulário ---
+
 interface NewDocumentForm {
   document_type: string;
   expiry_date: string;
@@ -214,7 +214,7 @@ const initialNewDocumentState: NewDocumentForm = {
 
 const newDocument = ref<NewDocumentForm>({ ...initialNewDocumentState });
 
-// Opções para os QSelects
+
 const documentTypeOptions = ['CNH', 'CRLV', 'ANTT', 'ASO', 'Seguro', 'Outro'];
 const vehicleOptions = computed(() => vehicleStore.vehicles.map(v => ({
   label: `${v.brand} ${v.model} (${v.license_plate || v.identifier})`,
@@ -228,7 +228,7 @@ const driverOptions = computed(() => drivers.value.map((d: User) => ({
 })));
 
 
-// Limpa os IDs associados quando o tipo de dono muda
+
 watch(ownerType, () => {
   newDocument.value.vehicle_id = undefined;
   newDocument.value.driver_id = undefined;
@@ -274,11 +274,11 @@ function confirmDelete(document: DocumentPublic) {
 }
 
 
-// --- Ciclo de Vida ---
+
 onMounted(() => {
   void documentStore.fetchDocuments();
-  void vehicleStore.fetchAllVehicles(); // Busca veículos para o formulário
-  void userStore.fetchAllUsers();     // Busca motoristas para o formulário
+  void vehicleStore.fetchAllVehicles();
+  void userStore.fetchAllUsers();
 });
 
 </script>

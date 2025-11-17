@@ -305,7 +305,7 @@ import {
   type MaintenanceRequest,
   type MaintenanceRequestUpdate,
   type MaintenanceCommentCreate,
-  type MaintenancePartChangePublic, // <-- IMPORTAR
+  type MaintenancePartChangePublic,
 } from 'src/models/maintenance-models';
 import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import ReplaceComponentDialog from './ReplaceComponentDialog.vue';
@@ -365,16 +365,16 @@ function openReplaceDialog(component: VehicleComponent) {
   isReplaceDialogOpen.value = true;
 }
 
-// Recarrega os componentes ativos após a substituição
+
 function handleReplacementDone() {
   if (props.request?.vehicle?.id) {
     void componentStore.fetchComponents(props.request.vehicle.id);
   }
-  // Também recarrega os componentes se a reversão for feita
-  // (a store já terá atualizado o 'request' local)
+
+
 }
 
-// --- NOVA FUNÇÃO DE REVERSÃO ---
+
 function onRevert(log: MaintenancePartChangePublic) {
   if (!props.request) return;
 
@@ -390,12 +390,12 @@ function onRevert(log: MaintenancePartChangePublic) {
     ok: 'Confirmar Reversão',
     persistent: false,
     color: 'negative',
-    // vvvv MODIFIQUE A PARTIR DAQUI vvvv
+
   }).onOk(() => {
-    // 1. Crie uma função async interna
+
     const performRevert = async () => {
       try {
-        if (!props.request) return; // Verificação de segurança
+        if (!props.request) return;
         const success = await maintenanceStore.revertPartChange(
           props.request.id,
           log.id
@@ -404,7 +404,7 @@ function onRevert(log: MaintenancePartChangePublic) {
           handleReplacementDone();
         }
       } catch (error) {
-        // 2. Capture erros que a promise possa ter
+
         console.error('Falha ao reverter a troca:', error);
         $q.notify({
           type: 'negative',
@@ -413,19 +413,19 @@ function onRevert(log: MaintenancePartChangePublic) {
       }
     };
 
-    // 3. Chame a função com 'void' para satisfazer o linter
+
     void performRevert();
   });
 }
-// --- FIM DA NOVA FUNÇÃO ---
+
 
 watch(
   () => tab.value,
   (newTab) => {
     if (newTab === 'components' && props.request?.vehicle?.id) {
-      // vvvv MODIFIQUE ESTA LINHA vvvv
+
       const storeVehicleId = componentStore.currentVehicleId;
-      // ^^^^ MODIFIQUE ESTA LINHA ^^^^
+
       if (storeVehicleId !== props.request.vehicle.id) {
         void componentStore.fetchComponents(props.request.vehicle.id);
       }
@@ -438,7 +438,7 @@ watch(
   (newId, oldId) => {
     if (newId !== oldId) {
       tab.value = 'details';
-      // Carrega os componentes do veículo correto quando o chamado é aberto
+
       if (props.request?.vehicle.id) {
         void componentStore.fetchComponents(props.request.vehicle.id);
       }

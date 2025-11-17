@@ -15,17 +15,17 @@ interface JourneyFilters {
   date_to?: string | null;
 }
 
-// --- FUNÇÃO AUXILIAR PARA CORRIGIR O PROBLEMA ---
-// Esta função encapsula a lógica de qual dashboard recarregar.
+
+
 async function refreshDashboardData() {
   const dashboardStore = useDashboardStore();
   const authStore = useAuthStore();
 
   if (authStore.isManager) {
-    // Para gestores, buscamos o dashboard de gestão.
+
     await dashboardStore.fetchManagerDashboard();
   } else if (authStore.isDriver) {
-    // Para motoristas, buscamos o dashboard de motorista.
+
     await dashboardStore.fetchDriverDashboard();
   }
 }
@@ -105,8 +105,8 @@ export const useJourneyStore = defineStore('journey', {
     async endJourney(journeyId: number, journeyData: JourneyUpdate): Promise<Vehicle | null> {
       this.isLoading = true;
 
-      // --- 2. DECLARE A VARIÁVEL AQUI ---
-      // Esta linha cria a 'vehicleStore' que o erro diz não existir
+
+
       const vehicleStore = useVehicleStore();
 
       try {
@@ -115,14 +115,14 @@ export const useJourneyStore = defineStore('journey', {
           journeyData
         );
         
-        // Atualiza a jornada na lista de jornadas (código que você já tinha)
+
         const index = this.journeys.findIndex(j => j.id === journeyId);
         if (index !== -1) {
           this.journeys[index] = response.data.journey;
         }
 
-        // --- 3. USE A VARIÁVEL AQUI ---
-        // Agora esta linha funciona, pois 'vehicleStore' foi definida acima
+
+
         if (response.data.vehicle) {
           vehicleStore.updateVehicleInList(response.data.vehicle);
         }

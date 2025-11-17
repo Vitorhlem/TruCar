@@ -23,7 +23,7 @@
 
     <q-tab-panels v-model="tab" animated>
       <q-tab-panel name="tires" class="q-pa-md">
-        <!-- ... (Toda a lógica de Pneus permanece igual) ... -->
+
         <div class="row q-col-gutter-md q-mb-md">
           <div class="col-6 col-md-3">
             <q-card flat bordered>
@@ -152,7 +152,7 @@
           flat
           bordered
         >
-          <!-- CORREÇÃO: Slot para a célula customizada -->
+
           <template v-slot:body-cell-part_and_item="props">
             <q-td :props="props">
               <div>{{ getPartName(props.row.item?.part_id || props.row.part?.id) }}</div>
@@ -186,7 +186,7 @@
         </div>
         <q-table :rows="filteredComponents" :columns="componentColumns" row-key="id" :loading="componentStore.isLoading" no-data-label="Nenhum componente encontrado." flat bordered>
           
-          <!-- CORREÇÃO: Slot para a célula customizada de Componente -->
+
           <template v-slot:body-cell-component_and_item="props">
             <q-td :props="props">
               <a href="#" @click.prevent="openPartHistoryDialog(props.row.part)" class="text-primary text-weight-medium" style="text-decoration: none;">
@@ -206,7 +206,7 @@
               <span v-else class="text-grey">(Item N/A)</span>
             </q-td>
           </template>
-          <!-- FIM DO SLOT -->
+
           
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
@@ -217,7 +217,7 @@
       </q-tab-panel>
 
       <q-tab-panel name="costs">
-        <!-- ... (Toda a lógica de Custos permanece igual) ... -->
+
         <div class="row items-center justify-between q-mb-md q-gutter-sm">
             <div class="text-h6">Custos Lançados</div>
             <div class="row items-center q-gutter-sm">
@@ -264,7 +264,7 @@
       </q-tab-panel>
 
       <q-tab-panel name="maintenance">
-        <!-- ... (Toda a lógica de Manutenção permanece igual) ... -->
+
         <div class="row items-center justify-between q-mb-md q-gutter-sm">
           <div class="text-h6">Histórico de Manutenções</div>
           <div class="row items-center q-gutter-sm">
@@ -290,7 +290,7 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <!-- ... (Todos os diálogos permanecem iguais) ... -->
+
     <q-dialog v-model="isInstallTireDialogOpen">
       <q-card style="width: 500px; max-width: 90vw;">
         <q-form @submit.prevent="handleInstallTire">
@@ -357,13 +357,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router'; // <-- 1. IMPORTAR ROUTER
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, type QTableColumn, exportFile } from 'quasar';
 import { api } from 'boot/axios';
 import { format, differenceInDays, parse } from 'date-fns';
 import { storeToRefs } from 'pinia';
 
-// Stores
+
 import { useAuthStore } from 'stores/auth-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useVehicleCostStore } from 'stores/vehicle-cost-store';
@@ -372,8 +372,8 @@ import { usePartStore } from 'stores/part-store';
 import { useMaintenanceStore } from 'stores/maintenance-store';
 import { useTireStore } from 'stores/tire-store';
 
-// Models
-import { InventoryItemStatus } from 'src/models/inventory-item-models'; // <-- ADICIONE ESTA IMPORTAÇÃO
+
+import { InventoryItemStatus } from 'src/models/inventory-item-models';
 import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
 import type { Part } from 'src/models/part-models';
@@ -381,7 +381,7 @@ import type { MaintenanceRequest } from 'src/models/maintenance-models';
 import type { VehicleTire, TireWithStatus, VehicleTireHistory, TireInstallPayload } from 'src/models/tire-models';
 import type { VehicleCost } from 'src/models/vehicle-cost-models';
 
-// Components
+
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
 import CostsPieChart from 'components/CostsPieChart.vue';
 import MaintenanceDetailsDialog from 'components/maintenance/MaintenanceDetailsDialog.vue';
@@ -391,7 +391,7 @@ import TireCostChart from 'components/TireCostChart.vue';
 import { axleLayouts } from 'src/config/tire-layouts';
 import AddCostDialog from 'components/AddCostDialog.vue';
 
-// --- 2. INICIAR ROUTER ---
+
 const route = useRoute();
 const router = useRouter(); 
 const $q = useQuasar();
@@ -411,7 +411,7 @@ const isAgro = computed(() => authStore.userSector === 'agronegocio');
 const isHistoryLoading = ref(false);
 const inventoryHistory = ref<InventoryTransaction[]>([]);
 
-// DIÁLOGOS E FORMULÁRIOS
+
 const isAddCostDialogOpen = ref(false);
 const isInstallDialogOpen = ref(false);
 const isPartHistoryDialogOpen = ref(false);
@@ -439,25 +439,25 @@ const axleConfigOptions = Object.keys(axleLayouts).map(key => ({
 async function refreshAllVehicleData() {
 isHistoryLoading.value = true;
   
-  // --- A CORREÇÃO ESTÁ AQUI ---
-  // 1. Primeiro, buscamos os nomes das peças e ESPERAMOS eles chegarem.
-  //    Isso garante que partStore.parts estará preenchido.
+
+
+
   await partStore.fetchParts();
 
-  // 2. Agora que temos os nomes, buscamos todo o resto em paralelo.
+
 await Promise.all([
-fetchHistory(), // Esta função agora pode confiar que partStore.parts existe
+fetchHistory(),
 vehicleStore.fetchVehicleById(vehicleId),
 costStore.fetchCosts(vehicleId),
 componentStore.fetchComponents(vehicleId),
  maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 }),
  tireStore.fetchTireLayout(vehicleId),
-tireStore.fetchRemovedTiresHistory(vehicleId), // <-- BUSCA O HISTÓRICO CORRETO
+tireStore.fetchRemovedTiresHistory(vehicleId),
  ]);
   isHistoryLoading.value = false;
 }
 
-// ... (Lógica de Pneus e KPIs) ...
+
 const tiresWithStatus = computed((): TireWithStatus[] => {
   if (!tireStore.tireLayout?.tires || !vehicleStore.selectedVehicle) return [];
   const currentKm = vehicleStore.selectedVehicle.current_km || 0;
@@ -510,10 +510,10 @@ const tireCostsByMonth = computed(() => {
       amount: t.part!.value!,
     }));
 });
-// ... (Fim da lógica de Pneus e KPIs) ...
 
 
-// ### TABELAS E FILTROS ###
+
+
 const search = ref({ history: '', components: '', costs: '', maintenances: '' });
 const dateRange = ref({ history: '', historyTo: '', costs: '', costsTo: '' });
 
@@ -525,7 +525,7 @@ const filteredHistory = computed(() => {
     if(endDate) endDate.setHours(23, 59, 59, 999);
     const rowDate = new Date(row.timestamp);
     const dateMatch = (!startDate || rowDate >= startDate) && (!endDate || rowDate <= endDate);
-    // Melhorar a pesquisa para incluir o item_identifier
+
     const itemIdentifier = row.item?.item_identifier || '';
     const partName = row.part?.name || row.item?.part?.name || '';
     const textMatch = !needle || 
@@ -563,7 +563,7 @@ const filteredMaintenances = computed(() => {
 });
 
 
-// COLUNAS DAS TABELAS
+
 const historyTireColumns: QTableColumn<VehicleTireHistory>[] = [
   { name: 'part', label: 'Pneu (Série)', field: row => row.part.serial_number || 'N/A', align: 'left', sortable: true },
   { name: 'position', label: 'Posição', field: (row) => row.position_code || 'N/A', align: 'center' },
@@ -572,7 +572,7 @@ const historyTireColumns: QTableColumn<VehicleTireHistory>[] = [
   { name: 'cost_per_km', label: 'Custo/KM', field: row => (row.km_run > 0 && row.part.value) ? `R$ ${(row.part.value / row.km_run).toFixed(2)}` : 'N/A', align: 'right', sortable: true },
 ];
 
-// --- 3. CORREÇÃO COLUNAS HISTÓRICO ---
+
 const historyColumns: QTableColumn<InventoryTransaction>[] = [
     { name: 'timestamp', label: 'Data e Hora', field: 'timestamp', format: (val) => format(new Date(val), 'dd/MM/yyyy HH:mm'), align: 'left', sortable: true },
     { 
@@ -582,12 +582,12 @@ const historyColumns: QTableColumn<InventoryTransaction>[] = [
           const partId = row.item?.part_id || row.part?.id;
           const partFromStore = partStore.parts.find(p => p.id === partId);
 
-          const name = partFromStore?.name ||   // 1º: Tentar o partStore (confiável)
-                       row.part?.name ||          // 2º: Tentar o 'part' da transação
-                       row.item?.part?.name ||    // 3º: Tentar o 'part' do item da transação
-                       'Peça N/A';              // 4º: Fallback
+          const name = partFromStore?.name ||
+                       row.part?.name ||
+                       row.item?.part?.name ||
+                       'Peça N/A';
 
-          // A lógica do Cód. Item já está correta
+
           const itemId = row.item?.item_identifier || 'N/A';
           
           return `${name} (Cód. Item: ${itemId})`;
@@ -600,10 +600,10 @@ const historyColumns: QTableColumn<InventoryTransaction>[] = [
     { name: 'notes', label: 'Notas', field: 'notes', align: 'left', style: 'max-width: 200px; white-space: normal;' },
 ];
 
-// --- 4. CORREÇÃO COLUNAS COMPONENTES ---
+
   const componentColumns: QTableColumn<VehicleComponent>[] = [
     { 
-    name: 'component_and_item', // <-- Nome do slot customizado
+    name: 'component_and_item',
     label: 'Componente / Cód. Item', 
     field: (row) => {
         const name = row.part?.name || 'Peça N/A';
@@ -643,7 +643,7 @@ const historyColumns: QTableColumn<InventoryTransaction>[] = [
     align: 'right' 
   },
 ];
-// --- FIM DA CORREÇÃO ---
+
 
 const costColumns: QTableColumn[] = [
   { name: 'date', label: 'Data', field: 'date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), sortable: true, align: 'left' },
@@ -660,7 +660,7 @@ const maintenanceColumns: QTableColumn<MaintenanceRequest>[] = [
 ];
 
 
-// ### FUNÇÕES DE AÇÃO ATUALIZADAS ###
+
 async function fetchHistory() {
   isHistoryLoading.value = true;
   try {
@@ -677,13 +677,13 @@ async function fetchHistory() {
 function getPartName(partId: number | undefined | null): string {
   if (!partId) return 'Peça N/A';
   
-  // partStore.parts foi carregado no 'onMounted'
+
   const part = partStore.parts.find(p => p.id === partId);
   
   return part?.name || 'Peça N/A';
 }
 
-// ... (Funções de Pneu: openInstallDialog, handleInstallTire, openRemoveDialog, handleUpdateAxleConfig, filterTires) ...
+
 function openInstallDialog(positionCode: string) {
   targetPosition.value = positionCode;
   installTireForm.value = {
@@ -767,32 +767,32 @@ function filterTires(val: string, update: (cb: () => void) => void) {
       .map(p => ({ label: `${p.brand || ''} ${p.name} (Série: ${p.serial_number || 'N/A'})`, value: p.id }));
   });
 }
-// ... (Fim das funções de Pneu) ...
+
 
 
 function filterParts(val: string, update: (cb: () => void) => void) {
   update(() => {
     const needle = val.toLowerCase();
     partOptions.value = partStore.parts
-      .filter(p => p.name.toLowerCase().includes(needle) && p.stock > 0 && p.category !== 'Pneu') // Exclui Pneus
+      .filter(p => p.name.toLowerCase().includes(needle) && p.stock > 0 && p.category !== 'Pneu')
       .map(p => ({ label: `${p.name} (Estoque: ${p.stock})`, value: p.id }));
   });
 }
 
 async function handleInstallComponent() {
   if (!installFormComponent.value.part_id) return;
-  // Esta função não existe mais, usamos setItemStatus
-  // Vamos emular o comportamento antigo pegando um item do estoque
+
+
   $q.notify({ type: 'info', message: 'Função de Instalação Manual (sem Cód. Item) ainda não implementada.' });
-  // const success = await componentStore.installComponent(vehicleId, {
-  //   part_id: installFormComponent.value.part_id,
-  //   quantity: installFormComponent.value.quantity,
-  // });
-  // if (success) {
-  //   isInstallDialogOpen.value = false;
-  //   installFormComponent.value = { part_id: null, quantity: 1 };
+
+
+
+
+
+
+
      await refreshAllVehicleData();
-  // }
+
 }
 
 function confirmDiscard(component: VehicleComponent) {
@@ -805,8 +805,8 @@ function confirmDiscard(component: VehicleComponent) {
     }).onOk(() => {
       void (async () => {
         if (component.part) {
-            // Esta função também foi modificada.
-            // Precisamos do item_id
+
+
             const item_id = component.inventory_transaction?.item?.id;
             if (item_id) {
                const success = await partStore.setItemStatus(component.part.id, item_id, InventoryItemStatus.FIM_DE_VIDA, undefined, "Descartado pelo gerenciador de componentes.");
@@ -831,11 +831,11 @@ function openMaintenanceDetails(maintenance: MaintenanceRequest) {
   isMaintenanceDetailsOpen.value = true;
 }
 
-// --- 5. ADICIONAR FUNÇÃO DE NAVEGAÇÃO ---
+
 function goToItemDetails(itemId: number) {
   void router.push({ name: 'item-details', params: { id: itemId } });
 }
-// --- FIM DA FUNÇÃO ---
+
 
 function exportToCsv(tabName: 'history' | 'components' | 'costs' | 'maintenances') {
     let data: (InventoryTransaction | VehicleComponent | MaintenanceRequest | VehicleCost | VehicleTireHistory)[], columns: QTableColumn[], fileName: string;

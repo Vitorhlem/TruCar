@@ -4,18 +4,15 @@ from sqlalchemy.orm import selectinload
 import datetime
 from typing import Optional
 
-# Importações de modelos
 from app.models.vehicle_model import Vehicle
 from app.models.part_model import Part, PartCategory
 from app.models.tire_model import VehicleTire
 from app.models.inventory_transaction_model import TransactionType
 from app.models.vehicle_cost_model import CostType
 
-# Importações de CRUDs
 from . import crud_inventory_transaction
 from . import crud_vehicle_cost
 
-# Importações de Schemas
 from app.schemas.vehicle_cost_schema import VehicleCostCreate
 
 
@@ -71,7 +68,6 @@ async def install_tire(
     )
     db.add(new_vehicle_tire)
 
-    # A função _create_transaction_no_commit espera um Enum, não a string
     transaction = await crud_inventory_transaction._create_transaction_no_commit(
         db=db,
         part_id=part_id,
@@ -81,7 +77,6 @@ async def install_tire(
         notes=f"Instalação do pneu no veículo {vehicle.license_plate or vehicle.identifier} na posição {position_code}",
         related_vehicle_id=vehicle_id
     )
-    # Aguarda o flush para que o ID da transação esteja disponível
     await db.flush()
     new_vehicle_tire.inventory_transaction_id = transaction.id
     
@@ -119,22 +114,16 @@ async def remove_tire(
     if not tire_to_remove or not tire_to_remove.is_active:
         raise ValueError("Pneu não encontrado ou já foi removido.")
 
-    # --- LÓGICA DE CÁLCULO CENTRALIZADA ---
-    # Valida o KM de remoção
     if removal_km < tire_to_remove.install_km:
         raise ValueError("O KM de remoção deve ser maior ou igual ao KM de instalação.")
 
-    # Calcula o total rodado para pneus normais
     calculated_km_run = float(removal_km - tire_to_remove.install_km)
 
-    # Se for Agro, calcula as horas de uso
     if removal_engine_hours is not None and tire_to_remove.install_engine_hours is not None:
         if removal_engine_hours < tire_to_remove.install_engine_hours:
             raise ValueError("As Horas do Motor de remoção devem ser maiores ou iguais às de instalação.")
-        # Para o setor Agro, o "km_run" armazenará as horas de uso.
         calculated_km_run = float(removal_engine_hours - tire_to_remove.install_engine_hours)
     
-    # --- FIM DA LÓGICA DE CÁLCULO ---
 
     tire_to_remove.is_active = False
     tire_to_remove.removal_km = removal_km
@@ -142,7 +131,6 @@ async def remove_tire(
     tire_to_remove.removal_date = datetime.datetime.now(datetime.timezone.utc)
     tire_to_remove.km_run = calculated_km_run # Salva o valor calculado no banco de dados
 
-    # Esta função faz o commit final
     await crud_inventory_transaction.create_transaction(
         db=db, 
         part_id=tire_to_remove.part_id,

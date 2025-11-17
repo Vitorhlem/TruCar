@@ -78,9 +78,9 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useMaintenanceStore } from 'stores/maintenance-store';
 import { MaintenanceStatus, type MaintenanceRequest } from 'src/models/maintenance-models';
 import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue';
-// --- ### CORREÇÃO DO NOME DA IMPORTAÇÃO ### ---
+
 import MaintenanceDetailsDialog from 'components/maintenance/MaintenanceDetailsDialog.vue';
-// --- ### FIM DA CORREÇÃO ### ---
+
 import MaintenanceRequestCard from 'components/maintenance/MaintenanceRequestCard.vue';
 
 const maintenanceStore = useMaintenanceStore();

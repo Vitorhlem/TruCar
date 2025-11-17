@@ -7,11 +7,8 @@ from typing import List, Dict
 from app import crud, deps
 from app.models.user_model import User, UserRole
 
-# --- CORREÇÃO: Importar a INSTÂNCIA 'demo_usage' diretamente ---
 from app.crud.crud_demo_usage import demo_usage as crud_demo_usage_instance
-# -------------------------------------------------------------
 
-# --- NOVOS IMPORTS DOS SCHEMAS CENTRALIZADOS ---
 from app.schemas.dashboard_schema import (
     ManagerDashboardResponse,
     DriverDashboardResponse,
@@ -23,7 +20,6 @@ class DemoResourceLimit(BaseModel):
     current: int
     limit: int
 
-# --- FUNÇÃO HELPER PARA LIDAR COM O FILTRO DE PERÍODO ---
 def _get_start_date_from_period(period: str) -> date:
     """Converte uma string de período ('last_7_days', etc.) em uma data de início."""
     today = datetime.utcnow().date()
@@ -31,11 +27,9 @@ def _get_start_date_from_period(period: str) -> date:
         return today - timedelta(days=7)
     if period == "this_month":
         return today.replace(day=1)
-    # Padrão para 'last_30_days' ou qualquer outro valor
     return today - timedelta(days=30)
 
 
-# --- ENDPOINT PARA O DASHBOARD DO GESTOR ---
 @router.get(
     "/manager",
     response_model=ManagerDashboardResponse,
@@ -60,17 +54,14 @@ async def read_manager_dashboard(
     org_id = current_user.organization_id
     start_date = _get_start_date_from_period(period)
 
-    # --- Busca de dados de custos movida para fora do 'if' ---
     costs = await crud.report.get_costs_by_category_last_30_days(db, organization_id=org_id, start_date=start_date)
     
-    # --- Busca de dados comuns a todos os gestores ---
     kpis = await crud.report.get_dashboard_kpis(db, organization_id=org_id)
     efficiency_kpis = await crud.report.get_efficiency_kpis(db, organization_id=org_id, start_date=start_date)
     recent_alerts = await crud.report.get_recent_alerts(db, organization_id=org_id)
     upcoming_maintenances = await crud.report.get_upcoming_maintenances(db, organization_id=org_id)
     active_goal = await crud.report.get_active_goal_with_progress(db, organization_id=org_id)
 
-    # --- Busca de dados premium (apenas para CLIENTE_ATIVO) ---
     if current_user.role == UserRole.CLIENTE_ATIVO:
         km_per_day = await crud.report.get_km_per_day_last_30_days(db, organization_id=org_id, start_date=start_date)
         podium = await crud.report.get_podium_drivers(db, organization_id=org_id)
@@ -86,7 +77,6 @@ async def read_manager_dashboard(
             active_goal=active_goal
         )
     
-    # --- Resposta para CLIENTE_DEMO (sem dados premium) ---
     return ManagerDashboardResponse(
         kpis=kpis,
         efficiency_kpis=efficiency_kpis,
@@ -97,7 +87,6 @@ async def read_manager_dashboard(
     )
 
 
-# --- ENDPOINT PARA O DASHBOARD DO MOTORISTA ---
 @router.get(
     "/driver",
     response_model=DriverDashboardResponse,
@@ -129,7 +118,6 @@ async def read_driver_dashboard(
     )
 
 
-# --- ENDPOINT PARA O MAPA EM TEMPO REAL ---
 @router.get(
     "/vehicles/positions",
     response_model=List[VehiclePosition],
@@ -154,7 +142,6 @@ async def read_vehicle_positions(
     return positions
 
 
-# --- Rota de estatísticas da conta demo (MANTIDA) ---
 class DemoStatsResponse(BaseModel):
     vehicles: DemoResourceLimit
     users: DemoResourceLimit
@@ -177,20 +164,16 @@ async def read_demo_stats_rebuilt(
 
     org_id = current_user.organization_id
     
-    # Busca contagens totais (Usando os 'alias' .count() que adicionamos)
     vehicle_count = await crud.vehicle.count(db, organization_id=org_id)
     user_count = await crud.user.count(db, organization_id=org_id)
     part_count = await crud.part.count(db, organization_id=org_id)
     client_count = await crud.client.count(db, organization_id=org_id)
 
-    # Busca contagens mensais
     monthly_usage: Dict[str, int] = {}
     for resource_type in deps.DEMO_MONTHLY_LIMITS.keys():
-        # --- CORREÇÃO: Usando a instância importada diretamente ---
         usage = await crud_demo_usage_instance.get_or_create_usage(
             db, organization_id=org_id, resource_type=resource_type
         )
-        # -----------------------------------------------------
         monthly_usage[resource_type] = usage.usage_count
 
     return DemoStatsResponse(

@@ -17,9 +17,9 @@ export const useDemoStore = defineStore('demo', {
   }),
 
   actions: {
-    // Adicionamos um parâmetro 'force'
+
     async fetchDemoStats(force = false) {
-      // A verificação agora só acontece se 'force' for falso
+
       if (this.stats && !force) return;
 
       this.isLoading = true;

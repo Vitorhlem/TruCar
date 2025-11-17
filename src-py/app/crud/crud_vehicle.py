@@ -61,7 +61,6 @@ async def count(db: AsyncSession, *, organization_id: int) -> int:
     """Implementa o método 'count' genérico para uso em APIs como demo-stats.
     Esta função NÃO passa 'search'.
     """
-    # Chama count_by_org apenas com os argumentos necessários
     return await count_by_org(db, organization_id=organization_id)
 
 async def update_vehicle_from_telemetry(db: AsyncSession, *, payload: TelemetryPayload) -> Vehicle | None:

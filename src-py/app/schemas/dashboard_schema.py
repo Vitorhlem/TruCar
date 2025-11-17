@@ -2,15 +2,9 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
-# --- Importando schemas existentes que iremos reutilizar ---
-# Assumindo que estes schemas estão disponíveis para importação.
-# Se estiverem em locais diferentes, ajuste o caminho.
 from app.models.report_models import DashboardKPIs, CostByCategory, KmPerDay, DashboardPodiumDriver , UpcomingMaintenance
 
 
-# ===================================================================
-# SCHEMAS PARA O DASHBOARD DO GESTOR
-# ===================================================================
 
 class KpiEfficiency(BaseModel):
     """KPIs focados em eficiência e performance financeira."""
@@ -45,27 +39,21 @@ class GoalStatus(BaseModel):
     target_value: float
     unit: str
 
-# --- Resposta Principal para o Dashboard do Gestor ---
 
 class ManagerDashboardResponse(BaseModel):
     """Schema completo para a resposta do endpoint do dashboard do gestor."""
     kpis: DashboardKPIs
     efficiency_kpis: KpiEfficiency
     
-    # Gráficos e Listas (podem ser nulos para o plano DEMO)
     costs_by_category: Optional[List[CostByCategory]] = None
     km_per_day_last_30_days: Optional[List[KmPerDay]] = None
     podium_drivers: Optional[List[DashboardPodiumDriver]] = None
     
-    # Novos Widgets
     recent_alerts: List[AlertSummary]
     upcoming_maintenances: List[UpcomingMaintenance]
     active_goal: Optional[GoalStatus] = None
 
 
-# ===================================================================
-# SCHEMAS PARA O DASHBOARD DO MOTORISTA
-# ===================================================================
 
 class DriverMetrics(BaseModel):
     """Métricas de performance para um motorista individual."""
@@ -87,7 +75,6 @@ class AchievementStatus(BaseModel):
     icon: str
     unlocked: bool
 
-# --- Resposta Principal para o Dashboard do Motorista ---
 
 class DriverDashboardResponse(BaseModel):
     """Schema completo para a resposta do endpoint do dashboard do motorista."""

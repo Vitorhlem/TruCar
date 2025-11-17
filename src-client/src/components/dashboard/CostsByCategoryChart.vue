@@ -20,7 +20,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import api from 'src/services/api';
 import { type EChartsOption } from 'echarts';
-import VChart from 'vue-echarts'; // Importa para tipagem, já está global
+import VChart from 'vue-echarts';
 
 const $q = useQuasar();
 const isLoading = ref(true);
@@ -29,12 +29,12 @@ const chartData = ref<{ name: string; value: number }[]>([]);
 async function fetchData() {
   isLoading.value = true;
   try {
-    // NOTA: Crie este endpoint no seu backend
+
     const response = await api.get<{ name: string; value: number }[]>('/api/dashboard/costs-by-category');
     chartData.value = response.data;
   } catch (error) {
     console.error('Falha ao buscar dados de custos por categoria:', error);
-    // Em caso de erro, o gráfico mostrará o estado vazio.
+
   } finally {
     isLoading.value = false;
   }
@@ -58,7 +58,7 @@ const chartOptions = computed<EChartsOption>(() => ({
     {
       name: 'Custos por Categoria',
       type: 'pie',
-      radius: ['40%', '70%'], // Cria um efeito de donut
+      radius: ['40%', '70%'],
       avoidLabelOverlap: false,
       itemStyle: {
         borderRadius: 10,

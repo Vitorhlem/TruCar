@@ -86,8 +86,8 @@ async function handleStart() {
   isSubmitting.value = true;
   try {
     const newJourney = await freightOrderStore.startJourneyForStop(props.order.id, nextStop.value.id);
-    activeJourney.value = newJourney; // Atualiza o estado local
-    // Força a atualização da lista na página principal
+    activeJourney.value = newJourney;
+
     await freightOrderStore.fetchMyPendingOrders();
   } finally { isSubmitting.value = false; }
 }

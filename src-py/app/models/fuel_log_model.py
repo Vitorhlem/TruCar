@@ -10,8 +10,6 @@ class VerificationStatus(str, enum.Enum):
     UNVERIFIED = "Não verificado"
     PENDING = "Pendente" # Status para logs de integração antes da verificação
 
-# --- NOVO ENUM ADICIONADO ---
-# Define a origem do registro de abastecimento
 class FuelLogSource(str, enum.Enum):
     MANUAL = "MANUAL"
     INTEGRATION = "INTEGRATION"
@@ -34,7 +32,6 @@ class FuelLog(Base):
     receipt_photo_url = Column(String(512), nullable=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
-    # --- NOVOS CAMPOS PARA INTEGRAÇÃO ---
     verification_status = Column(SAEnum(VerificationStatus), nullable=False, default=VerificationStatus.UNVERIFIED)
     provider_transaction_id = Column(String(255), unique=True, nullable=True, index=True)
     provider_name = Column(String(100), nullable=True)
@@ -42,13 +39,10 @@ class FuelLog(Base):
     gas_station_latitude = Column(Float, nullable=True)
     gas_station_longitude = Column(Float, nullable=True)
 
-    # --- COLUNA 'source' FALTANTE ADICIONADA AQUI ---
     source = Column(SAEnum(FuelLogSource), nullable=False, default=FuelLogSource.MANUAL)
-    # --- FIM DA ADIÇÃO ---
     
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     
-    # Relacionamentos atualizados para seguir o padrão `back_populates`
     organization = relationship("Organization", back_populates="fuel_logs")
     vehicle = relationship("Vehicle", back_populates="fuel_logs")
     user = relationship("User", back_populates="fuel_logs")

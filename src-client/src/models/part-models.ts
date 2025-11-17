@@ -1,4 +1,4 @@
-// --- 1. IMPORTAR O NOVO MODELO DE ITEM ---
+
 import type { InventoryItem } from './inventory-item-models';
 
 export type PartCategory = "Peça" | "Pneu" | "Fluído" | "Consumível" | "Outro";
@@ -10,7 +10,7 @@ export interface Part {
   part_number: string | null;
   serial_number: string | null; 
   brand: string | null;
-  stock: number; // Este agora é calculado e vem do PartPublic
+  stock: number;
   minimum_stock: number;
   location: string | null;
   notes: string | null;
@@ -18,12 +18,12 @@ export interface Part {
   value: number | null; 
   invoice_url: string | null;
   lifespan_km: number | null; 
-  items: InventoryItem[]; // <-- 2. ADICIONADO
+  items: InventoryItem[];
 }
 
-// 3. REMOVIDO 'stock'
+
 export interface PartCreate extends Omit<Part, 'id' | 'stock' | 'items'> {
-  initial_quantity?: number; // <-- Adicionado para o formulário
+  initial_quantity?: number;
 }
 
 export type PartUpdate = Partial<Omit<PartCreate, 'initial_quantity'>>;

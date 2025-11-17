@@ -1,8 +1,8 @@
 
-// O tipo 'UserRole' é importado implicitamente através do tipo 'User'
+
 export type UserRole = User['role'];
 
-// Usado ao criar um novo utilizador
+
 export interface UserCreate {
   full_name: string;
   email: string;
@@ -10,10 +10,10 @@ export interface UserCreate {
   password?: string;
   is_active?: boolean;
   employee_id?: string;
-  avatar_url?: string; // <-- ADICIONADO
+  avatar_url?: string;
 }
 
-// Usado ao atualizar um utilizador existente. Todos os campos são opcionais.
+
 export interface UserUpdate {
   full_name?: string;
   email?: string;
@@ -21,24 +21,24 @@ export interface UserUpdate {
   password?: string;
   is_active?: boolean;
   employee_id?: string;
-  avatar_url?: string; // <-- ADICIONADO
+  avatar_url?: string;
 }
 
-// --- NOVA INTERFACE ADICIONADA ---
-// Define a "forma" dos dados para atualizar as preferências de notificação
+
+
 export interface UserNotificationPrefsUpdate {
   notify_in_app: boolean;
   notify_by_email: boolean;
 }
-// --- FIM DA ADIÇÃO ---
 
-// Renomeado para ser genérico: pode conter KM ou Horas
+
+
 export interface PerformanceByVehicle {
   vehicle_info: string;
-  value: number; // Campo genérico para o valor
+  value: number;
 }
 
-// Interface de estatísticas atualizada para corresponder ao backend
+
 export interface UserStats {
   total_journeys: number;
   maintenance_requests_count: number;

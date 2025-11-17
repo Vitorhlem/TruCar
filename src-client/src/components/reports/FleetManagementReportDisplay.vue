@@ -76,13 +76,13 @@ import type { FleetManagementReport, VehicleRankingEntry } from 'src/models/repo
 import CostsPieChart from 'components/CostsPieChart.vue';
 import RankingTable from 'components/reports/RankingTable.vue';
 
-// --- INÍCIO DA CORREÇÃO ---
-// 1. Criamos uma interface que descreve o objeto jsPDF APÓS
-//    o plugin autoTable ter sido executado, adicionando a propriedade 'lastAutoTable'.
+
+
+
 interface jsPDFWithPlugin extends jsPDF {
   lastAutoTable: { finalY: number };
 }
-// --- FIM DA CORREÇÃO ---
+
 
 const props = defineProps({
   report: {
@@ -124,8 +124,8 @@ function exportToPDF() {
 
   const createRankingBody = (data: VehicleRankingEntry[]) => data.map(item => [item.vehicle_identifier, `${item.value.toFixed(2)} ${item.unit}`]);
 
-  // 2. Após a primeira tabela, fazemos o "casting" do tipo para a nossa interface.
-  //    Agora o TypeScript sabe que 'doc' tem a propriedade 'lastAutoTable'.
+
+
   autoTable(doc, {
     startY: (doc as jsPDFWithPlugin).lastAutoTable.finalY + 10,
     head: [['Top 5 - Maiores Custos (R$)']],

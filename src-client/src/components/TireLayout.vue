@@ -64,11 +64,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useQuasar } from 'quasar'; // Importar o useQuasar
+import { useQuasar } from 'quasar';
 import { axleLayouts } from 'src/config/tire-layouts';
 import type { TireWithStatus } from 'src/models/tire-models';
 
-const $q = useQuasar(); // Ativar o Quasar para usar no template
+const $q = useQuasar();
 
 const props = defineProps<{
   axleConfig: string | null;
@@ -93,7 +93,7 @@ const layout = computed(() => {
 
 function getTireStatusClass(statusInfo: TireWithStatus | undefined) {
   if (!statusInfo || statusInfo.status === 'ok') return '';
-  // Adiciona uma classe de borda reativa ao tema
+
   if (statusInfo.status === 'warning') return 'warning-border';
   if (statusInfo.status === 'critical') return 'critical-border';
   return '';
@@ -112,7 +112,7 @@ function getTireStatusColor(status: 'ok' | 'warning' | 'critical' | undefined) {
   border-radius: $generic-border-radius;
   overflow-x: auto;
   transition: background-color 0.3s;
-  // REMOVIDO: background e border fixos
+
 }
 
 .axle {
@@ -133,7 +133,7 @@ function getTireStatusColor(status: 'ok' | 'warning' | 'critical' | undefined) {
     border-color: $positive;
   }
 
-  // 5. Classes de borda que usam variáveis de cor corretas
+
   &.warning-border {
     border-color: $warning;
   }

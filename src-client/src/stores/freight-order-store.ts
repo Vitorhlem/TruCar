@@ -24,7 +24,7 @@ export const useFreightOrderStore = defineStore('freightOrder', {
   },
   actions: {
     async fetchAllFreightOrders() {
-      // (Esta função já estava correta, mas vou adicionar a melhoria de erro)
+
       this.isLoading = true;
       try {
         const response = await api.get<FreightOrder[]>('/freight-orders/');
@@ -44,7 +44,7 @@ export const useFreightOrderStore = defineStore('freightOrder', {
       try {
         const response = await api.get<FreightOrder[]>('/freight-orders/open');
         this.openOrders = response.data;
-      } catch (error) { // <-- CORRIGIDO
+      } catch (error) {
         let message = 'Falha ao buscar fretes abertos.';
         if (isAxiosError(error) && error.response?.data?.detail) message = error.response.data.detail as string;
         Notify.create({ type: 'negative', message });
@@ -58,7 +58,7 @@ export const useFreightOrderStore = defineStore('freightOrder', {
       try {
         const response = await api.get<FreightOrder[]>('/freight-orders/my-pending');
         this.myPendingOrders = response.data;
-      } catch (error) { // <-- CORRIGIDO
+      } catch (error) {
         let message = 'Falha ao buscar suas tarefas.';
         if (isAxiosError(error) && error.response?.data?.detail) message = error.response.data.detail as string;
         Notify.create({ type: 'negative', message });

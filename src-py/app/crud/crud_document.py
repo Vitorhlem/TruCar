@@ -63,7 +63,6 @@ async def get_multi_by_org(
     result = await db.execute(stmt)
     documents = result.scalars().all()
 
-    # Monta a lista de resposta no formato DocumentPublic, populando o owner_info
     response_documents = []
     for doc in documents:
         doc_public = DocumentPublic.from_orm(doc)

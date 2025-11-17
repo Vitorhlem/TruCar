@@ -26,16 +26,13 @@ class Journey(Base):
     start_engine_hours = Column(Float, nullable=True)
     end_engine_hours = Column(Float, nullable=True)
 
-    # --- CAMPOS DE ENDEREÇO ATUALIZADOS ---
     destination_address = Column(String, nullable=True) # Campo completo para referência
     destination_street = Column(String(255), nullable=True)
     destination_neighborhood = Column(String(100), nullable=True)
     destination_city = Column(String(100), nullable=True)
     destination_state = Column(String(2), nullable=True)
     destination_cep = Column(String(9), nullable=True)
-    # --- FIM DA ATUALIZAÇÃO ---
 
-    # Relacionamentos
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
     driver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)

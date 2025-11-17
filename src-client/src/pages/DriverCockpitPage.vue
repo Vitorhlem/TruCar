@@ -5,7 +5,7 @@
       <q-btn flat round dense icon="refresh" :loading="store.isLoading" @click="refreshData" />
     </div>
 
-    <!-- 1. TAREFA ATIVA -->
+
     <q-card v-if="store.activeFreightOrder" class="bg-primary text-white q-mb-lg floating-card">
       <q-card-section>
         <div class="text-overline">EM ROTA</div>
@@ -19,7 +19,7 @@
       </q-card-actions>
     </q-card>
 
-    <!-- 2. PRÓXIMAS TAREFAS -->
+
     <div class="q-mb-lg">
       <div class="text-h5 q-mb-sm">Próximas Tarefas ({{ store.claimedFreightOrders.length }})</div>
       <q-card flat bordered>
@@ -37,16 +37,16 @@
       </q-card>
     </div>
 
-    <!-- 3. MURAL DE OPORTUNIDADES -->
+
     <div>
       <div class="text-h5 q-mb-sm">Mural de Oportunidades ({{ store.openOrders.length }})</div>
       <q-card flat bordered>
         <q-list separator>
           <q-item v-if="store.isLoading && store.openOrders.length === 0"><q-item-section><q-skeleton type="text" /></q-item-section></q-item>
           <q-item v-if="!store.isLoading && store.openOrders.length === 0" class="text-grey-7 q-pa-md">Nenhuma oportunidade disponível.</q-item>
-          <!-- --- INÍCIO DA CORREÇÃO: Adicionamos o @click de volta --- -->
+
           <q-item v-else v-for="order in store.openOrders" :key="order.id" clickable @click="openClaimDialog(order)">
-          <!-- --- FIM DA CORREÇÃO --- -->
+
             <q-item-section avatar><q-icon name="add_shopping_cart" color="positive" /></q-item-section>
             <q-item-section>
               <q-item-label>{{ order.description || 'Frete sem descrição' }}</q-item-label>
@@ -57,7 +57,7 @@
       </q-card>
     </div>
 
-    <!-- Diálogos -->
+
     <q-dialog v-model="isClaimDialogOpen">
       <ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" />
     </q-dialog>

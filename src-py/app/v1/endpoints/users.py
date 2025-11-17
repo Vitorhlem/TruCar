@@ -178,7 +178,6 @@ async def read_user_stats(
             detail="Você não tem permissão para ver estas estatísticas."
         )
 
-    # Garante que o usuário solicitado pertence à mesma organização
     target_user = await crud.user.get(db, id=user_id)
     if not target_user or target_user.organization_id != current_user.organization_id:
         raise HTTPException(status_code=404, detail="Utilizador não encontrado para gerar estatísticas.")
@@ -187,7 +186,6 @@ async def read_user_stats(
         db, user_id=user_id, organization_id=current_user.organization_id
     )
     if not stats:
-        # Esta verificação é redundante devido à anterior, mas mantida por segurança
         raise HTTPException(status_code=404, detail="Utilizador não encontrado para gerar estatísticas.")
     
     return stats

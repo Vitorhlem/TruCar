@@ -1,4 +1,4 @@
-// --- Conteúdo Existente ---
+
 export interface LoginForm {
   email: string;
   password: string;
@@ -17,12 +17,12 @@ export interface OrganizationNestedInUser {
   id: number;
   name: string;
   sector: UserSector;
-  // --- CAMPOS DE LIMITE ADICIONADOS ---
+
   vehicle_limit: number;
   driver_limit: number;
   freight_order_limit: number;
   maintenance_limit: number;
-  // --- FIM DA ADIÇÃO ---
+
 }
 
 export interface User {
@@ -37,7 +37,7 @@ export interface User {
   notify_in_app: boolean;
   notify_by_email: boolean;
   notification_email: string | null;
-  organization: OrganizationNestedInUser | null; // <-- Esta linha usa a interface que acabamos de corrigir
+  organization: OrganizationNestedInUser | null;
 }
 
 export interface TokenData {

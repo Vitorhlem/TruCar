@@ -1,4 +1,4 @@
-// Define o "contrato" para todas as estratégias de setor
+
 export interface ISectorStrategy {
   vehicleNoun: string;
   vehicleNounPlural: string;

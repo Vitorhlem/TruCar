@@ -29,7 +29,6 @@ class FuelLogPublic(FuelLogBase):
     user: UserPublic
     vehicle: VehiclePublic
     
-    # --- Novos campos para a integração ---
     verification_status: VerificationStatus
     provider_name: Optional[str] = None
     gas_station_name: Optional[str] = None
@@ -37,11 +36,9 @@ class FuelLogPublic(FuelLogBase):
     
     model_config = { "from_attributes": True }
 
-# --- Schema para o SIMULADOR de integração (ATUALIZADO) ---
 class FuelProviderTransaction(BaseModel):
     transaction_id: str
     vehicle_license_plate: str
-    # --- CORREÇÃO APLICADA AQUI ---
     driver_employee_id: str # Usamos o ID do funcionário em vez do CPF
     timestamp: datetime
     liters: float

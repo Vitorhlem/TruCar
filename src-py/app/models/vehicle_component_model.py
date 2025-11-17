@@ -11,17 +11,14 @@ class VehicleComponent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     
-    # Chaves estrangeiras
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
     part_id = Column(Integer, ForeignKey("parts.id"), nullable=False)
     inventory_transaction_id = Column(Integer, ForeignKey("inventory_transactions.id"), unique=True, nullable=False)
     
-    # Controle de estado
     is_active = Column(Boolean, default=True, nullable=False)
     installation_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     uninstallation_date = Column(DateTime(timezone=True), nullable=True) # Data de descarte
     
-    # Relacionamentos
     vehicle = relationship("Vehicle", back_populates="components")
     part = relationship("Part")
     transaction = relationship("InventoryTransaction")

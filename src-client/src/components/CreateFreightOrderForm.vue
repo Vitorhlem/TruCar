@@ -7,7 +7,7 @@
 
     <q-form @submit.prevent="handleSubmit">
       <q-card-section class="q-gutter-y-lg">
-        <!-- SEÇÃO 1: DADOS GERAIS -->
+
         <div class="row q-col-gutter-md">
           <div class="col-12 col-sm-6">
             <q-select
@@ -26,7 +26,7 @@
 
         <q-separator />
 
-        <!-- SEÇÃO 2: PONTOS DE PARADA (DINÂMICO) -->
+
         <div class="text-h6">Rota e Paradas</div>
         <div v-for="(stop, index) in stopPoints" :key="index" class="q-pa-md q-gutter-y-md" bordered>
           <div class="flex items-center justify-between">
@@ -41,7 +41,7 @@
               <q-input outlined v-model="stop.scheduled_time" type="datetime-local" stack-label label="Data/Hora Agendada *" :rules="[val => !!val || 'Campo obrigatório']" />
             </div>
             
-            <!-- CAMPOS DE CEP E ENDEREÇO -->
+
             <div class="col-12 col-sm-6">
                 <q-input 
                   outlined 
@@ -56,7 +56,7 @@
              <div class="col-12 col-sm-6">
                 <q-input outlined v-model="stop.address" label="Endereço da Parada *" :rules="[val => !!val || 'Campo obrigatório']" />
             </div>
-            <!-- FIM DOS CAMPOS -->
+
 
             <div class="col-12">
               <q-input outlined v-model="stop.cargo_description" label="Descrição da Carga (nesta parada)" />

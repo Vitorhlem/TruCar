@@ -13,7 +13,6 @@ async def get_vehicle_tire_layout(
     current_user: models.User = Depends(deps.get_current_active_user)
 ):
     """Retorna a configuração atual de pneus para um veículo."""
-    # CORREÇÃO FINAL: A chamada agora usa 'vehicle_id', como definido no seu crud_vehicle.py
     vehicle = await crud.vehicle.get(db, vehicle_id=vehicle_id, organization_id=current_user.organization_id)
     if not vehicle:
         raise HTTPException(status_code=404, detail="Veículo não encontrado.")
@@ -76,7 +75,6 @@ async def get_removed_tires_history(
     """Obtém o histórico de pneus removidos para um veículo específico."""
     history_db = await crud.tire.get_removed_tires_for_vehicle(db=db, vehicle_id=vehicle_id)
     
-    # A conversão agora é direta, sem cálculos, pois o `km_run` já vem pronto do banco.
     response = [VehicleTireHistory.model_validate(tire) for tire in history_db]
     
     return response

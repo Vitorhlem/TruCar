@@ -79,10 +79,10 @@
                   <div style="height: 450px; width: 100%;">
                     <l-map ref="mapRef" v-model:zoom="zoom" :center="center" :use-global-leaflet="false">
                       <l-tile-layer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        url="https:
                         layer-type="base"
                         name="OpenStreetMap"
-                        attribution="&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>"
+                        attribution="&copy; <a href='http:
                       ></l-tile-layer>
                       <l-marker
                         v-for="vehicle in dashboardStore.vehiclePositions"
@@ -278,7 +278,7 @@ import StatCard from 'components/StatCard.vue';
 import PremiumWidget from 'components/PremiumWidget.vue';
 import PodiumDriverCard from 'components/PodiumDriverCard.vue';
 
-// --- Importações do Leaflet ---
+
 import "leaflet/dist/leaflet.css";
 import {
   LMap,
@@ -290,17 +290,11 @@ import {
 
 
 
-// --- LÓGICA DOS ÍCONES DO MAPA ---
-/**
-  * Gera um ícone de pino de mapa em SVG como uma data URI,
-  * contendo um ícone do Material Design no centro.
-  * @param pinColor Cor de fundo do pino (ex: '#21BA45').
-  * @param iconPath String do path SVG para o ícone interno.
-  * @returns Uma string de data URI para ser usada em `iconUrl`.
-  */
+
+
 function createQuasarIconPin(pinColor: string, iconPath: string): string {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 42" width="38" height="48">
+    <svg xmlns="http:
       <path fill="${pinColor}" stroke="#fff" stroke-width="1.5"
         d="M16 2C9.925 2 5 6.925 5 13c0 7.75 11 18 11 18s11-10.25 11-18C27 6.925 22.075 2 16 2z"/>
       <path fill="white" transform="translate(8, 8) scale(0.7)"
@@ -310,34 +304,34 @@ function createQuasarIconPin(pinColor: string, iconPath: string): string {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-// Paths dos ícones do Material Design (viewport 24x24)
+
 const iconPaths = {
   checkCircle: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
   altRoute: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 14h-2v-4H9V9h4V5h2v4h2v4h-2v4z',
   build: 'M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z',
 };
 
-// Gera os ícones uma vez para reutilização
+
 const iconAvailable = createQuasarIconPin('#21BA45', iconPaths.checkCircle);
 const iconInUse = createQuasarIconPin('#F2C037', iconPaths.altRoute);
 const iconMaintenance = createQuasarIconPin('#C10015', iconPaths.build);
 const fuelCostTotal = computed(() => {
   const costs = managerData.value?.costs_by_category || [];
-  // Linha de diagnóstico adicionada
+
   console.log("Dados de custo recebidos para cálculo de Combustível:", JSON.stringify(costs));
-  // Correção: a comparação agora ignora maiúsculas/minúsculas
+
   const fuel = costs.find((cost: CostByCategory) => cost.cost_type.toLowerCase() === 'Combustível');
   return fuel ? fuel.total_amount : 0;
 });
 
-// INICIALIZAÇÃO
+
 const dashboardStore = useDashboardStore();
 const authStore = useAuthStore();
 const terminologyStore = useTerminologyStore();
 const $q = useQuasar();
 const router = useRouter();
 
-// === CONTROLO DE VISUALIZAÇÃO E DADOS ===
+
 const isManager = computed(() => authStore.isManager);
 const isDriver = computed(() => authStore.isDriver);
 
@@ -349,11 +343,11 @@ const periodOptions = [
 ];
 let positionInterval: ReturnType<typeof setInterval> | null = null;
 
-// === Configurações do Mapa ===
+
 const mapRef = ref<typeof LMap | null>(null);
 const zoom = ref(4);
-// CORRIGIDO: Tipagem explícita para o `center` para resolver o erro do vue-tsc
-const center = ref<[number, number]>([-15.793889, -47.882778]); // Centro do Brasil
+
+const center = ref<[number, number]>([-15.793889, -47.882778]);
 
 function getVehicleIcon(status: string) {
   if (status === 'Disponível') return iconAvailable;
@@ -362,8 +356,8 @@ function getVehicleIcon(status: string) {
   return iconAvailable;
 }
 
-// === COMPUTED PROPERTIES PARA LIMPAR O TEMPLATE ===
-// Gestor
+
+
 const managerData = computed(() => dashboardStore.managerDashboard);
 const kpis = computed(() => managerData.value?.kpis);
 const efficiencyKpis = computed(() => managerData.value?.efficiency_kpis);
@@ -373,7 +367,7 @@ const activeGoal = computed(() => managerData.value?.active_goal);
 const podiumDrivers = computed(() => managerData.value?.podium_drivers);
 const goalProgress = computed(() => {
   if (!activeGoal.value) return 0;
-  // Se o objetivo é reduzir, o progresso é o inverso
+
   if (activeGoal.value.current_value > activeGoal.value.target_value) {
       const progress = activeGoal.value.target_value / activeGoal.value.current_value;
       return Math.min(progress, 1);
@@ -382,14 +376,14 @@ const goalProgress = computed(() => {
   return Math.min(progress, 1);
 });
 
-// Motorista
+
 const driverData = computed(() => dashboardStore.driverDashboard);
 const driverMetrics = computed(() => driverData.value?.metrics);
 const driverRanking = computed(() => driverData.value?.ranking_context);
 const driverAchievements = computed(() => driverData.value?.achievements);
 
 
-// === WATCHERS ===
+
 watch(() => dashboardStore.vehiclePositions, (newPositions) => {
   if (newPositions && newPositions.length > 0 && mapRef.value?.leafletObject) {
     const bounds = newPositions.map(p => [p.latitude, p.longitude] as [number, number]);
@@ -405,7 +399,7 @@ watch(selectedPeriod, (newPeriod) => {
   }
 });
 
-// === CICLO DE VIDA DO COMPONENTE ===
+
 onMounted(async () => {
   if (isManager.value) {
     await dashboardStore.fetchManagerDashboard(selectedPeriod.value.value);
@@ -426,7 +420,7 @@ onUnmounted(() => {
 });
 
 
-// === FUNÇÕES DE AÇÃO ===
+
 function scheduleMaintenance(vehicleInfo: string) {
   $q.notify({
     color: 'primary',
@@ -435,12 +429,12 @@ function scheduleMaintenance(vehicleInfo: string) {
   });
 }
 
-// === LÓGICA DE TERMINOLOGIA E GRÁFICOS ===
-// CORRIGIDO: Acessa a store diretamente, supondo que journeyNoun é uma string
+
+
 const journeyNounInProgress = computed(() => `Em ${terminologyStore.journeyNoun}`);
 
 const costAnalysisChart = computed(() => {
-  // CORRIGIDO: Acessa os dados diretamente do objeto principal, removendo o aninhamento.
+
   const data = managerData.value?.costs_by_category || [];
   const series = [{ name: 'Custo Total', data: data.map((item: CostByCategory) => parseFloat(item.total_amount.toFixed(2))) }];
   const options = {
@@ -458,7 +452,7 @@ const costAnalysisChart = computed(() => {
 });
 
 const lineChart = computed(() => {
-  // CORRIGIDO: Acessa os dados diretamente do objeto principal, removendo o aninhamento.
+
   const data = managerData.value?.km_per_day_last_30_days || [];
   const series = [{ name: `${terminologyStore.distanceUnit} Rodados`, data: data.map((item: KmPerDay) => item.total_km) }];
   const options = {

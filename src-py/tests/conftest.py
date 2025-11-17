@@ -1,4 +1,3 @@
-# backend/tests/conftest.py
 
 import pytest
 from typing import AsyncGenerator
@@ -6,13 +5,11 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-# Importações da sua aplicação
 from app.models.user_model import User, UserRole
 from app import deps
 from app.db.base_class import Base
 from main import app
 
-# --- 1. CONFIGURAÇÃO DA BASE DE DADOS DE TESTE ---
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db?cache=shared"
 
 engine = create_async_engine(TEST_DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
@@ -21,16 +18,12 @@ TestingSessionLocal = sessionmaker(
 )
 
 
-# --- 2. OVERRIDES DE DEPENDÊNCIAS (BASE DE DADOS E AUTENTICAÇÃO) ---
 
 async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
     async with TestingSessionLocal() as session:
         yield session
 
 def override_get_current_super_admin():
-    # Cria um utilizador mock com todos os campos obrigatórios
-    # e um role que existe no Enum UserRole.
-    # A propriedade `is_superuser` irá retornar True por causa do email.
     return User(
         id=999,
         full_name="Super Admin Test",
@@ -41,7 +34,6 @@ def override_get_current_super_admin():
         is_active=True
     )
 
-# --- 3. FIXTURES DO PYTEST ---
 
 @pytest.fixture(scope="session", autouse=True)
 async def setup_database():

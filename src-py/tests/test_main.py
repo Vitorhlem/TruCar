@@ -1,10 +1,8 @@
-# backend/tests/test_main.py
 
 import pytest # Importe o pytest
 from fastapi import status
 from httpx import AsyncClient
 
-# Adicione este marcador!
 @pytest.mark.asyncio
 async def test_read_root(client: AsyncClient):
     """

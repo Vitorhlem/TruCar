@@ -82,9 +82,7 @@ class MaintenancePartChange(Base):
     component_removed_id: Mapped[int] = mapped_column(Integer, ForeignKey("vehicle_components.id"))
     component_installed_id: Mapped[int] = mapped_column(Integer, ForeignKey("vehicle_components.id"))
 
-    # --- CAMPO NOVO (BÔNUS) ---
     is_reverted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
-    # --- FIM DA ADIÇÃO ---
 
     maintenance_request: Mapped["MaintenanceRequest"] = relationship("MaintenanceRequest", back_populates="part_changes")
     user: Mapped["User"] = relationship("User")

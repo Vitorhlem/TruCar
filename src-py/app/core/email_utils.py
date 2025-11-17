@@ -26,7 +26,6 @@ def send_password_reset_email(to_email: str, user_name: str, token: str):
     project_name = settings.PROJECT_NAME
     subject = f"{project_name} - Redefinição de Senha"
     
-    # Idealmente, a URL do frontend viria das configurações do ambiente
     reset_url = f"http://localhost:9000/#/auth/reset-password?token={token}"
 
     message_html = f"""

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
-import { Notify } from 'quasar'; // Removido 'useQuasar'
+import { Notify } from 'quasar';
 import type {
   VehicleConsolidatedReport,
   DriverPerformanceReport,
@@ -33,7 +33,7 @@ export const useReportStore = defineStore('report', {
     },
 
     async getDashboardSummary() {
-      // (Esta função estava faltando na sua store, mas estava sendo chamada)
+
       this.isLoading = true;
       try {
         const response = await api.get('/reports/dashboard-summary');
@@ -74,9 +74,9 @@ export const useReportStore = defineStore('report', {
           type: 'positive',
           message: 'Relatório de Veículo gerado com sucesso!',
         });
-      } catch (error: unknown) { // Corrigido: any -> unknown
+      } catch (error: unknown) {
         console.error('Erro ao gerar relatório consolidado:', error);
-        // Adicionado type guard para o erro
+
         const apiError = error as { response?: { data?: { detail?: string } } };
         Notify.create({
           type: 'negative',
@@ -103,7 +103,7 @@ export const useReportStore = defineStore('report', {
           type: 'positive',
           message: 'Relatório de Desempenho gerado com sucesso!',
         });
-      } catch (error: unknown) { // Corrigido: any -> unknown
+      } catch (error: unknown) {
         console.error('Erro ao gerar relatório de desempenho:', error);
         const apiError = error as { response?: { data?: { detail?: string } } };
         Notify.create({
@@ -131,7 +131,7 @@ export const useReportStore = defineStore('report', {
           type: 'positive',
           message: 'Relatório Gerencial gerado com sucesso!',
         });
-      } catch (error: unknown) { // Corrigido: any -> unknown
+      } catch (error: unknown) {
         console.error('Erro ao gerar relatório gerencial:', error);
         const apiError = error as { response?: { data?: { detail?: string } } };
         Notify.create({

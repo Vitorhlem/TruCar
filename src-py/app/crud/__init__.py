@@ -1,4 +1,3 @@
-# backend/app/crud/__init__.py
 
 from . import crud_user as user
 from . import crud_organization as organization

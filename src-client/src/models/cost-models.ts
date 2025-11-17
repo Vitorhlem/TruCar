@@ -16,5 +16,5 @@ export interface VehicleCost {
   notes?: string;
 }
 
-// Interface para a criação de um novo custo (sem o 'id')
+
 export type ICostCreate = Omit<IVehicleCost, 'id'>;

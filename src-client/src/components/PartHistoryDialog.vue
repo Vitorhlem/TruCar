@@ -42,7 +42,7 @@ const emit = defineEmits(['update:modelValue']);
 
 const partStore = usePartStore();
 
-// --- COLUNAS DO HISTÓRICO ATUALIZADAS ---
+
 const historyColumns: QTableProps['columns'] = [
   { 
     name: 'timestamp', 
@@ -59,17 +59,17 @@ const historyColumns: QTableProps['columns'] = [
     sortable: true, 
     align: 'left' 
   },
-  // --- NOVA COLUNA ---
+
   { 
     name: 'item_code', 
     label: 'Item (Cód.)', 
-    // O dado agora vem de 'item.id'
+
     field: (row) => row.item?.id, 
     align: 'center' 
   }, 
-  // --- COLUNAS 'undefined' REMOVIDAS ---
-  // { name: 'quantity_change', label: 'Alteração', field: 'quantity_change', align: 'center' },
-  // { name: 'stock_after_transaction', label: 'Estoque Final', field: 'stock_after_transaction', align: 'center' },
+
+
+
   { 
     name: 'user', 
     label: 'Usuário', 

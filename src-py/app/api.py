@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 
-# Importamos todos os endpoints de uma só vez para melhor organização
 from app.v1.endpoints import (
     admin,
     clients,
@@ -28,12 +27,11 @@ from app.v1.endpoints import (
     vehicle_components,
     tires,
     costs,
-    fines 
+    fines
 )
 
 api_router = APIRouter()
 
-# Registamos cada router com o seu prefixo e tag
 api_router.include_router(login.router, prefix="/login", tags=["Login"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin Panel"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
@@ -56,8 +54,8 @@ api_router.include_router(freight_orders.router, prefix="/freight-orders", tags=
 api_router.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetry"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 api_router.include_router(utils.router, prefix="/utils", tags=["Utilities"])
-api_router.include_router(parts.router, prefix="/parts", tags=["Parts"]) 
+api_router.include_router(parts.router, prefix="/parts", tags=["Parts"])
 api_router.include_router(vehicle_components.router, tags=["Vehicle Components"])
 api_router.include_router(tires.router, prefix="/tires", tags=["Tire Management"])
 api_router.include_router(costs.router, prefix="/costs", tags=["Costs"])
-api_router.include_router(fines.router, prefix="/fines", tags=["Fines"]) # <-- ADICIONE ESTA LINHA
+api_router.include_router(fines.router, prefix="/fines", tags=["Fines"])

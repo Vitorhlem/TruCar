@@ -28,16 +28,12 @@ class CRUDDemoUsage(CRUDBase[DemoUsage, DemoUsage, DemoUsage]):
             )
             db.add(usage)
             await db.flush() # Use flush() para preparar o objeto na sessão
-            # await db.commit() # <-- REMOVA ESTA LINHA
-            # await db.refresh(usage) # <-- REMOVA ESTA LINHA
         return usage
 
     async def increment_usage(self, db: AsyncSession, *, organization_id: int, resource_type: str):
         usage = await self.get_or_create_usage(db, organization_id=organization_id, resource_type=resource_type)
         usage.usage_count += 1
         db.add(usage) # Garante que está na sessão
-        # await db.commit() # <-- REMOVA ESTA LINHA
         return usage
     
-# Esta linha é a que importa. Ela cria a instância.
 demo_usage = CRUDDemoUsage(DemoUsage)

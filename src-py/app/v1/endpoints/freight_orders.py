@@ -1,4 +1,3 @@
-# ARQUIVO: backend/app/api/v1/endpoints/freight_orders.py
 
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,9 +19,6 @@ from app.schemas.journey_schema import JourneyPublic
 router = APIRouter()
 
 
-# ----------------------------------------------------
-# ENDPOINTS PARA GESTORES (Manager)
-# ----------------------------------------------------
 
 @router.post("/", response_model=FreightOrderPublic, status_code=status.HTTP_201_CREATED,
             dependencies=[Depends(deps.check_demo_limit("freight_orders"))])
@@ -64,9 +60,6 @@ async def update_freight_order(
     return updated_freight_order
 
 
-# ----------------------------------------------------
-# ENDPOINTS PARA MOTORISTAS (Driver)
-# ----------------------------------------------------
 
 @router.put("/{order_id}/claim", response_model=FreightOrderPublic)
 async def claim_freight_order(
@@ -151,9 +144,6 @@ async def complete_freight_stop_point(
     return completed_stop
 
 
-# ----------------------------------------------------
-# ENDPOINTS PÚBLICOS (Gestores e Motoristas)
-# ----------------------------------------------------
 
 @router.get("/", response_model=List[FreightOrderPublic])
 async def read_freight_orders(
@@ -163,8 +153,6 @@ async def read_freight_orders(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """(Gestor) Retorna a lista de todas as ordens de frete da organização."""
-    # --- LÓGICA DE PERMISSÃO CORRIGIDA ---
-    # Agora verificamos os papéis de gestor (ativo e demo)
     if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
         raise HTTPException(status_code=403, detail="Apenas gestores podem ver todas as ordens de frete.")
     

@@ -1,5 +1,3 @@
-# backend/main.py
-
 import os
 import shutil
 from fastapi import FastAPI, Request, status, UploadFile, File, HTTPException
@@ -8,15 +6,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# Importações da sua aplicação
 from app.api import api_router
 from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.db.session import engine
-
-# ======================= BLOCO DE IMPORTAÇÃO DOS MODELOS =======================
-# Este bloco garante que a Base do SQLAlchemy conheça todas as suas tabelas
-# antes que a função on_startup seja chamada para criá-las.
 
 from app.db.base_class import Base
 from app.models.organization_model import Organization
@@ -41,29 +34,19 @@ from app.models.vehicle_cost_model import VehicleCost
 from app.models.vehicle_component_model import VehicleComponent
 from app.models.tire_model import VehicleTire
 from app.models.fine_model import Fine
-
-# --- ESTA É A CORREÇÃO DEFINITIVA ---
-# Adiciona o nosso novo modelo à lista de modelos conhecidos.
 from app.models.demo_usage_model import DemoUsage
-# ==============================================================================
 
-
-# 1. Configurar o logging primeiro
 setup_logging()
 
-# 2. Definir constantes
 UPLOAD_DIR = "static/uploads"
 
-# 3. Criar a instância principal da aplicação
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# 4. Criar diretórios necessários
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# 5. Configurar o CORS
 origins = [
     "https://trucar.netlify.app",
     "https://trucar-at4e.onrender.com",
@@ -79,18 +62,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 6. Adicionar o evento de startup para criar as tabelas
 @app.on_event("startup")
 async def on_startup():
     """
     Cria as tabelas no banco de dados na inicialização da aplicação.
     """
     async with engine.begin() as conn:
-        # Agora, Base.metadata.create_all conhece a tabela 'organization'
-        # e a 'demousage', e as criará na ordem correta.
         await conn.run_sync(Base.metadata.create_all)
 
-# 7. Adicionar Handlers de Exceção
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
@@ -107,10 +86,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": custom_errors},
     )
 
-# 8. Servir arquivos estáticos
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# 9. Endpoint de Upload
 @app.post("/upload-photo")
 async def upload_photo(file: UploadFile = File(...)):
     if not file.content_type.startswith('image/'):
@@ -129,10 +106,8 @@ async def upload_photo(file: UploadFile = File(...)):
     file_url = f"/static/uploads/{unique_filename}"
     return JSONResponse(content={"file_url": file_url})
 
-# 10. Adicionar a rota raiz para verificação de status
 @app.get("/", status_code=200, include_in_schema=False)
 def read_root():
     return {"status": f"Welcome to {settings.PROJECT_NAME} API!"}
 
-# 11. Incluir o roteador principal da API
 app.include_router(api_router)

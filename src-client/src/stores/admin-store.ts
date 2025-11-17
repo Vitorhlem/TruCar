@@ -4,14 +4,14 @@ import { Notify } from 'quasar';
 import { isAxiosError } from 'axios';
 import type { User } from 'src/models/auth-models';
 import type { Organization, OrganizationUpdate } from 'src/models/organization-models';
-import { useAuthStore } from './auth-store'; // Importamos a authStore para o login sombra
+import { useAuthStore } from './auth-store';
 
 
 export const useAdminStore = defineStore('admin', {
   state: () => ({
     demoUsers: [] as User[],
     organizations: [] as Organization[],
-        allUsers: [] as User[], // <-- NOVO ESTADO para todos os utilizadores
+        allUsers: [] as User[],
     isLoading: false,
   }),
 
@@ -32,7 +32,7 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
-     // --- NOVA AÇÃO ADICIONADA ---
+
     async fetchAllUsers() {
       this.isLoading = true;
       try {
@@ -65,13 +65,13 @@ export const useAdminStore = defineStore('admin', {
         await api.post(`/admin/users/${userId}/activate`);
         Notify.create({ type: 'positive', message: 'Utilizador ativado com sucesso!' });
         
-        // --- CORRIGIDO ---
-        // Agora, recarregamos as DUAS listas para manter a interface sincronizada
+
+
         await Promise.all([
           this.fetchDemoUsers(),
           this.fetchOrganizations()
         ]);
-        // --- FIM DA CORREÇÃO ---
+
 
       } catch (error) {
         let message = 'Erro ao ativar utilizador.';
@@ -82,13 +82,13 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
-    // --- NOVA AÇÃO DE LOGIN SOMBRA ---
+
     async impersonateUser(targetUser: User) {
       try {
         const response = await api.post<{ access_token: string }>(`/admin/users/${targetUser.id}/impersonate`);
         const { access_token } = response.data;
 
-        // Chamamos a authStore para gerir a troca de sessão
+
         const authStore = useAuthStore();
         authStore.startImpersonation(access_token, targetUser);
 

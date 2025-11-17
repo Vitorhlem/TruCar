@@ -1,4 +1,3 @@
-# backend/app/api/v1/endpoints/reports.py
 from fastapi import APIRouter, Depends, HTTPException, Response, Body, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from jinja2 import Environment, FileSystemLoader
@@ -9,7 +8,6 @@ import logging
 from app import crud, deps
 from app.models.user_model import User, UserRole
 from app.schemas.report_generator_schema import ReportRequest
-# --- IMPORTS ATUALIZADOS ---
 from app.schemas.report_schema import (
     DashboardSummary, 
     VehicleConsolidatedReport, 
@@ -101,19 +99,16 @@ async def generate_report_pdf(
         raise HTTPException(status_code=500, detail="Erro ao gerar o PDF.")
     
 
-# --- ENDPOINT ATUALIZADO ---
 @router.post("/vehicle-consolidated", response_model=VehicleConsolidatedReport,
              dependencies=[Depends(deps.check_demo_limit("reports"))])
 async def generate_vehicle_consolidated_report(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    # Alterado para receber o novo schema de request no corpo
     report_request: VehicleReportRequest = Body(...), 
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Gera um relatório consolidado com todos os dados de um veículo."""
     try:
-        # Passa os parâmetros do request para o CRUD
         report_data = await crud.report.get_vehicle_consolidated_data(
             db=db,
             vehicle_id=report_request.vehicle_id,
@@ -132,7 +127,6 @@ async def generate_vehicle_consolidated_report(
         logging.error(f"Erro Inesperado no Relatório: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ocorreu um erro ao gerar o relatório: {e}")
 
-# --- Endpoint de dashboard-summary (sem alteração) ---
 @router.get("/dashboard-summary", response_model=DashboardSummary)
 async def get_dashboard_summary_data(
     db: AsyncSession = Depends(deps.get_db),

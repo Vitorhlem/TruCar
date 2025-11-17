@@ -202,7 +202,7 @@ import { useImplementStore } from 'stores/implement-store';
 import { useAuthStore } from 'stores/auth-store';
 import type { Implement, ImplementCreate, ImplementUpdate } from 'src/models/implement-models';
 import HoverCard from 'components/HoverCard.vue';
-import { ImplementStatus } from 'src/models/implement-models'; // Importando o Enum
+import { ImplementStatus } from 'src/models/implement-models';
 
 const $q = useQuasar();
 const implementStore = useImplementStore();
@@ -212,38 +212,38 @@ const isSubmitting = ref(false);
 const editingImplement = ref<Implement | null>(null);
 const isEditing = computed(() => !!editingImplement.value);
 
-// --- 2. ADICIONAR REFS PARA OS FILTROS ---
+
 const searchTerm = ref('');
 const filterStatus = ref<ImplementStatus | null>(null);
 const filterType = ref<string | null>(null);
 
 const formData = ref<Partial<Implement>>({});
 
-// --- 3. ADICIONAR OPÇÕES PARA OS FILTROS ---
 
-// Opções de Status (baseado no seu modelo)
+
+
 const statusOptions = [
   { label: 'Disponível', value: ImplementStatus.AVAILABLE },
   { label: 'Em Uso', value: ImplementStatus.IN_USE },
   { label: 'Manutenção', value: ImplementStatus.MAINTENANCE }
 ];
 
-// Opções de Tipo (gerado dinamicamente da lista do store)
+
 const typeOptions = computed(() => {
   const types = implementStore.implementList
-    .map(impl => impl.type) // Pega todos os tipos (incluindo nulos e duplicados)
-    .filter((type): type is string => !!type); // Filtra nulos/vazios
+    .map(impl => impl.type)
+    .filter((type): type is string => !!type);
+
   
-  // Retorna uma lista de strings únicas
   return [...new Set(types)];
 });
 
-// --- 4. ATUALIZAR 'filteredImplements' PARA USAR OS FILTROS ---
+
 const filteredImplements = computed(() => {
   const lowerCaseSearch = searchTerm.value.toLowerCase();
 
   return implementStore.implementList.filter(implement => {
-    // Filtro de Texto
+
     const searchMatch = !searchTerm.value || (
       implement.name.toLowerCase().includes(lowerCaseSearch) ||
       implement.brand.toLowerCase().includes(lowerCaseSearch) ||
@@ -252,17 +252,17 @@ const filteredImplements = computed(() => {
       (implement.type && implement.type.toLowerCase().includes(lowerCaseSearch))
     );
 
-    // Filtro de Status
+
     const statusMatch = !filterStatus.value || implement.status === filterStatus.value;
 
-    // Filtro de Tipo
+
     const typeMatch = !filterType.value || implement.type === filterType.value;
 
     return searchMatch && statusMatch && typeMatch;
   });
 });
 
-// FIX: Changed parameter type from 'string' to 'ImplementStatus'
+
 function getStatusColor(status: ImplementStatus) {
   switch (status) {
     case ImplementStatus.AVAILABLE: return 'positive';
@@ -272,7 +272,7 @@ function getStatusColor(status: ImplementStatus) {
   }
 }
 
-// FIX: Changed parameter type from 'string' to 'ImplementStatus'
+
 function getStatusLabel(status: ImplementStatus) {
   switch (status) {
     case ImplementStatus.AVAILABLE: return 'Disponível';
@@ -282,7 +282,7 @@ function getStatusLabel(status: ImplementStatus) {
   }
 }
 
-// ATUALIZADO 'resetForm' COM OS NOVOS CAMPOS
+
 function resetForm() {
   editingImplement.value = null;
   formData.value = {
@@ -308,12 +308,12 @@ function openDialog(implement: Implement | null = null) {
   isDialogOpen.value = true;
 }
 
-// ATUALIZADO 'handleSubmit' PARA TRATAR VALORES NULOS
+
 async function handleSubmit() {
   isSubmitting.value = true;
   try {
     const payload = { ...formData.value };
-    // Limpa valores que podem ser 'undefined' ou vazios
+
     if (!payload.acquisition_date) payload.acquisition_date = null;
     if (!payload.acquisition_value) payload.acquisition_value = null;
     if (!payload.notes) payload.notes = null;

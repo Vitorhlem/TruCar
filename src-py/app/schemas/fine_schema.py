@@ -5,7 +5,6 @@ from datetime import date
 from app.models.fine_model import FineStatus
 from .user_schema import UserPublic
 from .vehicle_schema import VehiclePublic
-# Garanta que o vehicle_cost_schema.py (da minha resposta anterior) exista
 from .vehicle_cost_schema import VehicleCostPublic 
 
 class FineBase(BaseModel):
@@ -26,11 +25,7 @@ class FineUpdate(BaseModel):
     Todos os campos são opcionais.
     """
     description: Optional[str] = None
-    # --- ESTA É A CORREÇÃO ---
-    # Permite que o campo 'date' seja enviado com um valor 'date'
-    # ou não seja enviado (valor padrão None).
     date: Optional[date] = None 
-    # --------------------------
     value: Optional[float] = None
     status: Optional[FineStatus] = None
     vehicle_id: Optional[int] = None

@@ -17,7 +17,7 @@ export const useTireStore = defineStore('tire', {
       try {
         const response = await api.get<TireLayout>(`/tires/vehicles/${vehicleId}/tires`);
         this.tireLayout = response.data;
-      } catch { // Variável de erro removida
+      } catch {
         Notify.create({ type: 'negative', message: 'Falha ao carregar a configuração de pneus.' });
       } finally {
         this.isLoading = false;
@@ -29,7 +29,7 @@ export const useTireStore = defineStore('tire', {
       try {
         const response = await api.get<VehicleTireHistory[]>(`/tires/vehicles/${vehicleId}/removed-tires`);
         this.removedTiresHistory = response.data;
-      } catch { // Variável de erro removida
+      } catch {
         Notify.create({ type: 'negative', message: 'Falha ao carregar o histórico de pneus removidos.' });
       } finally {
         this.isLoading = false;

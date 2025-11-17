@@ -35,9 +35,6 @@ class Settings(BaseSettings):
 
     ALGORITHM: str = "HS256"
 
-    # --- CHAVE DE CRIPTOGRAFIA ADICIONADA AQUI ---
-    # Esta linha faz com que a sua aplicação leia a variável FERNET_KEY do arquivo .env
     FERNET_KEY: str
-    # --- FIM DA ADIÇÃO ---
 
 settings = Settings()

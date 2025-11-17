@@ -1,4 +1,3 @@
-# backend/tests/api/v1/test_admin.py
 
 import pytest
 from httpx import AsyncClient
@@ -33,12 +32,10 @@ async def superuser_token_headers(client: AsyncClient, db_session: AsyncSession)
             role=UserRole.CLIENTE_ATIVO
         )
     
-    # CORREÇÃO: Usar o ID do utilizador (convertido para string) como o "subject" do token.
     access_token_jwt = auth.create_access_token(data={"sub": str(user.id)})
     
     return {"Authorization": f"Bearer {access_token_jwt}"}
 
-# --- Testes (sem alterações a partir daqui) ---
 
 @pytest.mark.asyncio
 async def test_super_admin_can_list_organizations(client: AsyncClient, db_session: AsyncSession, superuser_token_headers: dict[str, str]):

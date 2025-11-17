@@ -17,7 +17,6 @@ from app.schemas.inventory_transaction_schema import TransactionPublic
 
 router = APIRouter()
 
-# --- NOVO SCHEMA PARA ATUALIZAÇÃO DO EIXO ---
 class AxleConfigUpdate(BaseModel):
     axle_configuration: str
 
@@ -129,7 +128,6 @@ async def update_vehicle(
     return updated_vehicle
 
 
-# --- NOVO ENDPOINT PARA ATUALIZAR A CONFIGURAÇÃO DE EIXOS ---
 @router.patch("/{vehicle_id}/axle-config", response_model=VehiclePublic)
 async def update_vehicle_axle_config(
     *,
@@ -152,7 +150,6 @@ async def update_vehicle_axle_config(
     await db.commit()
     await db.refresh(db_vehicle)
     return db_vehicle
-# --- FIM DO NOVO ENDPOINT ---
 
 
 @router.delete("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)

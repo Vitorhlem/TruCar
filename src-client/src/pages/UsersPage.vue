@@ -107,7 +107,7 @@ const isRoleSelectorDisabled = computed(() => {
   return !authStore.isSuperuser;
 });
 
-// --- LÓGICA DE BLOQUEIO DE DEMO ADICIONADA ---
+
 const isDriverLimitReached = computed(() => {
   if (!authStore.isDemo) {
     return false;
@@ -116,7 +116,7 @@ const isDriverLimitReached = computed(() => {
   if (limit === undefined || limit === null || limit < 0) {
     return false;
   }
-  // Usar a contagem global da demoStore
+
   const currentCount = demoStore.stats?.driver_count ?? 0;
   return currentCount >= limit;
 });
@@ -129,10 +129,10 @@ function showUpgradeDialog() {
     persistent: false
   });
 }
-// --- FIM DA LÓGICA DE BLOQUEIO ---
+
 
 const columns: QTableColumn[] = [
-  // --- COLUNA EMPLOYEE_ID ADICIONADA À TABELA ---
+
   { name: 'employee_id', label: 'ID Funcionário', field: 'employee_id', align: 'left', sortable: true },
   { name: 'full_name', label: 'Nome Completo', field: 'full_name', align: 'left', sortable: true },
   { name: 'email', label: 'E-mail', field: 'email', align: 'left', sortable: true },
@@ -152,14 +152,14 @@ function resetForm() {
 }
 
 function openCreateDialog() {
-  // --- VERIFICAÇÃO DE LIMITE ADICIONADA ---
-  // A verificação só se aplica se o usuário que está sendo criado for 'driver'
-  // Vamos verificar ao tentar criar um 'driver' (que é o padrão)
+
+
+
   if (isDriverLimitReached.value && formData.value.role === 'driver') {
     showUpgradeDialog();
-    return; // Impede a abertura do diálogo
+    return;
   }
-  // --- FIM DA VERIFICAÇÃO ---
+
 
   resetForm();
   isFormDialogOpen.value = true;
@@ -181,17 +181,17 @@ async function onFormSubmit() {
   try {
     const payload = { ...formData.value };
 
-    // --- VERIFICAÇÃO DE LIMITE AO SALVAR (CASO O PAPEL SEJA MUDADO PARA DRIVER) ---
+
     if (
-      !isEditing.value && // Apenas ao criar um novo usuário
-      payload.role === 'driver' && // que é motorista
-      isDriverLimitReached.value // e o limite foi atingido
+      !isEditing.value &&
+      payload.role === 'driver' &&
+      isDriverLimitReached.value
     ) {
       showUpgradeDialog();
       isSubmitting.value = false;
       return;
     }
-    // --- FIM DA VERIFICAÇÃO ---
+
 
     if (isEditing.value && !payload.password) {
       delete payload.password;

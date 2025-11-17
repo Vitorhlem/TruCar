@@ -4,12 +4,12 @@ import { Notify } from 'quasar';
 import { isAxiosError } from 'axios';
 import type { Part, PartCreate } from 'src/models/part-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
-// --- 1. IMPORTAR O NOVO MODELO ---
+
 import type { 
   InventoryItem, 
   InventoryItemDetails, 
-  InventoryItemPage, // <-- Adicionado
-  InventoryItemRow  // <-- Adicionado
+  InventoryItemPage,
+  InventoryItemRow
 } from 'src/models/inventory-item-models';
 import { InventoryItemStatus } from 'src/models/inventory-item-models';
 
@@ -25,10 +25,10 @@ export const usePartStore = defineStore('part', {
     selectedPartHistory: [] as InventoryTransaction[],
     availableItems: [] as InventoryItem[], 
     
-    // --- 2. NOVO STATE PARA A PÁGINA ---
+
     selectedItemDetails: null as InventoryItemDetails | null,
     isItemDetailsLoading: false,
-    // --- FIM DO NOVO STATE ---
+
     
     masterItemList: [] as InventoryItemRow[],
     isMasterListLoading: false,
@@ -161,7 +161,7 @@ export const usePartStore = defineStore('part', {
         const payload = { quantity, notes };
         await api.post(`/parts/${partId}/add-items`, payload);
         
-        // Recarregar a lista do zero
+
         await this.fetchParts();
 
         Notify.create({ type: 'positive', message: `${quantity} itens adicionados com sucesso!` });
@@ -192,12 +192,12 @@ export const usePartStore = defineStore('part', {
       }
     },
 
-    // --- 3. NOVA ACTION PARA BUSCAR OS DETALHES ---
+
     async fetchItemDetails(itemId: number) {
       this.isItemDetailsLoading = true;
       this.selectedItemDetails = null;
       try {
-        // Usamos o novo endpoint e o novo modelo
+
         const response = await api.get<InventoryItemDetails>(`/parts/items/${itemId}`);
         this.selectedItemDetails = response.data;
       } catch (error) {
@@ -207,7 +207,7 @@ export const usePartStore = defineStore('part', {
         this.isItemDetailsLoading = false;
       }
     },
-    // --- FIM DA NOVA ACTION ---
+
 
     async fetchAvailableItems(partId: number) {
       this.isItemsLoading = true;
@@ -215,7 +215,7 @@ export const usePartStore = defineStore('part', {
       try {
         const response = await api.get<InventoryItem[]>(`/parts/${partId}/items`, {
           params: { 
-            // Substitua a string hardcoded pelo Enum
+
             status: InventoryItemStatus.DISPONIVEL 
           }
         });

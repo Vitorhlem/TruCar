@@ -1,6 +1,6 @@
 import type { ISectorStrategy } from './strategy.interface';
 
-// O nome da constante deve ser exatamente este
+
 export const ServicesStrategy: ISectorStrategy = {
   vehicleNoun: 'Veículo',
   vehicleNounPlural: 'Veículos',

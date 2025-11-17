@@ -30,7 +30,6 @@ def send_new_request_email_background(manager_emails: List[str], request: Mainte
 
     subject = f"Novo Chamado de Manutenção Aberto - TruCar #{request.id}"
     
-    # Template HTML para o e-mail
     message_html = f"""
     <!DOCTYPE html>
     <html lang="pt-BR">

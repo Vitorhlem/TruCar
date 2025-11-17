@@ -5,7 +5,6 @@ from typing import List, Optional
 import logging
 import datetime 
 
-# Imports necessários para a correção
 from app.models.vehicle_component_model import VehicleComponent
 from app.models.vehicle_cost_model import VehicleCost, CostType
 from app.models.inventory_transaction_model import InventoryTransaction
@@ -32,7 +31,6 @@ def log_transaction(
     return log_entry
 
 
-# --- (Funções create_inventory_items, get_item_by_id, get_all_items_paginated, get_item_with_details permanecem iguais) ---
 
 async def create_inventory_items(
     db: AsyncSession, *, part_id: int, organization_id: int, quantity: int, user_id: int, notes: Optional[str] = None
@@ -162,20 +160,15 @@ async def get_item_with_details(db: AsyncSession, *, item_id: int, organization_
     result = await db.execute(stmt)
     return result.scalars().first()
 
-# ---
-# --- FUNÇÃO CENTRAL CORRIGIDA
-# ---
 async def change_item_status(
     db: AsyncSession, *, item: InventoryItem, new_status: InventoryItemStatus, 
     user_id: int, vehicle_id: Optional[int] = None, notes: Optional[str] = None
 ) -> InventoryItem:
     
-    # Validação de transição
     current_status = item.status
     if current_status == new_status:
         return item
         
-    # --- LÓGICA DE VALIDAÇÃO ATUALIZADA (mais robusta) ---
     if new_status == InventoryItemStatus.EM_USO:
         if current_status != InventoryItemStatus.DISPONIVEL:
             raise ValueError(f"Não é possível instalar o item pois ele não está 'Disponível' (status atual: {current_status}).")
@@ -189,10 +182,8 @@ async def change_item_status(
     elif new_status == InventoryItemStatus.DISPONIVEL:
          if current_status not in [InventoryItemStatus.EM_USO, InventoryItemStatus.FIM_DE_VIDA]:
                raise ValueError(f"Item não pode ser retornado ao estoque (status atual: {current_status}).")
-    # --- FIM DA VALIDAÇÃO ---
 
 
-    # Mapeamento do tipo de transação para o log
     transaction_type_map = {
         InventoryItemStatus.EM_USO: TransactionType.INSTALACAO,
         InventoryItemStatus.FIM_DE_VIDA: TransactionType.FIM_DE_VIDA,
@@ -210,7 +201,6 @@ async def change_item_status(
     if not transaction_type:
          raise ValueError("Tipo de transação inválido para mudança de status.")
 
-    # Atualiza o item
     item.status = new_status
     
     if new_status == InventoryItemStatus.EM_USO:
@@ -220,7 +210,6 @@ async def change_item_status(
         item.installed_on_vehicle_id = None
         item.installed_at = None
     
-    # Cria o registro de log
     log_entry = log_transaction( 
         db=db, item_id=item.id, part_id=item.part_id, user_id=user_id,
         transaction_type=transaction_type,
@@ -231,20 +220,15 @@ async def change_item_status(
     db.add(item)
     db.add(log_entry) 
     
-    # Carrega a 'part' (template) para obter o valor
     part_template = item.part 
     if not part_template:
         part_template = await db.get(Part, item.part_id)
 
-    # --- LÓGICA DE CRIAÇÃO / DESATIVAÇÃO DO COMPONENTE E CUSTO (CORRIGIDA) ---
     
     if new_status == InventoryItemStatus.EM_USO and vehicle_id:
-        # --- LÓGICA DE INSTALAÇÃO ---
         
-        # 1. Flush para obter o ID do log_entry
         await db.flush() 
         
-        # 2. Verificar se é re-instalação (procura componente inativo PARA ESTE ITEM)
         stmt_find_old = select(VehicleComponent).join(
             InventoryTransaction, VehicleComponent.inventory_transaction_id == InventoryTransaction.id
         ).where(
@@ -257,18 +241,13 @@ async def change_item_status(
         existing_inactive_component = result.scalars().first()
 
         if existing_inactive_component:
-            # --- É UMA RE-INSTALAÇÃO (Ex: Reversão de Peça A) ---
             existing_inactive_component.is_active = True
             existing_inactive_component.uninstallation_date = None
-            # Atualiza o ID da transação para a *nova* transação de instalação
             existing_inactive_component.inventory_transaction_id = log_entry.id
             db.add(existing_inactive_component)
             
-            # *** NÃO ADICIONA CUSTO ***
-            # O custo original já foi pago e nunca foi estornado (porque foi FIM_DE_VIDA).
         
         else:
-            # --- É UMA INSTALAÇÃO NOVA ---
             new_component = VehicleComponent(
                 vehicle_id=vehicle_id,
                 part_id=part_template.id,
@@ -278,7 +257,6 @@ async def change_item_status(
             )
             db.add(new_component)
             
-            # Adiciona Custo POSITIVO (Débito)
             if part_template.value and part_template.value > 0:
                 new_cost = VehicleCost(
                     description=f"Instalação: {part_template.name} (Cód. Item: {item.item_identifier})",
@@ -291,9 +269,7 @@ async def change_item_status(
                 db.add(new_cost)
 
     elif current_status == InventoryItemStatus.EM_USO:
-        # --- LÓGICA DE DESINSTALAÇÃO ---
         
-        # 1. Encontra a transação de instalação
         install_transaction_stmt = select(InventoryTransaction.id).where(
             InventoryTransaction.item_id == item.id,
             or_(
@@ -305,7 +281,6 @@ async def change_item_status(
         install_transaction_id = (await db.execute(install_transaction_stmt)).scalar_one_or_none()
         
         if install_transaction_id:
-            # 2. Desativa o VehicleComponent
             update_component_stmt = sa_update(VehicleComponent).where(
                 VehicleComponent.inventory_transaction_id == install_transaction_id,
                 VehicleComponent.is_active == True
@@ -315,9 +290,7 @@ async def change_item_status(
             )
             await db.execute(update_component_stmt)
         
-        # --- LÓGICA DE CUSTO (Crédito/Estorno) ---
         if new_status == InventoryItemStatus.DISPONIVEL:
-            # Só estorna o custo se voltar ao estoque (Engano / Reversão de Peça B)
             if part_template and part_template.value and part_template.value > 0:
                 
                 cost_vehicle_id = vehicle_id or item.installed_on_vehicle_id
@@ -335,15 +308,11 @@ async def change_item_status(
                     )
                     db.add(new_cost)
         
-        # Se o new_status for FIM_DE_VIDA, NENHUM estorno é criado.
-        # O custo da instalação original permanece no veículo, o que está correto.
             
-    # --- FIM DA LÓGICA DO COMPONENTE E CUSTO ---
 
     await db.flush() 
     return item
 
-# --- (Funções get_simple, get_part_with_stock, get_multi_by_org, get_items_for_part, create, update, remove permanecem iguais) ---
 
 async def get_simple(db: AsyncSession, *, part_id: int, organization_id: int) -> Optional[Part]:
     stmt = select(Part).where(Part.id == part_id, Part.organization_id == organization_id)

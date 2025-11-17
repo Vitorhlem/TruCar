@@ -99,16 +99,16 @@ import { ref, computed, onMounted } from 'vue';
 import { useVehicleCostStore } from 'stores/vehicle-cost-store';
 import { format, parseISO } from 'date-fns';
 import type { QTableColumn } from 'quasar';
-import CostsPieChart from 'components/CostsPieChart.vue'; // Componente de gráfico que você já tem
+import CostsPieChart from 'components/CostsPieChart.vue';
 
 const costStore = useVehicleCostStore();
 
-// Filtros
+
 const dateRange = ref<{ from: string, to: string } | null>(null);
 const categoryFilter = ref<string | null>(null);
 const costCategoryOptions = ["Manutenção", "Combustível", "Pedágio", "Seguro", "Pneu", "Peças e Componentes", "Outros"];
 
-// Dados Computados para a UI
+
 const filteredCosts = computed(() => {
   if (!categoryFilter.value) {
     return costStore.costs;
@@ -129,7 +129,7 @@ const topCostCategory = computed(() => {
   
   const sortedCategories = Object.entries(costsByCategory).sort((a, b) => b[1] - a[1]);
 
-  // Adiciona uma verificação para garantir que o array não está vazio
+
   if (sortedCategories.length > 0 && sortedCategories[0]) {
     return sortedCategories[0][0];
   }
@@ -146,7 +146,7 @@ const dateRangeText = computed(() => {
   return 'Todo o período';
 });
 
-// Colunas da Tabela
+
 const columns: QTableColumn[] = [
   { name: 'date', label: 'Data', field: 'date', format: (val) => format(parseISO(val), 'dd/MM/yyyy'), align: 'left', sortable: true },
   { name: 'description', label: 'Descrição', field: 'description', align: 'left', style: 'max-width: 300px; white-space: normal;' },
@@ -155,7 +155,7 @@ const columns: QTableColumn[] = [
   { name: 'amount', label: 'Valor', field: 'amount', format: (val) => formatCurrency(val), align: 'right', sortable: true },
 ];
 
-// Funções de Ação
+
 function applyFilters() {
   const params = {
     startDate: dateRange.value ? new Date(dateRange.value.from) : null,
@@ -167,6 +167,6 @@ function applyFilters() {
 const formatCurrency = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 onMounted(() => {
-  applyFilters(); // Carrega os dados iniciais
+  applyFilters();
 });
 </script>
