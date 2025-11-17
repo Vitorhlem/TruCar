@@ -101,94 +101,101 @@ async def install_component(
 
 
 async def discard_component(
-    db: AsyncSession, 
-    *, 
-    component_id: int, 
-    user_id: int, 
-    organization_id: int,
-    final_status: InventoryItemStatus, 
-    notes: Optional[str] = None
+  db: AsyncSession, 
+  *, 
+  component_id: int, 
+  user_id: int, 
+  organization_id: int,
+  final_status: InventoryItemStatus, 
+  notes: Optional[str] = None
 ) -> VehicleComponent:
-    """
-    Desinstala um componente, lidando com dados normais (EM_USO) 
-    e dados corrompidos (FIM_DE_VIDA, etc.).
-    NÃO FAZ COMMIT.
-    """
-    
-    # 1. Encontra o VehicleComponent e o Item de Inventário associado
-    stmt = select(VehicleComponent).where(
-        VehicleComponent.id == component_id
-    ).options(
-        selectinload(VehicleComponent.inventory_transaction).selectinload(InventoryTransaction.item),
-        selectinload(VehicleComponent.vehicle)
-    )
-    
-    result = await db.execute(stmt)
-    db_component = result.scalar_one_or_none()
+  """
+  Desinstala um componente, lidando com dados normais (EM_USO) 
+  e dados corrompidos (FIM_DE_VIDA, etc.).
+  NÃO FAZ COMMIT.
+  """
+  
+  # 1. Encontra o VehicleComponent e o Item de Inventário associado
+  stmt = select(VehicleComponent).where(
+    VehicleComponent.id == component_id
+  ).options(
+    # --- INÍCIO DA CORREÇÃO ---
+    # Encadeamos .options(selectinload(InventoryItem.part))
+    # para garantir que o 'part' seja carregado junto com o 'item'.
+    selectinload(VehicleComponent.inventory_transaction)
+      .selectinload(InventoryTransaction.item)
+      .options(selectinload(InventoryItem.part)),
+    # --- FIM DA CORREÇÃO ---
+    selectinload(VehicleComponent.vehicle)
+  )
+  
+  result = await db.execute(stmt)
+  db_component = result.scalar_one_or_none()
 
-    if not db_component:
-        raise ValueError("Componente não encontrado.")
+  if not db_component:
+    raise ValueError("Componente não encontrado.")
+  
+  if db_component.vehicle.organization_id != organization_id:
+    raise ValueError("Componente não pertence à sua organização.")
     
-    if db_component.vehicle.organization_id != organization_id:
-         raise ValueError("Componente não pertence à sua organização.")
-         
-    if not db_component.is_active:
-        # Se o componente já está inativo, apenas o retorne.
-        return db_component
-        
-    # 2. Encontra o item de inventário original
-    inventory_item = db_component.inventory_transaction.item
-    if not inventory_item:
-        raise ValueError("Item de inventário original não encontrado para este componente.")
-
-    # 3. Prepara as notas
-    discard_notes = f"Removido do veículo ID {db_component.vehicle_id}"
-    if notes:
-        discard_notes = f"{notes} ({discard_notes})"
-
-    # 4. Lógica de Verificação (Conserta dados corrompidos do bug antigo)
-    if inventory_item.status == InventoryItemStatus.EM_USO:
-        # --- Caminho Normal (dado está bom) ---
-        await crud.crud_part.change_item_status(
-            db=db,
-            item=inventory_item,
-            new_status=final_status, # Use final_status
-            user_id=user_id,
-            vehicle_id=db_component.vehicle_id, 
-            notes=discard_notes
-        )
-    
-    elif inventory_item.status == final_status:
-        # --- Caminho da Corrupção (Bug Antigo) ---
-        # O item JÁ ESTÁ no estado final, mas o componente está 'is_active=True'.
-        # Pulamos a mudança de status do item e apenas consertamos o componente.
-        pass
-    
-    elif (inventory_item.status == InventoryItemStatus.FIM_DE_VIDA and
-          final_status == InventoryItemStatus.DISPONIVEL):
-        # --- Caso de Borda (Bug Antigo) ---
-        # Item marcado como FIM_DE_VIDA (bug), mas usuário quer retornar ao estoque
-        await crud.crud_part.change_item_status(
-            db=db,
-            item=inventory_item,
-            new_status=final_status, # FIM_DE_VIDA -> DISPONIVEL
-            user_id=user_id,
-            vehicle_id=db_component.vehicle_id, 
-            notes=f"Retornando ao estoque (via Chamado): {notes or ''}".strip()
-        )
-
-    else:
-         raise ValueError(f"Este item não pode ser descartado (status atual: {inventory_item.status}).")
-
-    # 5. Atualiza o próprio VehicleComponent (sempre executa)
-    db_component.is_active = False
-    db_component.uninstallation_date = datetime.now(timezone.utc)
-    db.add(db_component)
-    
-    await db.flush()
-    
-    # 6. Retorna o componente
+  if not db_component.is_active:
+    # Se o componente já está inativo, apenas o retorne.
     return db_component
+    
+  # 2. Encontra o item de inventário original
+  inventory_item = db_component.inventory_transaction.item
+  if not inventory_item:
+    raise ValueError("Item de inventário original não encontrado para este componente.")
+
+  # 3. Prepara as notas
+  discard_notes = f"Removido do veículo ID {db_component.vehicle_id}"
+  if notes:
+    discard_notes = f"{notes} ({discard_notes})"
+
+  # 4. Lógica de Verificação (Conserta dados corrompidos do bug antigo)
+  if inventory_item.status == InventoryItemStatus.EM_USO:
+    # --- Caminho Normal (dado está bom) ---
+    # Agora esta chamada é segura, pois 'inventory_item.part' está carregado
+    await crud.crud_part.change_item_status(
+      db=db,
+      item=inventory_item,
+      new_status=final_status, # Use final_status
+      user_id=user_id,
+      vehicle_id=db_component.vehicle_id, 
+      notes=discard_notes
+    )
+  
+  elif inventory_item.status == final_status:
+    # --- Caminho da Corrupção (Bug Antigo) ---
+    # O item JÁ ESTÁ no estado final, mas o componente está 'is_active=True'.
+    # Pulamos a mudança de status do item e apenas consertamos o componente.
+    pass
+  
+  elif (inventory_item.status == InventoryItemStatus.FIM_DE_VIDA and
+     final_status == InventoryItemStatus.DISPONIVEL):
+    # --- Caso de Borda (Bug Antigo) ---
+    # Item marcado como FIM_DE_VIDA (bug), mas usuário quer retornar ao estoque
+    await crud.crud_part.change_item_status(
+      db=db,
+      item=inventory_item,
+      new_status=final_status, # FIM_DE_VIDA -> DISPONIVEL
+      user_id=user_id,
+      vehicle_id=db_component.vehicle_id, 
+      notes=f"Retornando ao estoque (via Chamado): {notes or ''}".strip()
+    )
+
+  else:
+    raise ValueError(f"Este item não pode ser descartado (status atual: {inventory_item.status}).")
+
+  # 5. Atualiza o próprio VehicleComponent (sempre executa)
+  db_component.is_active = False
+  db_component.uninstallation_date = datetime.now(timezone.utc)
+  db.add(db_component)
+  
+  await db.flush()
+  
+  # 6. Retorna o componente
+  return db_component
 
 
 async def get_components_by_vehicle(db: AsyncSession, *, vehicle_id: int) -> List[VehicleComponent]:
