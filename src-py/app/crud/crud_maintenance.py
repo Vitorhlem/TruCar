@@ -5,7 +5,6 @@ from typing import List, Optional, Tuple
 from datetime import datetime, timezone
 
 # --- IMPORTS NECESSÁRIOS ---
-# (Certifique-se que todos estes estão importados no topo)
 from app.models.vehicle_component_model import VehicleComponent
 from app.models.maintenance_model import (
     MaintenanceRequest, 
@@ -13,7 +12,7 @@ from app.models.maintenance_model import (
     MaintenancePartChange
 )
 from app.models.vehicle_model import Vehicle
-from app.models.inventory_transaction_model import InventoryTransaction, TransactionType # Importar TransactionType
+from app.models.inventory_transaction_model import InventoryTransaction, TransactionType
 from app.models.user_model import User
 from app.models.part_model import Part, InventoryItem, InventoryItemStatus
 from app.schemas.maintenance_schema import (
@@ -25,7 +24,7 @@ from app import crud
 # --- FIM DOS IMPORTS ---
 
 
-# --- FUNÇÃO create_request (CORRIGIDA) ---
+# --- FUNÇÃO create_request (Sem alterações) ---
 async def create_request(
     db: AsyncSession, *, request_in: MaintenanceRequestCreate, reporter_id: int, organization_id: int
 ) -> MaintenanceRequest:
@@ -37,17 +36,13 @@ async def create_request(
     db_obj = MaintenanceRequest(**request_in.model_dump(), reported_by_id=reporter_id, organization_id=organization_id)
     db.add(db_obj)
     
-    # 1. Usamos 'flush' para obter o ID sem expirar o objeto
     await db.flush() 
     
-    # 2. Guardamos os IDs em variáveis locais
     request_id = db_obj.id
     org_id = db_obj.organization_id
     
-    # 3. Agora fazemos o commit
     await db.commit()
     
-    # 4. Usamos as variáveis locais para chamar o 'get_request'
     loaded_request = await get_request(db, request_id=request_id, organization_id=org_id)
     if not loaded_request:
         raise Exception("Falha ao recarregar o chamado após a criação.")
@@ -55,14 +50,14 @@ async def create_request(
     return loaded_request
 
 
-# --- FUNÇÃO DE SUBSTITUIÇÃO (CORRIGIDA) ---
+# --- FUNÇÃO DE SUBSTITUIÇÃO (Sem alterações) ---
 async def perform_component_replacement(
     db: AsyncSession, 
     *, 
     request_id: int, 
     payload: ReplaceComponentPayload, 
     user: User
-) -> Tuple[MaintenancePartChange, MaintenanceComment, Optional[int]]: # <-- Definir tipo de retorno
+) -> Tuple[MaintenancePartChange, MaintenanceComment, Optional[int]]: 
     
     # 1. Validar o chamado
     request = await db.get(MaintenanceRequest, request_id)
@@ -73,7 +68,7 @@ async def perform_component_replacement(
         
     vehicle_id = request.vehicle_id
     organization_id = user.organization_id
-    reported_by_id = request.reported_by_id # Guardar para notificação
+    reported_by_id = request.reported_by_id 
 
     # 2. Obter e Desinstalar o COMPONENTE ANTIGO
     component_to_remove = await db.get(VehicleComponent, payload.component_to_remove_id)
@@ -91,7 +86,7 @@ async def perform_component_replacement(
             user_id=user.id,
             organization_id=organization_id,
             final_status=payload.old_item_status, 
-            notes=payload.notes                    
+            notes=payload.notes                      
         )
     except Exception as e:
         raise e
@@ -209,12 +204,14 @@ async def perform_component_replacement(
     return db_log, new_comment, reported_by_id
 
 
-# --- NOVA FUNÇÃO "REVERTER" ---
+# --- FUNÇÃO "REVERTER" (COM A NOVA CORREÇÃO) ---
 async def revert_part_change(
     db: AsyncSession, *, change_id: int, user: User
 ) -> Tuple[MaintenancePartChange, MaintenanceComment, Optional[int]]:
     """
-    Reverte uma troca de peça, devolvendo o item instalado ao estoque.
+    Reverte uma troca de peça:
+    1. Desinstala o 'component_installed' (Peça B), devolvendo o item ao estoque.
+    2. Re-instala o 'component_removed' (Peça A), colocando o item em uso.
     Retorna (log_da_troca_atualizado, comentario_de_reversao, id_do_reporte)
     """
     
@@ -222,10 +219,15 @@ async def revert_part_change(
     stmt = select(MaintenancePartChange).where(
         MaintenancePartChange.id == change_id
     ).options(
-        # Carrega o componente que foi instalado E o request (para o ID do repórter)
+        # Peça B (Instalada)
         selectinload(MaintenancePartChange.component_installed).options(
-            selectinload(VehicleComponent.part), # Precisamos do nome para o log
-            selectinload(VehicleComponent.inventory_transaction).selectinload(InventoryTransaction.item) # Precisamos do Cód. Item
+            selectinload(VehicleComponent.part),
+            selectinload(VehicleComponent.inventory_transaction).selectinload(InventoryTransaction.item)
+        ),
+        # Peça A (Removida)
+        selectinload(MaintenancePartChange.component_removed).options(
+            selectinload(VehicleComponent.part),
+            selectinload(VehicleComponent.inventory_transaction).selectinload(InventoryTransaction.item)
         ),
         selectinload(MaintenancePartChange.maintenance_request)
     )
@@ -241,13 +243,26 @@ async def revert_part_change(
     if log_entry.is_reverted:
         raise ValueError("Esta troca já foi revertida.")
         
-    component_to_revert = log_entry.component_installed
+    component_to_revert = log_entry.component_installed # Peça B (a errada)
+    component_to_reactivate = log_entry.component_removed # Peça A (a "antiga antiga")
+    
     if not component_to_revert:
         raise ValueError("Componente instalado (errado) não encontrado no log.")
     if not component_to_revert.is_active:
         raise ValueError("O componente instalado (errado) já está inativo. Não pode ser revertido.")
+        
+    if not component_to_reactivate:
+        raise ValueError("Componente original (removido) não encontrado no log. Não é possível re-instalar.")
+    if not component_to_reactivate.inventory_transaction or not component_to_reactivate.inventory_transaction.item:
+        raise ValueError("Item de inventário do componente original não pode ser determinado.")
+        
+    item_to_reactivate = component_to_reactivate.inventory_transaction.item
+    vehicle_id = log_entry.maintenance_request.vehicle_id
+    if not vehicle_id:
+         raise ValueError("Chamado não está associado a um veículo.")
 
-    # 2. Reverte a instalação (chama o 'discard_component' para o item errado)
+
+    # 2. Reverte a instalação (chama o 'discard_component' para a Peça B)
     try:
         revert_notes = f"Reversão da troca #{log_entry.id} (Chamado #{log_entry.maintenance_request_id})"
         
@@ -256,24 +271,66 @@ async def revert_part_change(
             component_id=component_to_revert.id,
             user_id=user.id,
             organization_id=user.organization_id,
-            final_status=InventoryItemStatus.DISPONIVEL, # <-- A MÁGICA: Devolve ao estoque
+            final_status=InventoryItemStatus.DISPONIVEL, # Devolve ao estoque
             notes=revert_notes
         )
     except Exception as e:
-        raise e # Propaga o erro
+        raise e 
 
-    # 3. Atualiza o log da troca original
+    # 3. Re-ativa a Peça A
+    
+    ### --- NOVA CORREÇÃO (Passo 3a) ---
+    # Se o item A está em "Fim de Vida", "Descartado", etc.,
+    # ele precisa ser 'trazido de volta' ao estoque antes de ser instalado.
+    if item_to_reactivate.status != InventoryItemStatus.DISPONIVEL:
+        try:
+            await crud.crud_part.change_item_status(
+                db=db,
+                item=item_to_reactivate,
+                new_status=InventoryItemStatus.DISPONIVEL, # Mover para 'Disponível'
+                user_id=user.id,
+                vehicle_id=None, # Ainda não está no veículo
+                notes=f"Retorno ao estoque para reversão da troca #{log_entry.id}"
+            )
+        except Exception as e:
+             raise ValueError(f"Falha ao re-colocar o item original em estoque: {e}")
+    ### --- FIM DA NOVA CORREÇÃO ---
+
+    ### --- NOVA CORREÇÃO (Passo 3b) ---
+    # Agora, com o item A garantidamente 'Disponível', podemos instalá-lo.
+    try:
+        reinstall_notes = f"Re-instalação via Reversão da troca #{log_entry.id} (Chamado #{log_entry.maintenance_request_id})"
+        
+        await crud.crud_part.change_item_status(
+            db=db,
+            item=item_to_reactivate, # O item de "Peça A"
+            new_status=InventoryItemStatus.EM_USO, # Coloca em uso
+            user_id=user.id,
+            vehicle_id=vehicle_id, # No mesmo veículo
+            notes=reinstall_notes
+        )
+    except Exception as e:
+        # Se a desinstalação (Passo 2) funcionou mas a re-instalação falhou,
+        # o rollback da transação (no endpoint) vai reverter tudo.
+        raise ValueError(f"Falha ao re-instalar o componente original: {e}")
+    ### --- FIM DA NOVA CORREÇÃO ---
+
+
+    # 4. Atualiza o log da troca original
     log_entry.is_reverted = True
     db.add(log_entry)
     
-    # 4. Cria um novo comentário de log para a REVERSÃO
-    part_name = component_to_revert.part.name
-    item_identifier = component_to_revert.inventory_transaction.item.item_identifier
+    # 5. Cria um novo comentário de log para a REVERSÃO
+    part_name_reverted = component_to_revert.part.name
+    item_identifier_reverted = component_to_revert.inventory_transaction.item.item_identifier
+    
+    part_name_reactivated = component_to_reactivate.part.name
+    item_identifier_reactivated = component_to_reactivate.inventory_transaction.item.item_identifier
     
     comment_text = (
         f"Troca revertida por {user.full_name}:\n"
-        f"O item '{part_name}' (Cód. Item: {item_identifier}) "
-        f"foi desinstalado e retornado ao estoque como 'Disponível'."
+        f"- [SAIU] {part_name_reverted} (Cód. Item: {item_identifier_reverted}) - Retornou ao estoque.\n"
+        f"- [ENTROU] {part_name_reactivated} (Cód. Item: {item_identifier_reactivated}) - Re-instalado no veículo."
     )
     
     comment_schema = MaintenanceCommentCreate(comment_text=comment_text)
@@ -285,21 +342,18 @@ async def revert_part_change(
         organization_id=user.organization_id
     )
     
-    # 5. Flush e carrega o novo comentário para a resposta
+    # 6. Flush e carrega o novo comentário para a resposta
     await db.flush()
     await db.refresh(new_comment, ["user"])
     if new_comment.user:
         await db.refresh(new_comment.user, ["organization"])
         
-    # Carrega as relações do log_entry para o schema de resposta
-    # (Não precisa ser tão profundo quanto o 'perform_replacement'
-    #  porque o 'component_removed' já está carregado)
     await db.refresh(log_entry, ["user", "component_removed", "component_installed"])
     
     
     return log_entry, new_comment, log_entry.maintenance_request.reported_by_id
 
-# --- FUNÇÃO get_request (CORREÇÃO FINAL E MAIS PROFUNDA) ---
+# --- FUNÇÃO get_request (Sem alterações) ---
 async def get_request(
     db: AsyncSession, *, request_id: int, organization_id: int
 ) -> MaintenanceRequest | None:
@@ -307,25 +361,20 @@ async def get_request(
     stmt = select(MaintenanceRequest).where(
         MaintenanceRequest.id == request_id, MaintenanceRequest.organization_id == organization_id
     ).options(
-        # Relações diretas
         selectinload(MaintenanceRequest.reporter).selectinload(User.organization),
         selectinload(MaintenanceRequest.approver).selectinload(User.organization),
         selectinload(MaintenanceRequest.vehicle),
         
-        # Relação de Comentários
         selectinload(MaintenanceRequest.comments).options(
             selectinload(MaintenanceComment.user).selectinload(User.organization)
         ),
 
-        # Relação de Trocas de Peças (PartChanges)
         selectinload(MaintenanceRequest.part_changes).options(
-            # Usuário que fez a troca
             selectinload(MaintenancePartChange.user).selectinload(User.organization),
             
-            # Componente Removido (e todas as suas sub-relações)
             selectinload(MaintenancePartChange.component_removed).options(
-                selectinload(VehicleComponent.part).options( # <-- NÍVEL MAIS FUNDO
-                    selectinload(Part.items)                # <-- A LINHA QUE FALTAVA
+                selectinload(VehicleComponent.part).options(
+                    selectinload(Part.items) 
                 ),
                 selectinload(VehicleComponent.inventory_transaction).options(
                     selectinload(InventoryTransaction.item),
@@ -333,10 +382,9 @@ async def get_request(
                 )
             ),
             
-            # Componente Instalado (e todas as suas sub-relações)
             selectinload(MaintenancePartChange.component_installed).options(
-                selectinload(VehicleComponent.part).options( # <-- NÍVEL MAIS FUNDO
-                    selectinload(Part.items)                # <-- A LINHA QUE FALTAVA
+                selectinload(VehicleComponent.part).options( 
+                    selectinload(Part.items) 
                 ),
                 selectinload(VehicleComponent.inventory_transaction).options(
                     selectinload(InventoryTransaction.item),
@@ -349,12 +397,19 @@ async def get_request(
     return result.scalar_one_or_none()
 
 
-# --- FUNÇÃO get_all_requests (CORREÇÃO FINAL E MAIS PROFUNDA) ---
 async def get_all_requests(
-    db: AsyncSession, *, organization_id: int, search: str | None = None, skip: int = 0, limit: int = 100
+    db: AsyncSession, *, 
+    organization_id: int, 
+    search: str | None = None, 
+    skip: int = 0, 
+    limit: int = 100,
+    vehicle_id: int | None = None  # <-- 1. ADICIONE ESTE PARÂMETRO
 ) -> List[MaintenanceRequest]:
     """Busca todas as solicitações, carregando TODAS as relações necessárias."""
     stmt = select(MaintenanceRequest).where(MaintenanceRequest.organization_id == organization_id)
+
+    if vehicle_id:
+        stmt = stmt.where(MaintenanceRequest.vehicle_id == vehicle_id)
     
     if search:
         search_term_text = f"%{search}%"
@@ -376,25 +431,20 @@ async def get_all_requests(
         )
 
     stmt = stmt.order_by(MaintenanceRequest.created_at.desc()).offset(skip).limit(limit).options(
-        # Relações diretas
         selectinload(MaintenanceRequest.reporter).selectinload(User.organization),
         selectinload(MaintenanceRequest.approver).selectinload(User.organization),
         selectinload(MaintenanceRequest.vehicle),
         
-        # Relação de Comentários
         selectinload(MaintenanceRequest.comments).options(
              selectinload(MaintenanceComment.user).selectinload(User.organization)
         ),
         
-        # Relação de Trocas de Peças (PartChanges)
         selectinload(MaintenanceRequest.part_changes).options(
-            # Usuário que fez a troca
             selectinload(MaintenancePartChange.user).selectinload(User.organization),
             
-            # Componente Removido (e todas as suas sub-relações)
             selectinload(MaintenancePartChange.component_removed).options(
-                selectinload(VehicleComponent.part).options( # <-- NÍVEL MAIS FUNDO
-                    selectinload(Part.items)                # <-- A LINHA QUE FALTAVA
+                selectinload(VehicleComponent.part).options(
+                    selectinload(Part.items) 
                 ),
                 selectinload(VehicleComponent.inventory_transaction).options(
                     selectinload(InventoryTransaction.item),
@@ -402,10 +452,9 @@ async def get_all_requests(
                 )
             ),
             
-            # Componente Instalado (e todas as suas sub-relações)
             selectinload(MaintenancePartChange.component_installed).options(
-                selectinload(VehicleComponent.part).options( # <-- NÍVEL MAIS FUNDO
-                    selectinload(Part.items)                # <-- A LINHA QUE FALTAVA
+                selectinload(VehicleComponent.part).options(
+                    selectinload(Part.items) 
                 ),
                 selectinload(VehicleComponent.inventory_transaction).options(
                     selectinload(InventoryTransaction.item),
@@ -418,34 +467,29 @@ async def get_all_requests(
     return result.scalars().all()
 
 
-# --- FUNÇÃO update_request_status (CORRIGIDA) ---
+# --- FUNÇÃO update_request_status (Sem alterações) ---
 async def update_request_status(
     db: AsyncSession, *, db_obj: MaintenanceRequest, update_data: MaintenanceRequestUpdate, manager_id: int
 ) -> MaintenanceRequest:
     """Atualiza o status de uma solicitação e retorna o objeto completo."""
     
-    # 1. Guardamos os IDs em variáveis locais ANTES do commit
     request_id = db_obj.id
     org_id = db_obj.organization_id
     
-    # 2. Modificamos o objeto
     db_obj.status = update_data.status
     db_obj.manager_notes = update_data.manager_notes
     db_obj.approver_id = manager_id
     db.add(db_obj)
     
-    # 3. Fazemos o commit, que expira o db_obj
     await db.commit()
     
-    # 4. Usamos as variáveis locais para chamar o 'get_request'
-    # Isto evita o erro 'MissingGreenlet'
     loaded_request = await get_request(db, request_id=request_id, organization_id=org_id)
     if not loaded_request:
         raise Exception("Falha ao recarregar o chamado após a atualização.")
         
     return loaded_request
 
-# --- FUNÇÃO create_comment (CORRIGIDA) ---
+# --- FUNÇÃO create_comment (Sem alterações) ---
 async def create_comment(
     db: AsyncSession, *, comment_in: MaintenanceCommentCreate, request_id: int, user_id: int, organization_id: int
 ) -> MaintenanceComment:
@@ -462,7 +506,6 @@ async def create_comment(
     )
     db.add(db_obj)
     await db.flush()
-    # Carrega o 'user' e 'user.organization' para o schema 'MaintenanceCommentPublic'
     await db.refresh(db_obj, ["user"])
     if db_obj.user:
         await db.refresh(db_obj.user, ["organization"])

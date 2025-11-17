@@ -8,6 +8,7 @@ export const useVehicleComponentStore = defineStore('vehicleComponent', {
   state: () => ({
     components: [] as VehicleComponent[],
     isLoading: false,
+    currentVehicleId: null as number | null, // <-- ADICIONE ESTA LINHA
   }),
   actions: {
     async fetchComponents(vehicleId: number) {
@@ -15,8 +16,10 @@ export const useVehicleComponentStore = defineStore('vehicleComponent', {
       try {
         const response = await api.get<VehicleComponent[]>(`/vehicles/${vehicleId}/components`);
         this.components = response.data;
+        this.currentVehicleId = vehicleId; // <-- ADICIONE ESTA LINHA
       } catch {
         Notify.create({ type: 'negative', message: 'Falha ao carregar componentes do veículo.' });
+        this.currentVehicleId = null; // <-- Opcional: limpar em caso de falha
       } finally {
         this.isLoading = false;
       }

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 import uuid
 import shutil
@@ -132,10 +132,16 @@ async def read_maintenance_requests(
     skip: int = 0,
     limit: int = 100,
     search: str | None = None,
+    vehicleId: int | None = None, # <-- 1. ADICIONE ESTA LINHA
 ):
     """Retorna as solicitações de manutenção. Gestores veem tudo, motoristas veem apenas o que reportaram."""
     requests = await crud.maintenance.get_all_requests(
-        db=db, organization_id=current_user.organization_id, search=search, skip=skip, limit=limit
+        db=db, 
+        organization_id=current_user.organization_id, 
+        search=search, 
+        skip=skip, 
+        limit=limit,
+        vehicle_id=vehicleId # <-- 2. ADICIONE ESTE PARÂMETRO
     )
     if current_user.role == UserRole.DRIVER:
         return [req for req in requests if req.reported_by_id == current_user.id]
@@ -259,26 +265,23 @@ async def replace_maintenance_component(
             user=current_user
         )
         
-        # --- CORREÇÃO DO MissingGreenlet ---
-        # 1. Lemos o texto ANTES do commit
+        # 1. Lemos o texto ANTES de retornar (isso está correto)
         comment_text_for_notification = comment_entry.comment_text
         
         # 2. Fazemos o commit
-        await db.commit()
-        
-        # 3. Lógica de Notificação (AGORA SEGURA)
+        # await db.commit()  <--- REMOVA ESTA LINHA
+
+        # 3. Lógica de Notificação
         if reported_by_id:
              background_tasks.add_task(
                 crud.notification.create_notification, 
-                # NUNCA passe 'db=db' para um background task
-                message=comment_text_for_notification, # <-- Usamos a variável local
+                message=comment_text_for_notification,
                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
                 organization_id=current_user.organization_id, 
                 user_id=reported_by_id, 
                 related_entity_type="maintenance_request", 
                 related_entity_id=request_id
             )
-        # --- FIM DA CORREÇÃO ---
 
         return ReplaceComponentResponse(
             success=True,
@@ -288,13 +291,13 @@ async def replace_maintenance_component(
         )
 
     except ValueError as e:
-        await db.rollback()
+        # await db.rollback() <--- REMOVA ESTA LINHA
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        await db.rollback()
+        # await db.rollback() <--- REMOVA ESTA LINHA
         import traceback
         traceback.print_exc()
         raise HTTPException(
@@ -316,20 +319,16 @@ async def revert_part_change(
     Reverte uma troca de peça, devolvendo o item instalado ao estoque.
     """
     try:
-        # 1. O CRUD faz o flush e retorna o log e o ID do repórter
         log_entry, new_comment, reported_by_id = await crud.maintenance.revert_part_change(
             db=db,
             change_id=change_id,
             user=current_user
         )
         
-        # 2. Lemos o texto para a notificação ANTES do commit
         comment_text_for_notification = new_comment.comment_text
         
-        # 3. Commit
-        await db.commit()
+        # await db.commit() <--- REMOVA ESTA LINHA
         
-        # 4. Lógica de Notificação (Escrita de forma segura)
         if reported_by_id:
              background_tasks.add_task(
                 crud.notification.create_notification, 
@@ -341,16 +340,16 @@ async def revert_part_change(
                 related_entity_id=log_entry.maintenance_request_id
             )
         
-        return new_comment # Retorna o novo comentário de log
+        return new_comment
 
     except ValueError as e:
-        await db.rollback()
+        # await db.rollback() <--- REMOVA ESTA LINHA
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        await db.rollback()
+        # await db.rollback() <--- REMOVA ESTA LINHA
         import traceback
         traceback.print_exc()
         raise HTTPException(

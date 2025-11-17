@@ -5,6 +5,7 @@ from typing import List, Optional
 import logging
 import datetime 
 
+# Imports necessários para a correção
 from app.models.vehicle_component_model import VehicleComponent
 from app.models.vehicle_cost_model import VehicleCost, CostType
 from app.models.inventory_transaction_model import InventoryTransaction
@@ -31,34 +32,28 @@ def log_transaction(
     return log_entry
 
 
-# --- CORREÇÃO 1: Lógica do item_identifier ---
-
-
+# --- (Funções create_inventory_items, get_item_by_id, get_all_items_paginated, get_item_with_details permanecem iguais) ---
 
 async def create_inventory_items(
     db: AsyncSession, *, part_id: int, organization_id: int, quantity: int, user_id: int, notes: Optional[str] = None
 ) -> List[InventoryItem]:
     """Cria itens e os adiciona à sessão, sem commit ou flush."""
     
-    # 1. Buscar o maior 'item_identifier' existente PARA ESTE part_id
     stmt = select(func.max(InventoryItem.item_identifier)).where(
         InventoryItem.part_id == part_id
     )
     result = await db.execute(stmt)
-    # Se não houver itens (None), começamos do 0
     last_identifier = result.scalars().first() or 0 
 
     new_items = []
     for i in range(quantity):
-        
-        # 2. Calcular o novo ID local
         current_identifier = last_identifier + 1 + i
         
         new_item = InventoryItem(
             part_id=part_id,
             organization_id=organization_id,
             status=InventoryItemStatus.DISPONIVEL,
-            item_identifier=current_identifier # <-- 3. Atribuir o novo ID local
+            item_identifier=current_identifier
         )
         db.add(new_item)
         new_items.append(new_item)
@@ -81,7 +76,7 @@ async def get_item_by_id(db: AsyncSession, *, item_id: int, organization_id: int
         InventoryItem.id == item_id, 
         InventoryItem.organization_id == organization_id
     ).options(
-        selectinload(InventoryItem.part) # Carrega a relação com Part
+        selectinload(InventoryItem.part) 
     )
     result = await db.execute(stmt)
     return result.scalars().first()
@@ -100,20 +95,17 @@ async def get_all_items_paginated(
     Busca todos os InventoryItems de forma paginada, com filtros.
     """
     
-    # Query base para os itens
     stmt = select(InventoryItem).where(
         InventoryItem.organization_id == organization_id
     ).options(
-        selectinload(InventoryItem.part), # Carrega o template (Part)
-        selectinload(InventoryItem.installed_on_vehicle) # Carrega o Veículo
+        selectinload(InventoryItem.part), 
+        selectinload(InventoryItem.installed_on_vehicle) 
     )
     
-    # Query base para a contagem
     count_stmt = select(func.count()).select_from(InventoryItem).where(
         InventoryItem.organization_id == organization_id
     )
 
-    # Aplicar filtros (status, partId, vehicleId permanecem iguais)
     if status:
         stmt = stmt.where(InventoryItem.status == status)
         count_stmt = count_stmt.where(InventoryItem.status == status)
@@ -124,53 +116,44 @@ async def get_all_items_paginated(
         stmt = stmt.where(InventoryItem.installed_on_vehicle_id == vehicle_id)
         count_stmt = count_stmt.where(InventoryItem.installed_on_vehicle_id == vehicle_id)
     
-    # Aplicar filtro de busca (procura no nome da Peça OU IDs)
     if search:
         search_term_text = f"%{search.lower()}%"
         
-        # Faz o join com a tabela Part para poder filtrar pelo nome
         stmt = stmt.join(Part, Part.id == InventoryItem.part_id)
         count_stmt = count_stmt.join(Part, Part.id == InventoryItem.part_id)
         
-        # --- LÓGICA DE BUSCA ATUALIZADA ---
         search_filters = [
-            Part.name.ilike(search_term_text) # Busca por nome da peça
+            Part.name.ilike(search_term_text) 
         ]
         
         try:
-            # Tenta converter o 'search' para um número
             search_id = int(search)
-            # Se conseguir, adiciona busca pelo ID Global (item.id)
             search_filters.append(InventoryItem.id == search_id)
-            # E também pelo Cód. Item (item_identifier)
             search_filters.append(InventoryItem.item_identifier == search_id)
         except ValueError:
-            pass # Não é um número, continua a busca por texto
+            pass 
 
         stmt = stmt.where(or_(*search_filters))
         count_stmt = count_stmt.where(or_(*search_filters))
-        # --- FIM DA LÓGICA ATUALIZADA ---
 
-    # Obter a contagem total (antes de paginar)
     total = (await db.execute(count_stmt)).scalar_one_or_none() or 0
     
-    # Obter os itens com paginação e ordenação
     items = (await db.execute(
         stmt.order_by(InventoryItem.part_id, InventoryItem.item_identifier)
             .offset(skip).limit(limit)
     )).scalars().all()
     
     return {"total": total, "items": items}
-# --- NOVO: Função para a Página de Detalhes ---
+
 async def get_item_with_details(db: AsyncSession, *, item_id: int, organization_id: int) -> Optional[InventoryItem]:
     """Busca um item serializado e seu histórico completo."""
     stmt = select(InventoryItem).where(
         InventoryItem.id == item_id, 
         InventoryItem.organization_id == organization_id
     ).options(
-        selectinload(InventoryItem.part), # Carrega o template (Part)
-        selectinload(InventoryItem.transactions).options( # Carrega todas as transações
-            selectinload(InventoryTransaction.user),      # e o usuário de cada transação
+        selectinload(InventoryItem.part), 
+        selectinload(InventoryItem.transactions).options( 
+            selectinload(InventoryTransaction.user),       
             selectinload(InventoryTransaction.related_vehicle),
             selectinload(InventoryTransaction.item),      
             selectinload(InventoryTransaction.part_template) 
@@ -178,15 +161,16 @@ async def get_item_with_details(db: AsyncSession, *, item_id: int, organization_
     )
     result = await db.execute(stmt)
     return result.scalars().first()
-# --- FIM DA NOVA FUNÇÃO ---
 
-
+# ---
+# --- FUNÇÃO CENTRAL CORRIGIDA
+# ---
 async def change_item_status(
     db: AsyncSession, *, item: InventoryItem, new_status: InventoryItemStatus, 
     user_id: int, vehicle_id: Optional[int] = None, notes: Optional[str] = None
 ) -> InventoryItem:
     
-    # Validação de transição (lógica da nossa primeira correção)
+    # Validação de transição
     current_status = item.status
     if current_status == new_status:
         return item
@@ -204,7 +188,7 @@ async def change_item_status(
              
     elif new_status == InventoryItemStatus.DISPONIVEL:
          if current_status not in [InventoryItemStatus.EM_USO, InventoryItemStatus.FIM_DE_VIDA]:
-             raise ValueError(f"Item não pode ser retornado ao estoque (status atual: {current_status}).")
+               raise ValueError(f"Item não pode ser retornado ao estoque (status atual: {current_status}).")
     # --- FIM DA VALIDAÇÃO ---
 
 
@@ -215,15 +199,13 @@ async def change_item_status(
         InventoryItemStatus.DISPONIVEL: TransactionType.ENTRADA # Usado para retorno ao estoque
     }
     
-    # Determina o tipo de transação
     transaction_type = transaction_type_map.get(new_status)
     
-    # Se o status antigo era EM_USO, é uma desinstalação
     if current_status == InventoryItemStatus.EM_USO:
         if new_status == InventoryItemStatus.FIM_DE_VIDA:
             transaction_type = TransactionType.FIM_DE_VIDA
         elif new_status == InventoryItemStatus.DISPONIVEL:
-            transaction_type = TransactionType.ENTRADA # Retorno ao estoque
+            transaction_type = TransactionType.ENTRADA 
     
     if not transaction_type:
          raise ValueError("Tipo de transação inválido para mudança de status.")
@@ -235,7 +217,6 @@ async def change_item_status(
         item.installed_on_vehicle_id = vehicle_id
         item.installed_at = func.now()
     else:
-        # Remove a associação do veículo ao ser descartado ou retornar ao estoque
         item.installed_on_vehicle_id = None
         item.installed_at = None
     
@@ -244,59 +225,75 @@ async def change_item_status(
         db=db, item_id=item.id, part_id=item.part_id, user_id=user_id,
         transaction_type=transaction_type,
         notes=notes,
-        # Mantém o vehicle_id no log para rastreabilidade
         related_vehicle_id=vehicle_id or item.installed_on_vehicle_id 
     )
     
     db.add(item)
-    db.add(log_entry) # Adiciona o log à sessão
+    db.add(log_entry) 
     
-    # --- LÓGICA DE CRIAÇÃO / DESATIVAÇÃO DO COMPONENTE (CORRIGIDA) ---
+    # Carrega a 'part' (template) para obter o valor
+    part_template = item.part 
+    if not part_template:
+        part_template = await db.get(Part, item.part_id)
+
+    # --- LÓGICA DE CRIAÇÃO / DESATIVAÇÃO DO COMPONENTE E CUSTO (CORRIGIDA) ---
     
     if new_status == InventoryItemStatus.EM_USO and vehicle_id:
-        # Se está entrando "EM USO", cria um novo VehicleComponent
+        # --- LÓGICA DE INSTALAÇÃO ---
         
-        # Garante que 'item.part' (o template) foi carregado
-        part_template = item.part 
-        if not part_template:
-            part_template = await db.get(Part, item.part_id)
+        # 1. Flush para obter o ID do log_entry
+        await db.flush() 
+        
+        # 2. Verificar se é re-instalação (procura componente inativo PARA ESTE ITEM)
+        stmt_find_old = select(VehicleComponent).join(
+            InventoryTransaction, VehicleComponent.inventory_transaction_id == InventoryTransaction.id
+        ).where(
+            InventoryTransaction.item_id == item.id,
+            VehicleComponent.vehicle_id == vehicle_id,
+            VehicleComponent.is_active == False
+        ).order_by(VehicleComponent.uninstallation_date.desc()).limit(1)
+        
+        result = await db.execute(stmt_find_old)
+        existing_inactive_component = result.scalars().first()
 
-        if part_template:
+        if existing_inactive_component:
+            # --- É UMA RE-INSTALAÇÃO (Ex: Reversão de Peça A) ---
+            existing_inactive_component.is_active = True
+            existing_inactive_component.uninstallation_date = None
+            # Atualiza o ID da transação para a *nova* transação de instalação
+            existing_inactive_component.inventory_transaction_id = log_entry.id
+            db.add(existing_inactive_component)
             
-            # --- CORREÇÃO: MUDANÇA DE ORDEM ---
-            
-            # 1. Salva o item e o log_entry primeiro para obter o ID da transação
-            await db.flush() 
-            
-            # 2. Agora log_entry.id NÃO é None
+            # *** NÃO ADICIONA CUSTO ***
+            # O custo original já foi pago e nunca foi estornado (porque foi FIM_DE_VIDA).
+        
+        else:
+            # --- É UMA INSTALAÇÃO NOVA ---
             new_component = VehicleComponent(
                 vehicle_id=vehicle_id,
                 part_id=part_template.id,
                 is_active=True,
                 installation_date=func.now(),
-                # 3. Atribui o ID da transação (que agora existe)
                 inventory_transaction_id=log_entry.id 
             )
             db.add(new_component)
-            # --- FIM DA CORREÇÃO ---
             
-            # Lógica para adicionar custo (como já existia)
+            # Adiciona Custo POSITIVO (Débito)
             if part_template.value and part_template.value > 0:
                 new_cost = VehicleCost(
                     description=f"Instalação: {part_template.name} (Cód. Item: {item.item_identifier})",
-                    amount=part_template.value,
+                    amount=part_template.value, # Valor positivo
                     date=datetime.date.today(), 
                     cost_type=CostType.PECAS_COMPONENTES, 
                     vehicle_id=vehicle_id,
                     organization_id=item.organization_id
                 )
                 db.add(new_cost)
+
+    elif current_status == InventoryItemStatus.EM_USO:
+        # --- LÓGICA DE DESINSTALAÇÃO ---
         
-    elif current_status == InventoryItemStatus.EM_USO and new_status in [InventoryItemStatus.FIM_DE_VIDA, InventoryItemStatus.DISPONIVEL]:
-        # Se estava "EM USO" e agora foi para FIM_DE_VIDA ou DISPONÍVEL (retorno),
-        # desativa o VehicleComponent ativo
-        
-        # 1. Encontra a transação de instalação (INSTALACAO ou SAIDA_USO) mais recente deste item
+        # 1. Encontra a transação de instalação
         install_transaction_stmt = select(InventoryTransaction.id).where(
             InventoryTransaction.item_id == item.id,
             or_(
@@ -308,20 +305,45 @@ async def change_item_status(
         install_transaction_id = (await db.execute(install_transaction_stmt)).scalar_one_or_none()
         
         if install_transaction_id:
-            # 2. Desativa o VehicleComponent associado a essa transação
+            # 2. Desativa o VehicleComponent
             update_component_stmt = sa_update(VehicleComponent).where(
                 VehicleComponent.inventory_transaction_id == install_transaction_id,
                 VehicleComponent.is_active == True
             ).values(
                 is_active = False,
-                uninstallation_date = func.now() # Define a data de remoção/descarte
+                uninstallation_date = func.now()
             )
             await db.execute(update_component_stmt)
-            
-    # --- FIM DA LÓGICA DO COMPONENTE ---
+        
+        # --- LÓGICA DE CUSTO (Crédito/Estorno) ---
+        if new_status == InventoryItemStatus.DISPONIVEL:
+            # Só estorna o custo se voltar ao estoque (Engano / Reversão de Peça B)
+            if part_template and part_template.value and part_template.value > 0:
+                
+                cost_vehicle_id = vehicle_id or item.installed_on_vehicle_id
+                
+                if cost_vehicle_id:
+                    description = f"Retorno Estoque (Estorno): {part_template.name} (Cód. Item: {item.item_identifier})"
 
-    await db.flush() # Salva todas as alterações pendentes (novo componente, custo, etc.)
+                    new_cost = VehicleCost(
+                        description=description,
+                        amount= -part_template.value, # <-- Valor negativo (Crédito)
+                        date=datetime.date.today(), 
+                        cost_type=CostType.PECAS_COMPONENTES, 
+                        vehicle_id=cost_vehicle_id,
+                        organization_id=item.organization_id
+                    )
+                    db.add(new_cost)
+        
+        # Se o new_status for FIM_DE_VIDA, NENHUM estorno é criado.
+        # O custo da instalação original permanece no veículo, o que está correto.
+            
+    # --- FIM DA LÓGICA DO COMPONENTE E CUSTO ---
+
+    await db.flush() 
     return item
+
+# --- (Funções get_simple, get_part_with_stock, get_multi_by_org, get_items_for_part, create, update, remove permanecem iguais) ---
 
 async def get_simple(db: AsyncSession, *, part_id: int, organization_id: int) -> Optional[Part]:
     stmt = select(Part).where(Part.id == part_id, Part.organization_id == organization_id)
@@ -398,9 +420,7 @@ async def get_items_for_part(
     if status:
         stmt = stmt.where(InventoryItem.status == status)
 
-    # --- GARANTE QUE ESTA LINHA ESTÁ AQUI ---
     stmt = stmt.options(selectinload(InventoryItem.part))
-    # --- FIM DA VERIFICAÇÃO ---
 
     items = (await db.execute(stmt.order_by(InventoryItem.item_identifier))).scalars().all()
     return items

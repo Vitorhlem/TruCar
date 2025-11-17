@@ -390,15 +390,31 @@ function onRevert(log: MaintenancePartChangePublic) {
     ok: 'Confirmar Reversão',
     persistent: false,
     color: 'negative',
-  }).onOk(async () => {
-    if (!props.request) return;
-    const success = await maintenanceStore.revertPartChange(
-      props.request.id,
-      log.id
-    );
-    if (success) {
-      handleReplacementDone();
-    }
+    // vvvv MODIFIQUE A PARTIR DAQUI vvvv
+  }).onOk(() => {
+    // 1. Crie uma função async interna
+    const performRevert = async () => {
+      try {
+        if (!props.request) return; // Verificação de segurança
+        const success = await maintenanceStore.revertPartChange(
+          props.request.id,
+          log.id
+        );
+        if (success) {
+          handleReplacementDone();
+        }
+      } catch (error) {
+        // 2. Capture erros que a promise possa ter
+        console.error('Falha ao reverter a troca:', error);
+        $q.notify({
+          type: 'negative',
+          message: 'Ocorreu um erro ao reverter a troca.',
+        });
+      }
+    };
+
+    // 3. Chame a função com 'void' para satisfazer o linter
+    void performRevert();
   });
 }
 // --- FIM DA NOVA FUNÇÃO ---
@@ -407,7 +423,9 @@ watch(
   () => tab.value,
   (newTab) => {
     if (newTab === 'components' && props.request?.vehicle?.id) {
-      const storeVehicleId = componentStore.components[0]?.vehicle_id;
+      // vvvv MODIFIQUE ESTA LINHA vvvv
+      const storeVehicleId = componentStore.currentVehicleId;
+      // ^^^^ MODIFIQUE ESTA LINHA ^^^^
       if (storeVehicleId !== props.request.vehicle.id) {
         void componentStore.fetchComponents(props.request.vehicle.id);
       }
