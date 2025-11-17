@@ -1,55 +1,59 @@
-07/10/2025
+# Contrato de Licença de Usuário Final (EULA)
+
+**Data:** 07/10/2025
 
 Este Contrato de Licença de Usuário Final ("EULA") é um acordo legal entre você (seja um indivíduo ou uma única entidade) e Verax ("Licenciante"), o autor do TruCar ("Software").
 
 Ao instalar, copiar ou de outra forma usar o Software, você concorda em ficar vinculado aos termos deste EULA. Se você não concorda com os termos deste EULA, não instale ou use o Software.
 
-1. Concessão da Licença
+---
 
-1.1 Licença de Avaliação/Uso Pessoal: O Licenciante concede a você uma licença revogável, não exclusiva e intransferível para instalar e usar o Software em múltiplos dispositivos de sua propriedade ou controle, exclusivamente para fins pessoais e não comerciais, de acordo com os termos deste EULA.
+### 1. Concessão da Licença
 
-1.2 Licença Comercial: O uso comercial do Software é estritamente proibido sem a aquisição prévia de uma licença comercial. Após a compra de uma licença comercial, o Licenciante concede a você uma licença revogável, não exclusiva e intransferível para instalar e usar o Software em múltiplos dispositivos para fins comerciais internos, de acordo com os termos especificados no ato da compra e neste EULA.
+**1.1 Licença de Avaliação/Uso Pessoal:** O Licenciante concede a você uma licença revogável, não exclusiva e intransferível para instalar e usar o Software em múltiplos dispositivos de sua propriedade ou controle, exclusivamente para fins pessoais e não comerciais, de acordo com os termos deste EULA.
 
-2. Restrições de Uso
+**1.2 Licença Comercial:** O uso comercial do Software é estritamente proibido sem a aquisição prévia de uma licença comercial. Após a compra de uma licença comercial, o Licenciante concede a você uma licença revogável, não exclusiva e intransferível para instalar e usar o Software em múltiplos dispositivos para fins comerciais internos, de acordo com os termos especificados no ato da compra e neste EULA.
+
+### 2. Restrições de Uso
 
 Você concorda em não, e não permitirá que outros:
 
-2.1 Modifiquem ou Criem Trabalhos Derivados: Modificar, traduzir, adaptar ou de outra forma criar trabalhos derivados ou melhorias do Software.
+**2.1 Modifiquem ou Criem Trabalhos Derivados:** Modificar, traduzir, adaptar ou de outra forma criar trabalhos derivados ou melhorias do Software.
 
-2.2 Engenharia Reversa: Fazer engenharia reversa, descompilar, desmontar, decodificar ou de outra forma tentar derivar ou obter acesso ao código-fonte do Software ou de qualquer parte dele.
+**2.2 Engenharia Reversa:** Fazer engenharia reversa, descompilar, desmontar, decodificar ou de outra forma tentar derivar ou obter acesso ao código-fonte do Software ou de qualquer parte dele.
 
-2.3 Distribuição: Alugar, arrendar, emprestar, vender, sublicenciar, ceder, distribuir, publicar, transferir ou de outra forma disponibilizar o Software, ou quaisquer recursos ou funcionalidades do Software, a terceiros por qualquer motivo.
+**2.3 Distribuição:** Alugar, arrendar, emprestar, vender, sublicenciar, ceder, distribuir, publicar, transferir ou de outra forma disponibilizar o Software, ou quaisquer recursos ou funcionalidades do Software, a terceiros por qualquer motivo.
 
-2.4 Remoção de Avisos: Remover, excluir, alterar ou ocultar quaisquer marcas registradas ou quaisquer avisos de direitos autorais, patentes ou outra propriedade intelectual ou direitos de propriedade do Software.
+**2.4 Remoção de Avisos:** Remover, excluir, alterar ou ocultar quaisquer marcas registradas ou quaisquer avisos de direitos autorais, patentes ou outra propriedade intelectual ou direitos de propriedade do Software.
 
-3. Propriedade Intelectual
+### 3. Propriedade Intelectual
 
 Você reconhece e concorda que o Software é fornecido sob licença, e não vendido a você. Você não adquire nenhum interesse de propriedade no Software sob este EULA, nem quaisquer outros direitos a ele, exceto o de usar o Software de acordo com a licença concedida e sujeito a todos os termos, condições e restrições sob este EULA. O Licenciante reserva e manterá todo o seu direito, título e interesse no e para o Software, incluindo todos os direitos autorais, marcas registradas e outros direitos de propriedade intelectual contidos nele ou relacionados a ele.
 
-4. Isenção de Garantia
+### 4. Isenção de Garantia
 
 O SOFTWARE É FORNECIDO A VOCÊ "COMO ESTÁ" E COM TODAS AS FALHAS E DEFEITOS, SEM GARANTIA DE QUALQUER TIPO. ATÉ O LIMITE MÁXIMO PERMITIDO PELA LEI APLICÁVEL, O LICENCIANTE EXPRESSAMENTE SE ISENTA DE TODAS AS GARANTIAS, SEJAM EXPRESSAS, IMPLÍCITAS, ESTATUTÁRIAS OU DE OUTRA FORMA, COM RELAÇÃO AO SOFTWARE.
 
-5. Limitação de Responsabilidade
+### 5. Limitação de Responsabilidade
 
-5.1 Exclusão de Danos: EM NENHUMA HIPÓTESE O LICENCIANTE SERÁ RESPONSÁVEL POR QUAISQUER DANOS INDIRETOS, INCIDENTAIS, ESPECIAIS, CONSEQUENCIAIS OU PUNITIVOS, SEJA POR QUEBRA DE CONTRATO, ATO ILÍCITO (INCLUINDO NEGLIGÊNCIA) OU DE OUTRA FORMA, DECORRENTES OU RELACIONADOS A ESTE EULA OU AO SEU USO DO SOFTWARE.
+**5.1 Exclusão de Danos:** EM NENHUMA HIPÓTESE O LICENCIANTE SERÁ RESPONSÁVEL POR QUAISQUER DANOS INDIRETOS, INCIDENTAIS, ESPECIAIS, CONSEQUENCIAIS OU PUNITIVOS, SEJA POR QUEBRA DE CONTRATO, ATO ILÍCITO (INCLUINDO NEGLIGÊNCIA) OU DE OUTRA FORMA, DECORRENTES OU RELACIONADOS A ESTE EULA OU AO SEU USO DO SOFTWARE.
 
-5.2 Responsabilidade por Falhas: A responsabilidade do Licenciante por falhas operacionais do Software limita-se exclusivamente a problemas cuja causa raiz seja comprovadamente originada na infraestrutura de servidores ou serviços em nuvem mantidos pelo Licenciante. O Licenciante não se responsabiliza por quaisquer erros, falhas ou danos resultantes de mau uso, configuração inadequada, negligência do usuário, ou problemas decorrentes do hardware ou software de terceiros utilizado por você.
+**5.2 Responsabilidade por Falhas:** A responsabilidade do Licenciante por falhas operacionais do Software limita-se exclusivamente a problemas cuja causa raiz seja comprovadamente originada na infraestrutura de servidores ou serviços em nuvem mantidos pelo Licenciante. O Licenciante não se responsabiliza por quaisquer erros, falhas ou danos resultantes de mau uso, configuração inadequada, negligência do usuário, ou problemas decorrentes do hardware ou software de terceiros utilizado por você.
 
-6. Rescisão
+### 6. Rescisão
 
 Este EULA é efetivo até ser rescindido. Seus direitos sob esta licença serão rescindidos automaticamente, sem aviso prévio do Licenciante, se você violar qualquer um dos seus termos e condições. Após a rescisão, você deverá cessar todo o uso do Software e destruir todas as cópias, totais ou parciais, do Software.
 
-7. Lei Aplicável e Jurisdição
+### 7. Lei Aplicável e Jurisdição
 
 Este EULA e seu uso do Software são regidos e interpretados de acordo com as leis da República Federativa do Brasil, sem levar em conta o conflito de disposições legais. Qualquer ação legal ou processo decorrente ou relacionado a este EULA será instituído exclusivamente no foro da comarca de Sertãozinho, Estado de São Paulo.
 
-8. Proteção Legal e Penalidades
+### 8. Proteção Legal e Penalidades
 
-8.1 Fundamento Legal: O Software é protegido pela Lei nº 9.609 de 19 de fevereiro de 1998 ("Lei do Software") e pela Lei nº 9.610 de 19 de fevereiro de 1998 ("Lei de Direitos Autorais"). A violação dos direitos de autor de programas de computador constitui crime e ato ilícito civil.
+**8.1 Fundamento Legal:** O Software é protegido pela Lei nº 9.609 de 19 de fevereiro de 1998 ("Lei do Software") e pela Lei nº 9.610 de 19 de fevereiro de 1998 ("Lei de Direitos Autorais"). A violação dos direitos de autor de programas de computador constitui crime e ato ilícito civil.
 
-8.2 Sanções Penais: A violação dos direitos de autor de um programa de computador, como a cópia ou o uso não autorizado, sujeita o infrator a uma pena de detenção de seis meses a dois anos ou multa (Art. 12 da Lei nº 9.609/98). Se a violação consistir na reprodução ou comercialização de cópias do Software com intuito de lucro, a pena é agravada para reclusão de dois a quatro anos e multa (Art. 184, §1º e §2º do Código Penal).
+**8.2 Sanções Penais:** A violação dos direitos de autor de um programa de computador, como a cópia ou o uso não autorizado, sujeita o infrator a uma pena de detenção de seis meses a dois anos ou multa (Art. 12 da Lei nº 9.609/98). Se a violação consistir na reprodução ou comercialização de cópias do Software com intuito de lucro, a pena é agravada para reclusão de dois a quatro anos e multa (Art. 184, §1º e §2º do Código Penal).
 
-8.3 Sanções Civis: Além das sanções penais, o infrator estará sujeito a ações civis de indenização. Aquele que vender, expuser à venda, ou utilizar cópias não autorizadas do Software deverá pagar ao titular dos direitos o valor de todos os exemplares vendidos ou, caso este número não seja conhecido, o valor de três mil exemplares, além dos que forem apreendidos (Art. 103 da Lei nº 9.610/98). A empresa que utiliza o software sem a devida licença pode ser obrigada a pagar indenizações que podem chegar a 10 vezes o valor da licença original.
+**8.3 Sanções Civis:** Além das sanções penais, o infrator estará sujeito a ações civis de indenização. Aquele que vender, expuser à venda, ou utilizar cópias não autorizadas do Software deverá pagar ao titular dos direitos o valor de todos os exemplares vendidos ou, caso este número não seja conhecido, o valor de três mil exemplares, além dos que forem apreendidos (Art. 103 da Lei nº 9.610/98). A empresa que utiliza o software sem a devida licença pode ser obrigada a pagar indenizações que podem chegar a 10 vezes o valor da licença original.
 
-8.4 Consequências Adicionais: A utilização de software não licenciado pode acarretar danos à imagem da empresa, além de expor seus sistemas a riscos de segurança, como malwares.
+**8.4 Consequências Adicionais:** A utilização de software não licenciado pode acarretar danos à imagem da empresa, além de expor seus sistemas a riscos de segurança, como malwares.
