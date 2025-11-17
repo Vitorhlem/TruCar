@@ -262,8 +262,8 @@ const filteredImplements = computed(() => {
   });
 });
 
-// Seu 'getStatusColor' já usa os valores corretos
-function getStatusColor(status: string) {
+// FIX: Changed parameter type from 'string' to 'ImplementStatus'
+function getStatusColor(status: ImplementStatus) {
   switch (status) {
     case ImplementStatus.AVAILABLE: return 'positive';
     case ImplementStatus.IN_USE: return 'warning';
@@ -272,8 +272,8 @@ function getStatusColor(status: string) {
   }
 }
 
-// Seu 'getStatusLabel' já usa os valores corretos
-function getStatusLabel(status: string) {
+// FIX: Changed parameter type from 'string' to 'ImplementStatus'
+function getStatusLabel(status: ImplementStatus) {
   switch (status) {
     case ImplementStatus.AVAILABLE: return 'Disponível';
     case ImplementStatus.IN_USE: return 'Em Uso';

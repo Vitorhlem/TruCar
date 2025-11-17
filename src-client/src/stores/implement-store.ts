@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 import type { Implement, ImplementCreate, ImplementUpdate } from 'src/models/implement-models';
+// FIX: Import the ImplementStatus enum to use its values
+import { ImplementStatus } from 'src/models/implement-models';
 
 const initialState = () => ({
   implementList: [] as Implement[],
@@ -13,7 +15,8 @@ export const useImplementStore = defineStore('implement', {
 
   getters: {
     availableImplements: (state) =>
-      state.implementList.filter((i) => i.status === 'available'),
+      // FIX: Compare against the enum value instead of a magic string
+      state.implementList.filter((i) => i.status === ImplementStatus.AVAILABLE),
   },
 
   actions: {
