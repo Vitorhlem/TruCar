@@ -274,14 +274,15 @@ async def replace_maintenance_component(
         # 3. Lógica de Notificação
         if reported_by_id:
              background_tasks.add_task(
-                crud.notification.create_notification, 
-                message=comment_text_for_notification,
-                notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                organization_id=current_user.organization_id, 
-                user_id=reported_by_id, 
-                related_entity_type="maintenance_request", 
-                related_entity_id=request_id
-            )
+                 crud.notification.create_notification, 
+                 db=db,  # <--- ADICIONE ESTA LINHA
+                 message=comment_text_for_notification,
+                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                 organization_id=current_user.organization_id, 
+                 user_id=reported_by_id, 
+                 related_entity_type="maintenance_request", 
+                 related_entity_id=request_id
+             )
 
         return ReplaceComponentResponse(
             success=True,
@@ -291,13 +292,13 @@ async def replace_maintenance_component(
         )
 
     except ValueError as e:
-        # await db.rollback() <--- REMOVA ESTA LINHA
+        await db.rollback() 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        # await db.rollback() <--- REMOVA ESTA LINHA
+        await db.rollback() 
         import traceback
         traceback.print_exc()
         raise HTTPException(
@@ -327,29 +328,29 @@ async def revert_part_change(
         
         comment_text_for_notification = new_comment.comment_text
         
-        # await db.commit() <--- REMOVA ESTA LINHA
+        await db.commit()
         
         if reported_by_id:
              background_tasks.add_task(
-                crud.notification.create_notification, 
-                message=comment_text_for_notification,
-                notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                organization_id=current_user.organization_id, 
-                user_id=reported_by_id, 
-                related_entity_type="maintenance_request", 
-                related_entity_id=log_entry.maintenance_request_id
-            )
-        
+                 crud.notification.create_notification, 
+                 db=db, 
+                 message=comment_text_for_notification,
+                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                 organization_id=current_user.organization_id, 
+                 user_id=reported_by_id, 
+                 related_entity_type="maintenance_request", 
+                 related_entity_id=log_entry.maintenance_request_id
+             )
         return new_comment
 
     except ValueError as e:
-        # await db.rollback() <--- REMOVA ESTA LINHA
+        await db.rollback() # <--- DESCOMENTE (ATIVE) ESTA LINHA
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        # await db.rollback() <--- REMOVA ESTA LINHA
+        await db.rollback() # <--- DESCOMENTE (ATIVE) ESTA LINHA
         import traceback
         traceback.print_exc()
         raise HTTPException(
