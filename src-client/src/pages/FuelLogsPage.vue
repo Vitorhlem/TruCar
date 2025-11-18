@@ -103,7 +103,11 @@
               outlined
               v-model="formData.vehicle_id"
               :options="vehicleOptions"
-              :label="`${terminologyStore.vehicleNoun} *`" emit-value map-options
+              :label="`${terminologyStore.vehicleNoun} *`" 
+              emit-value 
+              map-options
+              use-input
+              input-debounce="0"
               :rules="[val => val > 0 || 'Selecione um veículo']"
               @update:model-value="handleVehicleSelect"
             />
@@ -111,8 +115,9 @@
               outlined
               v-model.number="formData.odometer"
               type="number"
-              :label="`${terminologyStore.odometerLabel} *`"
+              :label="`${terminologyStore.odometerLabel} (Leitura Atual) *`"
               :rules="[val => (val !== null && val !== undefined && val >= 0) || 'Valor inválido']"
+              hint="Preenchido automaticamente com a leitura atual do veículo"
             />
             <q-input outlined v-model.number="formData.liters" type="number" label="Litros Abastecidos *" step="0.01" :rules="[val => val > 0 || 'Litros devem ser maior que 0']" />
             <q-input outlined v-model.number="formData.total_cost" type="number" label="Custo Total (R$) *" prefix="R$" step="0.01" :rules="[val => val > 0 || 'Custo deve ser maior que 0']" />
@@ -134,22 +139,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useQuasar } from 'quasar';
+import { useQuasar, type QTableProps } from 'quasar';
 import { useFuelLogStore } from 'stores/fuel-log-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useAuthStore } from 'stores/auth-store';
-import { useTerminologyStore } from 'stores/terminology-store'; // <-- IMPORT ADICIONADO
-import type { QTableProps } from 'quasar';
+import { useTerminologyStore } from 'stores/terminology-store';
 import type { FuelLog, FuelLogCreate, FuelLogUpdate } from 'src/models/fuel-log-models';
 
 const fuelLogStore = useFuelLogStore();
 const vehicleStore = useVehicleStore();
 const authStore = useAuthStore();
-const terminologyStore = useTerminologyStore(); // <-- STORE INSTANCIADA
+const terminologyStore = useTerminologyStore();
 const $q = useQuasar();
 
 const isCreateDialogOpen = ref(false);
-const editingLogId = ref<number | null>(null); // Ref para modo de edição
+const editingLogId = ref<number | null>(null);
 
 const formData = ref<FuelLogCreate>({
   vehicle_id: 0,
@@ -158,13 +162,12 @@ const formData = ref<FuelLogCreate>({
   total_cost: 0,
 });
 
-// O label do <q-select> também usa a terminologyStore agora
+// Mapeia os veículos para o q-select
 const vehicleOptions = computed(() => vehicleStore.vehicles.map(v => ({
-  label: `${v.brand} ${v.model} (${v.license_plate})`,
+  label: `${v.brand} ${v.model} (${v.license_plate || v.identifier})`,
   value: v.id
 })));
 
-// Computed para checar se é Gestor (usando strings literais)
 const isManager = computed(() => {
   if (!authStore.user) return false;
   return ['cliente_ativo', 'cliente_demo'].includes(authStore.user.role);
@@ -181,110 +184,100 @@ const columns: QTableProps['columns'] = [
   { name: 'actions', label: 'Ações', field: '', align: 'center' },
 ];
 
-// Função auxiliar para estilizar o status da verificação
 function getVerificationStatusProps(status: FuelLog['verification_status']) {
   switch (status) {
-    case 'VERIFIED':
-      return { color: 'positive', icon: 'check_circle', label: 'Verificado' };
-    case 'SUSPICIOUS':
-      return { color: 'negative', icon: 'warning', label: 'Suspeito' };
-    case 'PENDING':
-      return { color: 'grey-7', icon: 'hourglass_empty', label: 'Pendente' };
-    case 'UNVERIFIED':
-      return { color: 'info', icon: 'info', label: 'Não Verificado' };
-    default:
-      return { color: 'grey', icon: 'help', label: 'Desconhecido' };
+    case 'VERIFIED': return { color: 'positive', icon: 'check_circle', label: 'Verificado' };
+    case 'SUSPICIOUS': return { color: 'negative', icon: 'warning', label: 'Suspeito' };
+    case 'PENDING': return { color: 'grey-7', icon: 'hourglass_empty', label: 'Pendente' };
+    case 'UNVERIFIED': return { color: 'info', icon: 'info', label: 'Não Verificado' };
+    default: return { color: 'grey', icon: 'help', label: 'Desconhecido' };
   }
 }
 
 /**
- * Chamado quando um veículo é selecionado (auto-preenchimento).
+ * CORREÇÃO: Preenchimento automático inteligente
+ * Verifica se o setor usa 'Horas' para priorizar o horímetro, senão usa km.
  */
 function handleVehicleSelect(vehicleId: number) {
-  // Só preenche automaticamente se for um registro NOVO
+  // Só preenche automaticamente se for um registro NOVO (não sobrescreve edição)
   if (!vehicleId || editingLogId.value) return;
 
   const selectedVehicle = vehicleStore.vehicles.find(v => v.id === vehicleId);
   
   if (selectedVehicle) {
-    // Acessa o 'current_km' (que no agro será 'current_hr')
-    formData.value.odometer = selectedVehicle.current_km ?? 0;
+    const unit = terminologyStore.distanceUnit.toLowerCase();
+    
+    if (unit.includes('horas')) {
+        // Se for Agro/Horas: Tenta engine_hours, se for nulo assume 0
+        formData.value.odometer = selectedVehicle.current_engine_hours || 0;
+    } else {
+        // Se for Padrão/KM: Tenta current_km
+        formData.value.odometer = selectedVehicle.current_km || 0;
+    }
+    
+    // Feedback visual sutil (opcional)
+    $q.notify({
+       message: `Leitura atual carregada: ${formData.value.odometer} ${terminologyStore.distanceUnit}`,
+       color: 'primary',
+       icon: 'speed',
+       timeout: 1000,
+       position: 'top'
+    });
   }
 }
 
-// Abre o diálogo em modo de CRIAÇÃO
 function openCreateDialog() {
   editingLogId.value = null; 
   formData.value = { vehicle_id: 0, odometer: 0, liters: 0, total_cost: 0 };
   isCreateDialogOpen.value = true;
 }
 
-// Abre o diálogo em modo de EDIÇÃO
 function onEditLog(log: FuelLog) {
   editingLogId.value = log.id;
-  
   formData.value = {
     vehicle_id: log.vehicle.id,
     odometer: log.odometer,
     liters: log.liters,
     total_cost: log.total_cost,
   };
-  
   isCreateDialogOpen.value = true;
 }
 
-// Lida com o submit (criação ou atualização)
 async function handleSubmit() {
-  console.log('Botão Salvar/Atualizar clicado. Iniciando handleSubmit.');
-  
   try {
     if (editingLogId.value) {
-      console.log('Modo: EDIÇÃO. ID:', editingLogId.value, 'Dados:', formData.value);
       await fuelLogStore.updateFuelLog(editingLogId.value, formData.value as FuelLogUpdate);
     } else {
-      console.log('Modo: CRIAÇÃO. Dados:', formData.value);
       await fuelLogStore.createFuelLog(formData.value);
     }
     isCreateDialogOpen.value = false;
     editingLogId.value = null;
-    
-  } catch (error) { // Correção do catch vazio
-    console.error('Erro ao salvar o registro de abastecimento:', error);
-    // A store já deve ter notificado o usuário
+  } catch (error) {
+    console.error('Erro ao salvar:', error);
   }
 }
 
-// Sincronização com provedor
 async function handleSync() {
   await fuelLogStore.syncWithProvider();
 }
 
-// Exclusão
 function onDeleteLog(logId: number) {
   $q.dialog({
     title: 'Confirmar Exclusão',
-    message: 'Tem certeza que deseja excluir este registro de abastecimento? Esta ação não pode ser desfeita.',
+    message: 'Tem certeza que deseja excluir este registro?',
     color: 'negative',
     persistent: true,
-    cancel: {
-      label: 'Cancelar',
-      flat: true,
-    },
-    ok: {
-      label: 'Excluir',
-      color: 'negative',
-      unelevated: true,
-    },
+    cancel: true,
+    ok: { label: 'Excluir', color: 'negative', unelevated: true },
   }).onOk(() => {
     void fuelLogStore.deleteFuelLog(logId);
   });
 }
 
-// Carregamento inicial dos dados
 onMounted(() => {
   void fuelLogStore.fetchFuelLogs();
-  if (vehicleStore.vehicles.length === 0) {
-    void vehicleStore.fetchAllVehicles();
-  }
+  // CORREÇÃO: Carregar TODOS os veículos (rowsPerPage: 0) para garantir que o select funcione corretamente
+  // independentemente de quantos veículos existam.
+  void vehicleStore.fetchAllVehicles({ rowsPerPage: 0 });
 });
 </script>

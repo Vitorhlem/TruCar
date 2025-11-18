@@ -12,11 +12,27 @@
           </div>
           
           <div class="flex items-center q-gutter-md">
-            <q-select v-model="selectedPeriod" :options="periodOptions" label="Período de Análise" dense outlined bg-color="white" style="min-width: 200px;" class="gt-xs shadow-1">
+            <q-select 
+              v-model="selectedPeriod" 
+              :options="periodOptions" 
+              label="Período de Análise" 
+              dense 
+              outlined 
+              :bg-color="$q.dark.isActive ? 'grey-10' : 'white'"
+              style="min-width: 200px;" 
+              class="gt-xs shadow-1"
+            >
               <template v-slot:prepend><q-icon name="calendar_today" /></template>
             </q-select>
 
-            <q-btn outline color="primary" icon="tune" label="Personalizar" class="gt-xs bg-white" @click="showCustomizationDialog = true">
+            <q-btn 
+              outline 
+              color="primary" 
+              icon="tune" 
+              label="Personalizar" 
+              :class="['gt-xs', $q.dark.isActive ? 'bg-grey-10' : 'bg-white']"
+              @click="showCustomizationDialog = true"
+            >
               <q-tooltip>Mostrar/Ocultar Widgets</q-tooltip>
             </q-btn>
 
@@ -101,13 +117,13 @@
                 <q-card class="dashboard-card bg-gradient-primary text-white">
                     <q-card-section><div class="text-overline text-blue-1">OBJETIVO DA ORGANIZAÇÃO</div><div class="text-h5 text-weight-bold">{{ activeGoal.title }}</div></q-card-section>
                     <q-card-section class="q-pt-none">
-                       <div class="flex justify-between items-end q-mb-sm">
-                          <div class="text-h4">{{ activeGoal.current_value.toFixed(0) }} <span class="text-body1">{{ activeGoal.unit }}</span></div>
-                          <div class="text-subtitle1">Meta: {{ activeGoal.target_value }}</div>
-                       </div>
-                       <q-linear-progress size="15px" :value="goalProgress" color="white" track-color="blue-8" class="rounded-borders">
-                          <div class="absolute-full flex flex-center"><q-badge color="transparent" text-color="primary" class="text-weight-bold" :label="`${(goalProgress * 100).toFixed(1)}%`" /></div>
-                       </q-linear-progress>
+                        <div class="flex justify-between items-end q-mb-sm">
+                           <div class="text-h4">{{ activeGoal.current_value.toFixed(0) }} <span class="text-body1">{{ activeGoal.unit }}</span></div>
+                           <div class="text-subtitle1">Meta: {{ activeGoal.target_value }}</div>
+                        </div>
+                        <q-linear-progress size="15px" :value="goalProgress" color="white" track-color="blue-8" class="rounded-borders">
+                           <div class="absolute-full flex flex-center"><q-badge color="transparent" text-color="primary" class="text-weight-bold" :label="`${(goalProgress * 100).toFixed(1)}%`" /></div>
+                        </q-linear-progress>
                     </q-card-section>
                 </q-card>
               </div>
@@ -156,8 +172,7 @@
         </div>
 
         <div class="q-mb-lg">
-           
-           <q-banner v-if="activeJourney" class="bg-green-1 text-positive rounded-borders q-pa-md border-positive shadow-1">
+           <q-banner v-if="activeJourney" class="bg-green-1 text-positive rounded-borders q-pa-md border-positive shadow-1 body--dark-bg-adjust">
               <template v-slot:avatar>
                 <q-spinner-radio color="positive" size="2em" />
               </template>
@@ -172,7 +187,7 @@
               </template>
            </q-banner>
 
-           <q-banner v-else class="bg-blue-1 text-primary rounded-borders q-pa-md border-primary shadow-1">
+           <q-banner v-else class="bg-blue-1 text-primary rounded-borders q-pa-md border-primary shadow-1 body--dark-bg-adjust">
               <template v-slot:avatar>
                 <q-icon name="info" color="primary" />
               </template>
@@ -249,13 +264,13 @@
 
         <div class="row q-col-gutter-md q-mt-lg">
           <div class="col-12">
-             <q-card class="dashboard-card bg-white text-black">
+             <q-card class="dashboard-card">
                 <q-card-section><div class="text-h6">Seu Desempenho (30 Dias)</div></q-card-section>
                 <q-separator />
                 <q-card-section class="row text-center">
                    <div class="col-4">
                       <div class="text-h5 text-weight-bold text-primary">{{ driverMetrics?.distance.toFixed(0) || 0 }}</div>
-                      <div class="text-caption text-grey">{{ terminologyStore.distanceUnit }} Percorridos</div>
+                      <div class="text-caption text-grey">km Percorridos</div>
                    </div>
                    <div class="col-4">
                       <div class="text-h5 text-weight-bold text-teal">{{ driverMetrics?.hours.toFixed(1) || 0 }}h</div>
@@ -263,7 +278,7 @@
                    </div>
                    <div class="col-4">
                       <div class="text-h5 text-weight-bold text-orange">{{ driverMetrics?.fuel_efficiency.toFixed(1) || 0 }}</div>
-                      <div class="text-caption text-grey">Média ({{ terminologyStore.fuelUnit }})</div>
+                      <div class="text-caption text-grey">Média (km/l)</div>
                    </div>
                 </q-card-section>
              </q-card>
@@ -272,7 +287,7 @@
 
         <div class="q-mt-lg" v-if="driverAchievements && driverAchievements.length > 0">
             <div class="text-h6 q-mb-sm">Conquistas</div>
-            <q-scroll-area style="height: 100px; max-width: 100%;" class="dashboard-card q-pa-sm bg-white" horizontal>
+            <q-scroll-area style="height: 100px; max-width: 100%;" class="dashboard-card q-pa-sm" horizontal>
               <div class="row no-wrap q-gutter-md items-center" style="height: 100%">
                  <div v-for="achiev in driverAchievements" :key="achiev.title" class="column flex-center q-mx-sm" style="width: 80px">
                     <q-avatar :icon="achiev.icon" :color="achiev.unlocked ? 'amber' : 'grey-3'" :text-color="achiev.unlocked ? 'white' : 'grey-6'" size="md" class="shadow-1"/>
@@ -414,13 +429,14 @@ const costAnalysisChart = computed(() => {
         }
       }
     },
+    // Adapta as cores das labels para Dark Mode
     xaxis: { categories: data.map((item: CostByCategory) => item.cost_type), labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' } } },
     yaxis: { labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' }, formatter: (val: number) => `R$ ${val.toLocaleString('pt-BR')}` } },
     plotOptions: { bar: { horizontal: false, columnWidth: '55%', distributed: true, borderRadius: 4 } },
     colors: [colors.getPaletteColor('primary'), colors.getPaletteColor('secondary'), colors.getPaletteColor('accent'), colors.getPaletteColor('positive'), colors.getPaletteColor('warning')],
     dataLabels: { enabled: false },
     legend: { show: false },
-    tooltip: { y: { formatter: (val: number) => `R$ ${val.toFixed(2)}` } },
+    tooltip: { theme: $q.dark.isActive ? 'dark' : 'light', y: { formatter: (val: number) => `R$ ${val.toFixed(2)}` } },
     theme: { mode: $q.dark.isActive ? 'dark' : 'light' }
   };
   return { series, options };
@@ -449,7 +465,7 @@ const lineChart = computed(() => {
     stroke: { curve: 'smooth', width: 3 },
     colors: [colors.getPaletteColor('secondary')],
     dataLabels: { enabled: false },
-    tooltip: { x: { format: 'dd/MM/yy' } },
+    tooltip: { theme: $q.dark.isActive ? 'dark' : 'light', x: { format: 'dd/MM/yy' } },
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.9, stops: [0, 90, 100] } },
     theme: { mode: $q.dark.isActive ? 'dark' : 'light' }
   };
@@ -458,13 +474,23 @@ const lineChart = computed(() => {
 
 const fleetStatusChart = computed(() => {
   if (!kpis.value) return { series: [], options: {} };
-  
+    const isDark = $q.dark.isActive;
+  const textColor = isDark ? '#FFFFFF' : '#373d3f';
   const series = [kpis.value.available_vehicles, kpis.value.in_use_vehicles, kpis.value.maintenance_vehicles];
-  
+  const cardBgColor = isDark ? '#1d1d1d' : '#ffffff';
   const options = {
     labels: ['Disponíveis', 'Em Uso', 'Manutenção'],
     colors: [colors.getPaletteColor('positive'), colors.getPaletteColor('warning'), colors.getPaletteColor('negative')],
-    chart: { type: 'donut' },
+    chart: { 
+        type: 'donut',
+        background: 'transparent', // Fundo transparente essencial
+        foreColor: textColor // Cor global do texto
+    },
+    stroke: {
+        show: true,
+        colors: [cardBgColor], 
+        width: 2
+    },
     legend: { position: 'bottom', labels: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' } },
     plotOptions: {
       pie: {
@@ -486,6 +512,7 @@ const fleetStatusChart = computed(() => {
       }
     },
     dataLabels: { enabled: false },
+    tooltip: { theme: $q.dark.isActive ? 'dark' : 'light' },
     theme: { mode: $q.dark.isActive ? 'dark' : 'light' }
   };
   return { series, options };
@@ -533,7 +560,9 @@ function scheduleMaintenanceGeneral() {
 .dashboard-page {
   background-color: #f5f7fa; 
   .body--dark & {
-    background-color: $dark-page;
+    // Se você tiver variáveis globais de tema, use-as. 
+    // Caso contrário, use uma cor fixa escura.
+    background-color: #121212; 
   }
 }
 .page-content-container {
@@ -543,19 +572,30 @@ function scheduleMaintenanceGeneral() {
 .dashboard-card {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  border: none;
+  border: 1px solid #000000;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   background: white;
+  
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 25px rgba(0, 0, 0, 0.08);
   }
+  
+  // Ajuste para o modo escuro
   .body--dark & {
-    background: $dark;
-    border: 1px solid $grey-8;
+    background: #1d1d1d; // Cor de fundo para cards em modo escuro
+    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: none;
+    color: #fff;
   }
 }
+
+// Ajuste específico para banners em modo escuro
+.body--dark .body--dark-bg-adjust {
+    background: #1d1d1d !important;
+    color: #fff !important;
+}
+
 .action-btn-large {
    font-size: 1.1rem;
    transition: all 0.2s;
@@ -573,6 +613,9 @@ function scheduleMaintenanceGeneral() {
 .hover-bg:hover {
   background-color: rgba(0,0,0,0.03);
   cursor: default;
+  .body--dark & {
+      background-color: rgba(255,255,255,0.05);
+  }
 }
 .fade-in {
   animation: fadeIn 0.5s ease-in-out;

@@ -9,7 +9,7 @@
     <q-card-section class="flex items-center no-wrap">
       <q-icon :name="icon" :color="color" size="44px" class="q-mr-md" />
       <div>
-        <div class="text-grey-8">{{ label }}</div>
+        <div class="">{{ label }}</div>
         <div v-if="!loading" class="text-h4 text-weight-bolder">{{ formattedValue }}</div>
         <q-skeleton v-else type="text" width="50px" class="text-h4" />
       </div>
@@ -54,10 +54,26 @@ function handleClick() {
 </script>
 
 <style scoped lang="scss">
+
+.dashboard-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  background: white;
+  transition: all 0.2s;
+
+  /* Borda Preta no Modo Claro */
+  
+  .body--dark & {
+    background: #1d1d1d;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+  }
+}
+
 .stat-card {
   border-radius: $generic-border-radius;
-  box-shadow: none;
-  border: 1px solid $grey-3;
+  border: 1px solid #000000;
+  border: 1px solid $grey-7;
   transition: all 0.2s ease-in-out;
   
   &.cursor-pointer:hover {
