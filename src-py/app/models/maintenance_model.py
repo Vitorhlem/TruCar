@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func, Enum as SAEnum, Boolean # <-- 1. IMPORTAR BOOLEAN
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Boolean, Float, Enum as SAEnum, func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import List, Optional 
 
@@ -24,6 +24,8 @@ class MaintenanceCategory(str, enum.Enum):
 
 class MaintenanceRequest(Base):
     __tablename__ = "maintenance_requests"
+
+    services = relationship("MaintenanceServiceItem", back_populates="maintenance_request", cascade="all, delete-orphan")
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     problem_description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -97,3 +99,20 @@ class MaintenancePartChange(Base):
         "VehicleComponent", 
         foreign_keys=[component_installed_id]
     )
+
+class MaintenanceServiceItem(Base):
+    __tablename__ = "maintenance_service_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String(255), nullable=False)
+    cost = Column(Float, nullable=False)
+    provider_name = Column(String(255), nullable=True) # Ex: "Mecânica do Zé"
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    maintenance_request_id = Column(Integer, ForeignKey("maintenance_requests.id"), nullable=False)
+    added_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # Relações
+    maintenance_request = relationship("MaintenanceRequest", back_populates="services")
+    added_by = relationship("User")

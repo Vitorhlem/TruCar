@@ -45,12 +45,8 @@ export interface MaintenancePartChangePublic {
   timestamp: string;
   user: User;
   notes: string | null;
-  
-  // --- ATENÇÃO AQUI ---
-  component_removed: VehicleComponent | null; // Pode ser null (Instalação Direta)
-  component_installed: VehicleComponent;      // Obrigatório (Sempre entra algo)
-  // --------------------
-  
+  component_removed: VehicleComponent | null;
+  component_installed: VehicleComponent;
   is_reverted: boolean;
 }
 
@@ -68,6 +64,24 @@ export interface InstallComponentResponse {
   new_comment: MaintenanceComment;
 }
 
+// --- ADICIONADO ---
+export interface MaintenanceServiceItem {
+  id: number;
+  description: string;
+  cost: number;
+  provider_name?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface MaintenanceServiceItemCreate {
+  description: string;
+  cost: number;
+  provider_name?: string | null;
+  notes?: string | null;
+}
+// --- FIM DA ADIÇÃO ---
+
 export interface MaintenanceRequest {
   id: number;
   problem_description: string;
@@ -81,6 +95,7 @@ export interface MaintenanceRequest {
   updated_at: string | null;
   comments: MaintenanceComment[];
   part_changes: MaintenancePartChangePublic[];
+  services: MaintenanceServiceItem[]; // <-- Adicionado anteriormente
 }
 
 export interface MaintenanceRequestCreate {

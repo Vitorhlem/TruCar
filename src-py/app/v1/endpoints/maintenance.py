@@ -11,8 +11,11 @@ from app.schemas.maintenance_schema import (
     MaintenanceRequestPublic, MaintenanceRequestCreate, MaintenanceRequestUpdate,
     MaintenanceCommentPublic, MaintenanceCommentCreate,
     ReplaceComponentPayload, ReplaceComponentResponse, InstallComponentResponse,
-    InstallComponentPayload
+    InstallComponentPayload,
+    MaintenanceServiceItemCreate, MaintenanceServiceItemPublic
 )
+from app.models.maintenance_model import MaintenanceServiceItem # Importe o novo modelo
+from app.models.vehicle_cost_model import VehicleCost, CostType # Importe para gerar custo
 from app.crud.crud_maintenance import MaintenancePartChange
 from app.models.notification_model import NotificationType
 
@@ -103,6 +106,52 @@ async def create_maintenance_request(
         return request
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    
+    
+@router.post("/{request_id}/services", response_model=MaintenanceServiceItemPublic)
+async def add_service_item(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    request_id: int,
+    service_in: MaintenanceServiceItemCreate,
+    current_user: User = Depends(deps.get_current_active_manager)
+):
+    """Adiciona um item de serviço (mão de obra/terceiros) ao chamado e gera o custo."""
+    try:
+        # 1. Valida o chamado
+        request = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user.organization_id)
+        if not request:
+             raise HTTPException(status_code=404, detail="Chamado não encontrado.")
+             
+        # 2. Cria o Item de Serviço
+        db_service = MaintenanceServiceItem(
+            **service_in.model_dump(),
+            maintenance_request_id=request_id,
+            added_by_id=current_user.id
+        )
+        db.add(db_service)
+        
+        # 3. Gera o Custo Financeiro Automaticamente
+        # O custo é lançado como 'Manutenção'
+        new_cost = VehicleCost(
+            description=f"Serviço: {service_in.description} (Chamado #{request_id}) - Fornecedor: {service_in.provider_name or 'N/A'}",
+            amount=service_in.cost,
+            date=datetime.now().date(),
+            cost_type=CostType.MANUTENCAO,
+            vehicle_id=request.vehicle_id,
+            organization_id=current_user.organization_id
+        )
+        db.add(new_cost)
+        
+        # 4. Commit e Refresh
+        await db.commit()
+        await db.refresh(db_service)
+        
+        return db_service
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao adicionar serviço: {e}")
 
 
 @router.delete("/{request_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -7,10 +7,11 @@ import type {
   MaintenanceRequestUpdate,
   MaintenanceComment,
   MaintenanceCommentCreate,
-  ReplaceComponentPayload, // <-- 1. Importa o payload atualizado
+  ReplaceComponentPayload, 
   ReplaceComponentResponse,
   InstallComponentPayload,
-  InstallComponentResponse, // <-- 2. Importa a resposta atualizada
+  InstallComponentResponse, 
+  MaintenanceServiceItemCreate
 } from 'src/models/maintenance-models';
 import { isAxiosError } from 'axios';
 // Interface para os parâmetros de busca
@@ -36,6 +37,24 @@ export const useMaintenanceStore = defineStore('maintenance', {
         Notify.create({ type: 'negative', message: 'Falha ao carregar manutenções.' });
       } finally {
         this.isLoading = false;
+      }
+    },
+
+    async addServiceItem(requestId: number, payload: MaintenanceServiceItemCreate): Promise<boolean> {
+      try {
+        const response = await api.post(`/maintenance/${requestId}/services`, payload);
+        
+        const request = this.maintenances.find(r => r.id === requestId);
+        if (request) {
+            if (!request.services) request.services = [];
+            request.services.push(response.data);
+        }
+        
+        Notify.create({ type: 'positive', message: 'Serviço adicionado e custo lançado!' });
+        return true;
+      } catch { // <-- Removido 'error' não utilizado
+        Notify.create({ type: 'negative', message: 'Erro ao adicionar serviço.' });
+        return false;
       }
     },
 

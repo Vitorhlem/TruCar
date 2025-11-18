@@ -85,8 +85,24 @@ class MaintenanceRequestPublic(MaintenanceRequestBase):
     approver: Optional[UserPublic] = None
     vehicle: VehiclePublic
     manager_notes: Optional[str] = None
+    services: List[MaintenanceServiceItemPublic] = []
     comments: List[MaintenanceCommentPublic] = []
     
     part_changes: List[MaintenancePartChangePublic] = []
     
+    model_config = { "from_attributes": True }
+
+class MaintenanceServiceItemBase(BaseModel):
+    description: str
+    cost: float
+    provider_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class MaintenanceServiceItemCreate(MaintenanceServiceItemBase):
+    pass
+
+class MaintenanceServiceItemPublic(MaintenanceServiceItemBase):
+    id: int
+    created_at: datetime
+    added_by_id: int
     model_config = { "from_attributes": True }

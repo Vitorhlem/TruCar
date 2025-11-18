@@ -66,12 +66,45 @@
         narrow-indicator
       >
         <q-tab name="details" label="Detalhes e Histórico" />
+        <q-tab name="services" label="Serviços / Mão de Obra" />
         <q-tab name="components" label="Componentes do Veículo" />
       </q-tabs>
 
       <q-separator />
 
       <q-tab-panels v-model="tab" animated>
+        <q-tab-panel name="services">
+          <div class="row q-col-gutter-sm q-mb-md" v-if="authStore.isManager && !isClosed">
+             <div class="col-12 text-subtitle2">Adicionar Serviço (Gera custo automático)</div>
+             <div class="col-4">
+                 <q-input v-model="newService.description" label="Descrição (Ex: Mão de Obra)" dense outlined />
+             </div>
+             <div class="col-3">
+                 <q-input v-model.number="newService.cost" label="Valor (R$)" type="number" dense outlined prefix="R$" />
+             </div>
+             <div class="col-3">
+                 <q-input v-model="newService.provider_name" label="Fornecedor (Opcional)" dense outlined />
+             </div>
+             <div class="col-2">
+                 <q-btn icon="add" color="primary" round dense @click="handleAddService" :disable="!newService.description || !newService.cost" />
+             </div>
+          </div>
+          
+          <q-separator class="q-mb-md" />
+
+          <q-table
+            :rows="request.services || []"
+            :columns="[
+                { name: 'desc', label: 'Descrição', field: 'description', align: 'left' },
+                { name: 'provider', label: 'Fornecedor', field: 'provider_name', align: 'left' },
+                { name: 'cost', label: 'Custo', field: 'cost', format: (v) => `R$ ${v.toFixed(2)}`, align: 'right' }
+            ]"
+            dense
+            flat
+            bordered
+            no-data-label="Nenhum serviço lançado."
+          />
+        </q-tab-panel>
         <q-tab-panel name="details">
           <q-scroll-area style="height: 400px">
             <q-card-section>
@@ -334,6 +367,12 @@ import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import ReplaceComponentDialog from './ReplaceComponentDialog.vue';
 import InstallComponentDialog from './InstallComponentDialog.vue';
 
+const newService = ref({
+    description: '',
+    cost: null as number | null,
+    provider_name: ''
+});
+
 const props = defineProps<{
   modelValue: boolean;
   request: MaintenanceRequest | null;
@@ -375,6 +414,21 @@ const isClosed = computed(
     props.request?.status === MaintenanceStatus.CONCLUIDA ||
     props.request?.status === MaintenanceStatus.REJEITADA
 );
+
+async function handleAddService() {
+    if(!props.request || !newService.value.description || !newService.value.cost) return;
+    
+    const payload = {
+        description: newService.value.description,
+        cost: newService.value.cost,
+        provider_name: newService.value.provider_name
+    };
+    
+    await maintenanceStore.addServiceItem(props.request.id, payload);
+    
+    // Limpa form
+    newService.value = { description: '', cost: null, provider_name: '' };
+}
 
 async function postComment() {
   if (!props.request || !newCommentText.value.trim()) return;

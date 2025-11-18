@@ -127,10 +127,10 @@ const form = ref<{
 
 // Filtro de Peças (Templates) - CORRIGIDO
 function filterParts(val: string, update: (fn: () => void) => void) {
-  if (partStore.parts.length === 0) {
+          if (partStore.parts.length === 0) {
     isPartsLoading.value = true;
     // Chamada correta da action: fetchParts()
-    partStore.fetchParts()
+void partStore.fetchParts(val)
       .then(() => {
         update(() => {
           const needle = val.toLowerCase();
