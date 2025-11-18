@@ -16,7 +16,7 @@ from app.models.notification_model import NotificationType
 from app.schemas.part_schema import (
     PartPublic, PartCreate, PartUpdate, 
     InventoryItemPublic, PartListPublic, InventoryItemDetails,
-    InventoryItemPage, InventoryItemRow # <-- Adicionar estes
+    InventoryItemPage, InventoryItemRow 
 )
 # --- FIM DA ATUALIZAÇÃO ---
 from app.schemas.inventory_transaction_schema import TransactionPublic
@@ -264,8 +264,10 @@ async def set_inventory_item_status(
         part = await crud_part.get_part_with_stock(db, part_id=item.part_id, organization_id=current_user.organization_id)
         if part and part.stock < part.minimum_stock:
             message = f"Estoque baixo para a peça '{part.name}'. Quantidade atual: {part.stock}."
-            background_tasks.add_task(
-                crud.notification.create_notification,
+            # CORREÇÃO: Chamando create_notification diretamente com await e passando 'db'
+            # Removemos o background_tasks.add_task para evitar o erro de argumento e sessão fechada
+            await crud.notification.create_notification(
+                db,
                 message=message,
                 notification_type=NotificationType.LOW_STOCK,
                 organization_id=part.organization_id, 
@@ -273,6 +275,7 @@ async def set_inventory_item_status(
                 related_entity_type="part",
                 related_entity_id=part.id
             )
+            
         await db.commit()
         await db.refresh(updated_item, ["part"]) 
         return updated_item

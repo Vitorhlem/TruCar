@@ -3,12 +3,10 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from geopy.distance import geodesic
-# --- Adicione esta importação ---
 from app import crud
 from app.models.fuel_log_model import FuelLog, VerificationStatus
 from app.models.vehicle_model import Vehicle
 from app.models.user_model import User
-# --- Adicione esta importação ---
 from app.schemas.vehicle_cost_schema import VehicleCostCreate
 from app.schemas.fuel_log_schema import FuelLogCreate, FuelLogUpdate, FuelProviderTransaction
 
@@ -17,7 +15,7 @@ async def check_abnormal_consumption(db: AsyncSession, *, fuel_log: FuelLog, veh
     Verifica se o consumo de um abastecimento é anormal em comparação com a média do veículo.
     Retorna (True, "mensagem de alerta") se for anormal.
     """
-    # Para calcular o consumo, precisamos do odômetro do abastecimento anterior
+    # Para calcular o consumo atual, precisamos do odômetro do abastecimento anterior
     previous_log_stmt = (
         select(FuelLog)
         .where(
@@ -33,16 +31,35 @@ async def check_abnormal_consumption(db: AsyncSession, *, fuel_log: FuelLog, veh
         return (False, "") # Não há dados suficientes para comparar
 
     km_travelled = fuel_log.odometer - previous_log.odometer
+    
     # Evita divisão por zero ou valores absurdos
     if km_travelled <= 0 or fuel_log.liters <= 0:
         return (False, "")
         
     current_consumption = km_travelled / fuel_log.liters
 
-    # Calcula a média histórica de consumo para este veículo (simplificado)
-    # Uma versão mais robusta poderia filtrar por tipo de estrada, carga, etc.
-    avg_consumption_stmt = select(func.avg((FuelLog.odometer - func.lag(FuelLog.odometer, 1, FuelLog.odometer).over(order_by=FuelLog.timestamp)) / FuelLog.liters)) \
-        .where(FuelLog.vehicle_id == vehicle.id, FuelLog.id != fuel_log.id)
+    # --- CORREÇÃO AQUI (Subquery para evitar erro de agregação) ---
+    # 1. Calcula a distância para cada registro usando window function em uma subquery
+    subquery = (
+        select(
+            FuelLog.id,
+            FuelLog.liters,
+            (FuelLog.odometer - func.lag(FuelLog.odometer).over(order_by=FuelLog.timestamp)).label("distance")
+        )
+        .where(FuelLog.vehicle_id == vehicle.id)
+        .subquery()
+    )
+
+    # 2. Calcula a média baseada na subquery, filtrando dados inválidos
+    avg_consumption_stmt = (
+        select(func.avg(subquery.c.distance / subquery.c.liters))
+        .where(
+            subquery.c.id != fuel_log.id, # Exclui o registro atual da média histórica
+            subquery.c.distance > 0,      # Ignora registros sem distância anterior (primeiro registro)
+            subquery.c.liters > 0
+        )
+    )
+    # -------------------------------------------------------------
     
     historical_avg = (await db.execute(avg_consumption_stmt)).scalar_one_or_none()
     
@@ -59,36 +76,30 @@ async def check_abnormal_consumption(db: AsyncSession, *, fuel_log: FuelLog, veh
 async def create_fuel_log(db: AsyncSession, *, log_in: FuelLogCreate, user_id: int, organization_id: int) -> FuelLog:
     """Cria um novo registo de abastecimento manual e um custo associado."""
     
-    # --- ESTA É A LINHA CORRIGIDA ---
-    # Nós excluímos o 'user_id' do 'log_in' para evitar o argumento duplicado.
     db_obj = FuelLog(
         **log_in.model_dump(exclude={"user_id"}), 
         user_id=user_id, 
         organization_id=organization_id
     )
-    # --- FIM DA CORREÇÃO ---
 
     db.add(db_obj)
     await db.flush()  # Garante que o db_obj tenha um ID antes de usá-lo
 
-    # --- LÓGICA ADICIONADA ---
     # Cria um custo correspondente do tipo "Combustível"
-    cost_obj_in = VehicleCostCreate( #
+    cost_obj_in = VehicleCostCreate(
         description=f"Abastecimento em {db_obj.timestamp.strftime('%d/%m/%Y')}",
         amount=db_obj.total_cost,
         date=db_obj.timestamp.date(),
         cost_type="Combustível",
     )
     
-    # Reutiliza o CRUD de custos para criar o novo registro de custo
-    await crud.vehicle_cost.create_cost( #
+    await crud.vehicle_cost.create_cost(
         db, 
         obj_in=cost_obj_in, 
         vehicle_id=db_obj.vehicle_id, 
         organization_id=organization_id,
         commit=False  # Evita o commit duplo
     )
-    # --- FIM DA LÓGICA ADICIONADA ---
 
     await db.commit()
     await db.refresh(db_obj, ["user", "vehicle"])
@@ -129,19 +140,9 @@ async def update_fuel_log(db: AsyncSession, *, db_obj: FuelLog, obj_in: FuelLogU
     db.add(db_obj)
     await db.commit()
     
-    # --- A CORREÇÃO É AQUI ---
-    # Nós precisamos recarregar o 'db_obj' E suas relações 'user' e 'vehicle'
-    # para que o Pydantic (FastAPI) possa validá-lo com o response_model 'FuelLogPublic'.
-    
-    # Antes (Errado):
-    # await db.refresh(db_obj)
-    
-    # Depois (Correto):
     await db.refresh(db_obj, ["user", "vehicle"])
-    # --- FIM DA CORREÇÃO ---
 
     return db_obj
-# --- FIM DA FUNÇÃO ---
 
 async def remove_fuel_log(db: AsyncSession, *, db_obj: FuelLog) -> FuelLog:
     await db.delete(db_obj)
@@ -180,8 +181,6 @@ async def process_provider_transactions(db: AsyncSession, *, transactions: List[
         if not vehicle:
             continue
 
-        # --- CORREÇÃO APLICADA AQUI ---
-        # A busca agora é feita pelo 'employee_id' em vez do 'cpf'.
         driver_stmt = select(User).where(User.employee_id == tx.driver_employee_id, User.organization_id == organization_id)
         driver = (await db.execute(driver_stmt)).scalars().first()
         if not driver:

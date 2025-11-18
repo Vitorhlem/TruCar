@@ -29,7 +29,11 @@
 
     <div v-else-if="vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-        <q-card class="vehicle-card column no-wrap full-height" @click="goToVehicleDetails(vehicle, 'details')">
+        <q-card 
+           class="column no-wrap full-height" 
+           :class="{ 'vehicle-card-interactive': authStore.isManager }"
+           @click="handleCardClick(vehicle)"
+        >
           <q-img :src="vehicle.photo_url ?? undefined" height="160px" fit="cover" class="bg-grey-3">
             <template v-slot:error>
               <div class="absolute-full flex flex-center bg-primary text-white">
@@ -64,12 +68,7 @@
           <q-card-section class="q-py-sm">
             <div class="flex justify-between items-center text-caption text-grey-8">
               <span>{{ terminologyStore.distanceUnit.toLowerCase() === 'km' ? 'Odómetro' : 'Horímetro' }}</span>
-<span class="text-weight-bold text-white-9">{{
-  formatDistance(
-    terminologyStore.distanceUnit.toLowerCase() === 'km' ? vehicle.current_km : vehicle.current_engine_hours,
-    terminologyStore.distanceUnit as 'km' | 'Horas'
-  )
-}}</span>
+              <span class="text-weight-bold text-white-9">{{ formatDistance(terminologyStore.distanceUnit.toLowerCase() === 'km' ? vehicle.current_km : vehicle.current_engine_hours, terminologyStore.distanceUnit as 'km' | 'Horas') }}</span>
             </div>
             <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption text-grey-8 q-mt-xs">
               <span>Próx. Revisão</span>
@@ -167,7 +166,7 @@ const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
 const photoFile = ref<File | null>(null);
 
-// --- LÓGICA DE BLOQUEIO DE DEMO ADICIONADA ---
+// --- LÓGICA DE BLOQUEIO DE DEMO ---
 const isVehicleLimitReached = computed(() => {
   if (!authStore.isDemo) {
     return false;
@@ -176,7 +175,6 @@ const isVehicleLimitReached = computed(() => {
   if (limit === undefined || limit === null || limit < 0) {
     return false;
   }
-  // Usar a contagem global da demoStore, não a contagem local da vehicleStore
   const currentCount = demoStore.stats?.vehicle_count ?? 0;
   return currentCount >= limit;
 });
@@ -189,8 +187,15 @@ function showUpgradeDialog() {
     persistent: false
   });
 }
-// --- FIM DA LÓGICA DE BLOQUEIO ---
 
+// --- NAVEGAÇÃO INTELIGENTE ---
+// Esta função controla o clique no card
+function handleCardClick(vehicle: Vehicle) {
+  if (authStore.isManager) {
+    goToVehicleDetails(vehicle);
+  } 
+  // Se for motorista, não faz nada (ou poderia mostrar um modal simples de info)
+}
 
 function goToVehicleDetails(vehicle: Vehicle, tab = 'details') {
   void router.push({ 
@@ -213,12 +218,10 @@ function resetForm() {
 }
 
 function openCreateDialog() {
-  // --- VERIFICAÇÃO DE LIMITE ADICIONADA ---
   if (isVehicleLimitReached.value) {
     showUpgradeDialog();
-    return; // Impede a abertura do diálogo
+    return;
   }
-  // --- FIM DA VERIFICAÇÃO ---
   
   resetForm();
   isFormDialogOpen.value = true;
@@ -367,11 +370,14 @@ function promptToDelete(vehicle: Vehicle) {
 <style scoped lang="scss">
 .vehicle-card {
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  cursor: pointer;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  
+  /* Só mostra cursor pointer se for interativo */
+  &.vehicle-card-interactive {
+     cursor: pointer;
+     &:hover {
+       transform: translateY(-4px);
+       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+     }
   }
 }
 </style>

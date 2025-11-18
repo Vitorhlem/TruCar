@@ -2,7 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload # Necessário para carregar os relacionamentos
 from datetime import datetime, timedelta
 from typing import List
 
@@ -59,7 +59,6 @@ async def create_notification(
 # --- FIM DA ATUALIZAÇÃO ---
 
 
-# ... (o restante do arquivo, como run_system_checks_for_organization e outras funções, permanece o mesmo)
 async def get_notifications_for_user(db: AsyncSession, *, user_id: int, organization_id: int) -> list[Notification]:
     stmt = (
         select(Notification)
@@ -79,11 +78,19 @@ async def get_unread_notifications_count(db: AsyncSession, *, user_id: int, orga
     result = await db.execute(stmt)
     return result.scalar_one()
 
+# --- FUNÇÃO CORRIGIDA PARA O ERRO 500 ---
 async def mark_notification_as_read(db: AsyncSession, *, notification_id: int, user_id: int, organization_id: int) -> Notification | None:
-    stmt = select(Notification).where(
-        Notification.id == notification_id,
-        Notification.user_id == user_id,
-        Notification.organization_id == organization_id
+    # CORREÇÃO: Usar o selectinload para carregar 'user' e 'vehicle' E 'db.scalar'
+    # para garantir que a notificação tenha todos os dados necessários antes de ser retornada ao FastAPI.
+    stmt = (
+        select(Notification)
+        .where(
+            Notification.id == notification_id,
+            Notification.user_id == user_id,
+            Notification.organization_id == organization_id
+        )
+        # ESTA É A LINHA QUE CORRIGE O ResponseValidationError:
+        .options(selectinload(Notification.user), selectinload(Notification.vehicle)) 
     )
     notification = await db.scalar(stmt)
     
@@ -93,6 +100,7 @@ async def mark_notification_as_read(db: AsyncSession, *, notification_id: int, u
         await db.commit()
         await db.refresh(notification)
     return notification
+# --- FIM DA CORREÇÃO ---
 
 async def run_system_checks_for_organization(db: AsyncSession, *, organization_id: int):
     print(f"A verificar alertas para a Organização ID: {organization_id}")

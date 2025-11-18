@@ -17,13 +17,11 @@ const routes: RouteRecordRaw[] = [
       },
       
       // --- 2. ROTAS DE MOTORISTA (Operacionais) ---
-      // Acessíveis por: Motoristas e Gestores
-      
       { 
         path: 'driver-cockpit', 
         name: 'driver-cockpit',
         component: () => import('pages/DriverCockpitPage.vue'),
-        meta: { roles: ['driver'] } // Atalho específico, se necessário
+        meta: { roles: ['driver'] } 
       },
       { 
         path: 'maintenance', 
@@ -55,32 +53,31 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/DocumentPage.vue'),
         meta: { roles: ['cliente_ativo', 'cliente_demo', 'driver'] }
       },
-      // Perfil Pessoal
+      // Perfil Pessoal (Motorista vê o seu)
       { 
         path: 'users/:id/stats', 
         name: 'user-stats', 
         component: () => import('pages/UserDetailsPage.vue'),
         meta: { roles: ['cliente_ativo', 'cliente_demo', 'driver'] }
       },
-      // Detalhes de Veículo (Motorista vê info básica)
-      { 
-        path: 'vehicles/:id', 
-        name: 'vehicle-details', 
-        component: () => import('pages/VehicleDetailsPage.vue'),
-        meta: { roles: ['cliente_ativo', 'cliente_demo', 'driver'] }
-      },
-
-
-      // --- 3. ROTAS DE GESTÃO (Restritas) ---
-      // Acessíveis APENAS por Gestores (cliente_ativo/demo)
-      // Se um motorista tentar acessar via URL, será bloqueado.
-      
       { 
         path: 'journeys', 
         name: 'journeys', 
         component: () => import('pages/JourneysPage.vue'),
-        meta: { roles: ['cliente_ativo', 'cliente_demo'] }
+        meta: { roles: ['cliente_ativo', 'cliente_demo', 'driver'] }
       },
+      
+      // --- 3. ROTAS DE GESTÃO (Bloqueadas para Driver) ---
+      // Se tentar acessar, o router/index.ts vai barrar.
+      
+      // Detalhes de Veículo (BLOQUEADO PARA MOTORISTA AGORA)
+      { 
+        path: 'vehicles/:id', 
+        name: 'vehicle-details', 
+        component: () => import('pages/VehicleDetailsPage.vue'),
+        meta: { roles: ['cliente_ativo', 'cliente_demo'] } // <-- REMOVIDO 'driver'
+      },
+      
       { 
         path: 'users', 
         name: 'users', 
@@ -135,7 +132,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/ImplementsPage.vue'),
         meta: { roles: ['cliente_ativo', 'cliente_demo'] }
       },
-
+      { 
+        path: 'live-map', 
+        component: () => import('pages/LiveMapPage.vue'),
+        meta: { roles: ['cliente_ativo', 'cliente_demo'] }
+      },
       { 
         path: 'freight-orders', 
         component: () => import('pages/FreightOrdersPage.vue'),

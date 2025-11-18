@@ -13,11 +13,15 @@ router = APIRouter()
 async def read_components_for_vehicle(
     vehicle_id: int,
     db: AsyncSession = Depends(deps.get_db),
-    current_user: User = Depends(deps.get_current_active_manager),
+    # --- CORREÇÃO AQUI ---
+    # Alterado de get_current_active_manager para get_current_active_user
+    # Isso permite que Motoristas vejam os componentes (necessário para o fluxo de manutenção)
+    current_user: User = Depends(deps.get_current_active_user),
+    # ---------------------
 ):
     """
     Busca o histórico de componentes instalados em um veículo.
-    (Este endpoint de LEITURA está correto)
+    Acessível por Gestores e Motoristas.
     """
     vehicle = await crud.vehicle.get(db, vehicle_id=vehicle_id, organization_id=current_user.organization_id)
     if not vehicle:

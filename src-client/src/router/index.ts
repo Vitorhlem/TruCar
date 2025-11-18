@@ -1,20 +1,17 @@
 import { route } from 'quasar/wrappers';
 import {
-  createMemoryHistory,
   createRouter,
-  createWebHashHistory,
+  createMemoryHistory,
   createWebHistory,
+  createWebHashHistory,
 } from 'vue-router';
-
 import routes from './routes';
-import { useAuthStore } from 'stores/auth-store'; // <-- IMPORTE NOSSA STORE
+import { useAuthStore } from 'stores/auth-store';
 
-export default route(function ({ store /*, ssrContext */ }) {
+export default route(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
     ? createMemoryHistory
-    : process.env.VUE_ROUTER_MODE === 'history'
-    ? createWebHistory
-    : createWebHashHistory;
+    : (process.env.VUE_ROUTER_MODE === 'history' ? createWebHistory : createWebHashHistory);
 
   const Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
@@ -22,28 +19,42 @@ export default route(function ({ store /*, ssrContext */ }) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
-  // --- NOSSO GUARDA DE NAVEGAÇÃO ---
+  // --- GUARDA DE NAVEGAÇÃO (SECURITY GUARD) ---
   Router.beforeEach((to, from, next) => {
-    const authStore = useAuthStore(store);
+    const authStore = useAuthStore();
+    const isLoggedIn = !!authStore.accessToken; // Verifica se tem token
+    const userRole = authStore.user?.role;
 
-    const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+    // 1. Rota requer autenticação?
+    if (to.matched.some((record) => record.meta.requiresAuth)) {
+      if (!isLoggedIn) {
+        // Não logado -> Manda para Login
+        return next({ name: 'login', query: { next: to.fullPath } });
+      }
 
-    // Se a rota exige autenticação E o usuário não está logado...
-    if (requiresAuth && !authStore.isAuthenticated) {
-      // ...redireciona para o login.
-      next({ name: 'login' });
-    } 
-    // Se a rota NÃO exige auth (ex: login) E o usuário JÁ está logado...
-    else if (to.name === 'login' && authStore.isAuthenticated) {
-      // ...redireciona para o dashboard.
-      next({ name: 'dashboard'});
+      // 2. Rota requer permissão (roles)?
+      // Verifica se a rota tem 'meta.roles' e se o papel do usuário está incluso
+      if (to.meta.roles && Array.isArray(to.meta.roles)) {
+        if (userRole && !to.meta.roles.includes(userRole)) {
+          // Logado, mas sem permissão -> Redireciona para Dashboard ou 403
+          console.warn(`Acesso negado: Usuário ${userRole} tentou acessar ${to.path}`);
+          
+          // Se for motorista tentando acessar área de gestão, joga pro cockpit/dashboard
+          if (userRole === 'driver') {
+             return next({ name: 'dashboard' });
+          }
+          return next({ name: 'dashboard' }); // Fallback seguro
+        }
+      }
     }
-    // Caso contrário, permite a navegação.
-    else {
-      next();
+
+    // 3. Usuário logado tentando acessar Login/Register?
+    if (isLoggedIn && (to.name === 'login' || to.name === 'register')) {
+      return next({ name: 'dashboard' });
     }
+
+    next();
   });
-  // --- FIM DO GUARDA ---
 
   return Router;
 });

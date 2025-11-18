@@ -244,15 +244,15 @@ function getNotificationIcon(type: string): string {
 }
 
 async function handleNotificationClick(notification: Notification) {
-  if (!notification.is_read) {
-    await notificationStore.markAsRead(notification.id);
-  }
-  
-  if (notification.related_entity_type === 'maintenance_request') {
-    void router.push('/maintenance');
+  // O store marca como lida e retorna a rota, se aplicável.
+  const targetRoute = await notificationStore.handleNotificationClick(notification);
+
+  if (targetRoute) {
+    // Esta é a linha CRÍTICA que realiza a navegação no Vue Router.
+    // Se esta linha estiver faltando ou incorreta, a navegação não acontece.
+    void router.push(targetRoute); 
   }
 }
-
 const menuStructure = computed(() => {
   if (authStore.isManager) {
     return getManagerMenu();

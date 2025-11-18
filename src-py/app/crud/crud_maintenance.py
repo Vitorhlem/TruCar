@@ -10,7 +10,7 @@ from app.models.maintenance_model import (
     MaintenanceRequest, 
     MaintenanceComment, 
     MaintenancePartChange,
-    MaintenanceServiceItem, # Importante
+    MaintenanceServiceItem, 
     MaintenanceStatus
 )
 from app.models.vehicle_model import Vehicle
@@ -35,7 +35,6 @@ async def create_request(
     if not vehicle or vehicle.organization_id != organization_id:
         raise ValueError("Veículo não encontrado nesta organização.")
 
-    # O campo maintenance_type vem no request_in e é salvo automaticamente
     db_obj = MaintenanceRequest(**request_in.model_dump(), reported_by_id=reporter_id, organization_id=organization_id)
     db.add(db_obj)
     
@@ -106,7 +105,7 @@ async def perform_component_replacement(
         if payload.notes:
             install_notes = f"{payload.notes} ({install_notes})"
 
-        updated_item = await crud.crud_part.change_item_status(
+        updated_item = await crud.part.change_item_status(
             db=db,
             item=new_item,
             new_status=InventoryItemStatus.EM_USO,
@@ -240,7 +239,7 @@ async def perform_new_installation(
         if payload.notes:
             install_notes = f"{payload.notes} ({install_notes})"
 
-        updated_item = await crud.crud_part.change_item_status(
+        updated_item = await crud.part.change_item_status(
             db=db,
             item=new_item,
             new_status=InventoryItemStatus.EM_USO,
@@ -389,7 +388,7 @@ async def revert_part_change(
         # Garante que está no estoque para poder instalar
         if item_to_reactivate.status != InventoryItemStatus.DISPONIVEL:
             try:
-                await crud.crud_part.change_item_status(
+                await crud.part.change_item_status(
                     db=db,
                     item=item_to_reactivate,
                     new_status=InventoryItemStatus.DISPONIVEL, 
@@ -403,7 +402,7 @@ async def revert_part_change(
         # Reinstala
         try:
             reinstall_notes = f"Re-instalação via Reversão da troca #{log_entry.id} (Chamado #{log_entry.maintenance_request_id})"
-            await crud.crud_part.change_item_status(
+            await crud.part.change_item_status(
                 db=db,
                 item=item_to_reactivate, 
                 new_status=InventoryItemStatus.EM_USO, 
@@ -466,18 +465,12 @@ async def get_request(
         selectinload(MaintenanceRequest.reporter).selectinload(User.organization),
         selectinload(MaintenanceRequest.approver).selectinload(User.organization),
         selectinload(MaintenanceRequest.vehicle),
-        
-        # Carrega os serviços (NOVO)
         selectinload(MaintenanceRequest.services), 
-        
         selectinload(MaintenanceRequest.comments).options(
             selectinload(MaintenanceComment.user).selectinload(User.organization)
         ),
-
-        # Carrega as trocas de peças (COM PROFUNDIDADE)
         selectinload(MaintenanceRequest.part_changes).options(
             selectinload(MaintenancePartChange.user).selectinload(User.organization),
-            
             selectinload(MaintenancePartChange.component_removed).options(
                 selectinload(VehicleComponent.part).options(selectinload(Part.items)),
                 selectinload(VehicleComponent.inventory_transaction).options(
@@ -485,7 +478,6 @@ async def get_request(
                     selectinload(InventoryTransaction.user).selectinload(User.organization)
                 )
             ),
-            
             selectinload(MaintenancePartChange.component_installed).options(
                 selectinload(VehicleComponent.part).options(selectinload(Part.items)),
                 selectinload(VehicleComponent.inventory_transaction).options(
@@ -532,15 +524,10 @@ async def get_all_requests(
         selectinload(MaintenanceRequest.reporter).selectinload(User.organization),
         selectinload(MaintenanceRequest.approver).selectinload(User.organization),
         selectinload(MaintenanceRequest.vehicle),
-        
-        # Carrega os serviços (CORREÇÃO DO ERRO 500)
         selectinload(MaintenanceRequest.services),
-        
         selectinload(MaintenanceRequest.comments).options(
              selectinload(MaintenanceComment.user).selectinload(User.organization)
         ),
-        
-        # Carrega as trocas de peças (COM PROFUNDIDADE PARA EVITAR MissingGreenlet)
         selectinload(MaintenanceRequest.part_changes).options(
             selectinload(MaintenancePartChange.user).selectinload(User.organization),
             selectinload(MaintenancePartChange.component_removed).options(
@@ -563,7 +550,7 @@ async def get_all_requests(
     return result.scalars().all()
 
 
-# --- FUNÇÃO update_request_status (CORRIGIDA PARA ATUALIZAR VEÍCULO) ---
+# --- FUNÇÃO update_request_status (CORRIGIDA: BUSCA EXPLÍCITA DO VEÍCULO) ---
 async def update_request_status(
     db: AsyncSession, *, db_obj: MaintenanceRequest, update_data: MaintenanceRequestUpdate, manager_id: int
 ) -> MaintenanceRequest:
@@ -576,24 +563,25 @@ async def update_request_status(
     db_obj.manager_notes = update_data.manager_notes
     db_obj.approver_id = manager_id
     
+    # --- CORREÇÃO FINAL AQUI ---
     # Atualizar agendamento do veículo ao concluir
+    # Busca o veículo explicitamente para evitar erro de Lazy Loading (MissingGreenlet)
     if update_data.status == MaintenanceStatus.CONCLUIDA:
-        if not db_obj.vehicle:
-             vehicle = await db.get(Vehicle, db_obj.vehicle_id)
-             db_obj.vehicle = vehicle
-
-        if db_obj.vehicle:
+        vehicle = await db.get(Vehicle, db_obj.vehicle_id)
+        
+        if vehicle:
             changed = False
             if update_data.next_maintenance_date:
-                db_obj.vehicle.next_maintenance_date = update_data.next_maintenance_date
+                vehicle.next_maintenance_date = update_data.next_maintenance_date
                 changed = True
             
             if update_data.next_maintenance_km is not None:
-                db_obj.vehicle.next_maintenance_km = update_data.next_maintenance_km
+                vehicle.next_maintenance_km = update_data.next_maintenance_km
                 changed = True
             
             if changed:
-                db.add(db_obj.vehicle)
+                db.add(vehicle)
+    # -------------------------------------------------
 
     db.add(db_obj)
     
