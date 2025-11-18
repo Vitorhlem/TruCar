@@ -267,6 +267,24 @@ async function handleNotificationClick(notification: Notification) {
   
   if (notification.related_entity_type === 'maintenance_request') {
     void router.push('/maintenance');
+  } 
+  else if (notification.notification_type === 'document_expiring') {
+      void router.push('/documents');
+  }
+  else if (notification.notification_type === 'new_fine_registered') {
+      void router.push('/fines');
+  }
+  else if (notification.notification_type === 'low_stock') {
+      void router.push('/parts');
+  }
+  // --- ADICIONADO: Tratamento para jornadas ---
+  else if (['journey_started', 'journey_ended'].includes(notification.notification_type)) {
+      void router.push('/journeys');
+  }
+  // ------------------------------------------
+  else {
+      console.log('Notificação sem rota específica:', notification.notification_type);
+      // Fallback opcional: void router.push('/dashboard');
   }
 }
 
