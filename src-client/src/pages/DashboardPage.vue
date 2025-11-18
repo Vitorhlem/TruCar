@@ -20,7 +20,7 @@
               outlined 
               :bg-color="$q.dark.isActive ? 'grey-10' : 'white'"
               style="min-width: 200px;" 
-              class="gt-xs shadow-1"
+              class=""
             >
               <template v-slot:prepend><q-icon name="calendar_today" /></template>
             </q-select>
