@@ -9,12 +9,7 @@ from fastapi.concurrency import run_in_threadpool
 from datetime import date
 
 from app.core.config import settings
-# --- MUDANÇA (ETAPA 2) ---
-# REMOVA A IMPORTAÇÃO DO SessionLocal
-# from app.db.session import SessionLocal 
-# IMPORTE O 'get_db' CORRETO DO ARQUIVO QUE ACABAMOS DE CORRIGIR
 from app.db.session import get_db
-# --- FIM DA MUDANÇA ---
 from app.models.user_model import User, UserRole
 from app import crud
 
@@ -25,19 +20,7 @@ oauth2_scheme = OAuth2PasswordBearer(
     auto_error=True
 )
 
-# --- MUDANÇA (ETAPA 2) ---
-# APAGUE A FUNÇÃO 'get_db' INCORRETA QUE ESTAVA AQUI
-#
-# async def get_db() -> Generator[AsyncSession, Any, None]:
-#     async with SessionLocal() as session:
-#         yield session
-#
-# --- FIM DA MUDANÇA ---
-
-
 async def get_current_user(
-    # Esta dependência 'Depends(get_db)' agora usa
-    # automaticamente a função correta que importamos.
     db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> User:
     credentials_exception = HTTPException(
@@ -107,13 +90,17 @@ RESOURCE_TO_CRUD_MAP = {
 def check_demo_limit(resource_type: str):
     async def dependency(
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_active_manager),
+        # CORREÇÃO AQUI: Mudamos de 'get_current_active_manager' para 'get_current_active_user'
+        # Isso permite que Motoristas passem por essa verificação sem tomar erro 403.
+        current_user: User = Depends(get_current_active_user),
     ):
+        # A lógica de limite só se aplica se o usuário for explicitamente CLIENTE_DEMO.
+        # Se for DRIVER ou CLIENTE_ATIVO, ele passa direto (return).
         if current_user.role != UserRole.CLIENTE_DEMO:
             return
+
         organization_id = current_user.organization_id
         
-        # Use 'settings' em vez do dicionário local
         if resource_type in settings.DEMO_MONTHLY_LIMITS:
             limit = settings.DEMO_MONTHLY_LIMITS[resource_type]
             usage = await crud_demo_usage_instance.get_or_create_usage(
@@ -125,7 +112,6 @@ def check_demo_limit(resource_type: str):
                     detail=f"Limite mensal de {limit} {resource_type.replace('_', ' ')} atingido para a conta demonstração. Considere migrar para um plano pago.",
                 )
         
-        # Use 'settings' em vez do dicionário local
         if resource_type in settings.DEMO_TOTAL_LIMITS:
             limit = settings.DEMO_TOTAL_LIMITS[resource_type]
             crud_operation = RESOURCE_TO_CRUD_MAP.get(resource_type)
