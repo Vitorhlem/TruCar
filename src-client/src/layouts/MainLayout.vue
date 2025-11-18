@@ -99,7 +99,7 @@
                   :key="notification.id"
                   clickable
                   v-ripple
-                  :class="{ 'bg-blue-1': !notification.is_read }"
+                  :class="{ 'notification-unread': !notification.is_read }"
                   @click="handleNotificationClick(notification)"
                 >
                   <q-item-section avatar>

@@ -192,13 +192,10 @@ async def get_costs_by_category_last_30_days(db: AsyncSession, *, organization_i
     return [CostByCategory(cost_type=row.cost_type.value, total_amount=float(row.total_amount or 0)) for row in result.all()]
 
 
-# --- CORREÇÃO PRINCIPAL: Instanciação Manual do Modelo ---
 async def get_podium_drivers(db: AsyncSession, *, organization_id: int) -> List[DashboardPodiumDriver]:
     leaderboard_data = await crud.user.get_leaderboard_data(db, organization_id=organization_id)
     top_drivers_raw = leaderboard_data.get("leaderboard", [])[:3]
     
-    # Aqui convertemos manualmente as Linhas (Rows) do SQLAlchemy para o Objeto Pydantic
-    # Isso resolve o erro "Input should be a valid dictionary..."
     result = []
     for row in top_drivers_raw:
         driver = DashboardPodiumDriver(
@@ -209,7 +206,6 @@ async def get_podium_drivers(db: AsyncSession, *, organization_id: int) -> List[
         result.append(driver)
         
     return result
-# ---------------------------------------------------------
 
 
 async def get_km_per_day_last_30_days(db: AsyncSession, *, organization_id: int, start_date: date | None = None) -> List[KmPerDay]:
@@ -398,10 +394,11 @@ async def get_vehicle_consolidated_data(
 
     fuel_logs_data = []
     if sections.fuel_logs_detailed or sections.performance_summary:
+        # CORREÇÃO AQUI: Adicionado .options(selectinload(FuelLog.user))
         fuel_logs_stmt = select(FuelLog).where(
             FuelLog.vehicle_id == vehicle_id,
             func.date(FuelLog.timestamp).between(start_date, end_date)
-        )
+        ).options(selectinload(FuelLog.user))
         fuel_logs_data = (await db.execute(fuel_logs_stmt)).scalars().all()
         
     maintenance_data = []
@@ -438,11 +435,12 @@ async def get_vehicle_consolidated_data(
 
     journeys_data = []
     if sections.journeys_detailed or sections.performance_summary or sections.financial_summary:
+        # CORREÇÃO AQUI: Adicionado .options(selectinload(Journey.driver))
         journeys_stmt = select(Journey).where(
             Journey.vehicle_id == vehicle_id,
             func.date(Journey.start_time).between(start_date, end_date),
             Journey.is_active == False
-        )
+        ).options(selectinload(Journey.driver))
         journeys_data = (await db.execute(journeys_stmt)).scalars().all()
         
     documents_data = []
@@ -553,7 +551,12 @@ async def get_driver_performance_data(
     drivers_performance_data: List[DriverPerformanceEntry] = []
 
     for driver in drivers:
-        journeys_stmt = select(func.count(Journey.id), func.sum(Journey.distance_km)).where(
+        # CORREÇÃO AQUI: Removido Journey.distance_km que não existe.
+        # Calculamos a soma da diferença de quilometragem.
+        # COALESCE é usado para tratar valores nulos como 0.
+        dist_expr = func.coalesce(Journey.end_mileage, 0) - func.coalesce(Journey.start_mileage, 0)
+        
+        journeys_stmt = select(func.count(Journey.id), func.sum(dist_expr)).where(
             Journey.driver_id == driver.id,
             func.date(Journey.start_time).between(start_date, end_date)
         )

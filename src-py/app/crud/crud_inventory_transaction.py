@@ -4,13 +4,37 @@ from sqlalchemy import select
 from typing import List, Optional
 
 from app.models.inventory_transaction_model import InventoryTransaction, TransactionType
-from app.models.part_model import Part, InventoryItem, InventoryItemStatus # <-- Importar
+from app.models.part_model import Part, InventoryItem
 from app.models.user_model import User 
 
-#
-# (As funções _create_transaction_no_commit e create_transaction não existem mais neste arquivo)
-# (Elas foram movidas para o crud_part.py)
-#
+# --- FUNÇÕES DE CRIAÇÃO ---
+
+async def _create_transaction_no_commit(
+    db: AsyncSession,
+    *,
+    part_id: int, # Mantido como referência do template
+    user_id: int,
+    transaction_type: TransactionType,
+    item_id: int, # <--- AGORA É OBRIGATÓRIO (Item específico)
+    quantity_change: int = 0, # Mantido na assinatura para compatibilidade, mas IGNORADO no modelo
+    notes: Optional[str] = None,
+    related_vehicle_id: Optional[int] = None,
+) -> InventoryTransaction:
+    """
+    Cria o objeto da transação.
+    NOTA: 'quantity_change' é ignorado pois o modelo agora rastreia itens individuais.
+    """
+    db_obj = InventoryTransaction(
+        part_id=part_id,
+        user_id=user_id,
+        transaction_type=transaction_type,
+        # quantity_change=quantity_change,  <-- REMOVIDO (Causava o erro)
+        notes=notes,
+        related_vehicle_id=related_vehicle_id,
+        item_id=item_id # <-- ADICIONADO
+    )
+    db.add(db_obj)
+    return db_obj
 
 async def create_transaction(
     db: AsyncSession,
@@ -18,30 +42,40 @@ async def create_transaction(
     part_id: int,
     user_id: int,
     transaction_type: TransactionType,
-    quantity_change: int,
+    item_id: int, # <--- OBRIGATÓRIO
+    quantity_change: int = 0,
     notes: Optional[str] = None,
     related_vehicle_id: Optional[int] = None,
     related_user_id: Optional[int] = None,
 ) -> InventoryTransaction:
     """
-    Cria uma nova transação, faz o commit e retorna o objeto completo
-    com todas as relações carregadas para garantir uma resposta de API válida.
+    Cria uma nova transação e faz o commit.
     """
-    # Esta função (create_transaction) não deve mais existir no crud_inventory_transaction.py
-    # A lógica dela foi movida para o crud_part.py
-    # Vamos focar nas funções de busca (get):
+    db_obj = await _create_transaction_no_commit(
+        db=db,
+        part_id=part_id,
+        user_id=user_id,
+        transaction_type=transaction_type,
+        quantity_change=quantity_change,
+        notes=notes,
+        related_vehicle_id=related_vehicle_id,
+        item_id=item_id
+    )
     
-    # Se você ainda tem 'create_transaction' aqui, ela também precisa da correção:
+    if related_user_id:
+        db_obj.related_user_id = related_user_id
+
+    await db.commit()
+    
+    # Recarrega com relações
     stmt = (
         select(InventoryTransaction)
-        .where(InventoryTransaction.id == transaction_id) # 'transaction_id' viria de algum lugar
+        .where(InventoryTransaction.id == db_obj.id)
         .options(
             selectinload(InventoryTransaction.user).selectinload(User.organization),
             selectinload(InventoryTransaction.related_user).selectinload(User.organization),
             selectinload(InventoryTransaction.related_vehicle),
             selectinload(InventoryTransaction.item),
-            
-            # --- CORREÇÃO (TAMBÉM NECESSÁRIA AQUI) ---
             selectinload(InventoryTransaction.part_template).selectinload(Part.items)
         )
     )
@@ -49,24 +83,21 @@ async def create_transaction(
     return result.scalar_one()
 
 
+# --- FUNÇÕES DE LEITURA (Mantidas iguais) ---
+
 async def get_transactions_by_part_id(
     db: AsyncSession, *, part_id: int, skip: int = 0, limit: int = 100
 ) -> List[InventoryTransaction]:
-    """Retorna o histórico de transações para todos os itens de um Part (template)."""
     stmt = (
         select(InventoryTransaction)
-        .where(InventoryTransaction.part_id == part_id) # Filtra pelo part_id (template)
+        .where(InventoryTransaction.part_id == part_id)
         .order_by(InventoryTransaction.timestamp.desc())
         .options(
             selectinload(InventoryTransaction.user).selectinload(User.organization),
             selectinload(InventoryTransaction.related_vehicle),
             selectinload(InventoryTransaction.related_user).selectinload(User.organization),
             selectinload(InventoryTransaction.item),
-            
-            # --- 1. AQUI ESTÁ A CORREÇÃO ---
             selectinload(InventoryTransaction.part_template).selectinload(Part.items)
-            # --- FIM DA CORREÇÃO ---
-
         )
         .offset(skip)
         .limit(limit)
@@ -78,7 +109,6 @@ async def get_transactions_by_part_id(
 async def get_transactions_by_vehicle_id(
     db: AsyncSession, *, vehicle_id: int, skip: int = 0, limit: int = 100
 ) -> List[InventoryTransaction]:
-    """Retorna o histórico de transações para um veículo específico."""
     stmt = (
         select(InventoryTransaction)
         .where(InventoryTransaction.related_vehicle_id == vehicle_id)
@@ -88,10 +118,7 @@ async def get_transactions_by_vehicle_id(
             selectinload(InventoryTransaction.related_user).selectinload(User.organization),
             selectinload(InventoryTransaction.related_vehicle),
             selectinload(InventoryTransaction.item),
-            
-            # --- 2. CORREÇÃO APLICADA AQUI TAMBÉM ---
             selectinload(InventoryTransaction.part_template).selectinload(Part.items)
-            # --- FIM DA CORREÇÃO ---
         )
         .offset(skip)
         .limit(limit)

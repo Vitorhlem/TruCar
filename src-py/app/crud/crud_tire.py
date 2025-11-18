@@ -4,23 +4,18 @@ from sqlalchemy.orm import selectinload
 import datetime
 from typing import Optional
 
-# Importações de modelos
 from app.models.vehicle_model import Vehicle
-from app.models.part_model import Part, PartCategory
+from app.models.part_model import Part, PartCategory, InventoryItem, InventoryItemStatus
 from app.models.tire_model import VehicleTire
 from app.models.inventory_transaction_model import TransactionType
 from app.models.vehicle_cost_model import CostType
 
-# Importações de CRUDs
 from . import crud_inventory_transaction
 from . import crud_vehicle_cost
-
-# Importações de Schemas
 from app.schemas.vehicle_cost_schema import VehicleCostCreate
 
 
 async def get_active_tires_by_vehicle(db: AsyncSession, vehicle_id: int):
-    """Retorna os pneus ativos atualmente instalados em um veículo."""
     stmt = (
         select(VehicleTire)
         .where(VehicleTire.vehicle_id == vehicle_id, VehicleTire.is_active.is_(True))
@@ -39,7 +34,6 @@ async def install_tire(
     user_id: int,
     install_engine_hours: Optional[float] = None
 ):
-    """Instala um pneu em um veículo, registra a transação e o custo em uma única transação."""
     vehicle = await db.get(Vehicle, vehicle_id)
     if not vehicle:
         raise ValueError("Veículo não encontrado.")
@@ -49,9 +43,19 @@ async def install_tire(
         raise ValueError("Peça (pneu) não encontrada.")
     if part.category != PartCategory.PNEU:
         raise ValueError("A peça selecionada não é um pneu.")
-    if part.stock <= 0:
-        raise ValueError("Pneu sem estoque disponível.")
 
+    # 1. Buscar um item DISPONÍVEL específico
+    stmt_item = select(InventoryItem).where(
+        InventoryItem.part_id == part_id,
+        InventoryItem.status == InventoryItemStatus.DISPONIVEL
+    ).limit(1)
+    
+    item_to_install = (await db.execute(stmt_item)).scalar_one_or_none()
+    
+    if not item_to_install:
+        raise ValueError("Pneu sem estoque disponível (Nenhum item 'Disponível' encontrado).")
+
+    # 2. Verificar posição
     stmt = select(VehicleTire).where(
         VehicleTire.vehicle_id == vehicle_id,
         VehicleTire.position_code == position_code,
@@ -61,6 +65,12 @@ async def install_tire(
     if result.scalar_one_or_none():
         raise ValueError(f"A posição {position_code} já está ocupada.")
 
+    # 3. Atualizar status do Item
+    item_to_install.status = InventoryItemStatus.EM_USO
+    item_to_install.installed_on_vehicle_id = vehicle_id
+    db.add(item_to_install)
+
+    # 4. Criar registro do Pneu
     new_vehicle_tire = VehicleTire(
         vehicle_id=vehicle_id,
         part_id=part_id,
@@ -71,20 +81,22 @@ async def install_tire(
     )
     db.add(new_vehicle_tire)
 
-    # A função _create_transaction_no_commit espera um Enum, não a string
+    # 5. Criar Transação (Passando item_id!)
     transaction = await crud_inventory_transaction._create_transaction_no_commit(
         db=db,
         part_id=part_id,
         user_id=user_id,
         transaction_type=TransactionType.INSTALACAO,
-        quantity_change=-1,
-        notes=f"Instalação do pneu no veículo {vehicle.license_plate or vehicle.identifier} na posição {position_code}",
+        quantity_change=-1, # Ignorado pelo modelo, mas mantido na assinatura
+        item_id=item_to_install.id, # <--- OBRIGATÓRIO AGORA
+        notes=f"Instalação do pneu (Item {item_to_install.item_identifier}) no veículo {vehicle.license_plate or vehicle.identifier} pos {position_code}",
         related_vehicle_id=vehicle_id
     )
-    # Aguarda o flush para que o ID da transação esteja disponível
+    
     await db.flush()
     new_vehicle_tire.inventory_transaction_id = transaction.id
     
+    # 6. Custo
     if part.value and part.value > 0:
         cost_in = VehicleCostCreate(
             description=f"Custo de instalação do pneu: {part.brand or ''} {part.name}",
@@ -97,7 +109,7 @@ async def install_tire(
             obj_in=cost_in,
             vehicle_id=vehicle_id,
             organization_id=vehicle.organization_id,
-            commit=False # Não faz o commit aqui
+            commit=False
         )
     
     await db.commit()
@@ -108,48 +120,75 @@ async def remove_tire(
     db: AsyncSession,
     *,
     tire_id: int,
-    removal_km: int, # KM atual do odômetro do veículo
+    removal_km: int,
     user_id: int,
-    removal_engine_hours: Optional[float] = None # Horas atuais do motor do veículo
+    removal_engine_hours: Optional[float] = None
 ):
-    """
-    Remove um pneu, desativando-o, calculando o total rodado e registrando o descarte.
-    """
     tire_to_remove = await db.get(VehicleTire, tire_id, options=[selectinload(VehicleTire.part), selectinload(VehicleTire.vehicle)])
     if not tire_to_remove or not tire_to_remove.is_active:
         raise ValueError("Pneu não encontrado ou já foi removido.")
 
-    # --- LÓGICA DE CÁLCULO CENTRALIZADA ---
-    # Valida o KM de remoção
+    # Validações de KM/Horas
     if removal_km < tire_to_remove.install_km:
         raise ValueError("O KM de remoção deve ser maior ou igual ao KM de instalação.")
-
-    # Calcula o total rodado para pneus normais
     calculated_km_run = float(removal_km - tire_to_remove.install_km)
 
-    # Se for Agro, calcula as horas de uso
     if removal_engine_hours is not None and tire_to_remove.install_engine_hours is not None:
         if removal_engine_hours < tire_to_remove.install_engine_hours:
             raise ValueError("As Horas do Motor de remoção devem ser maiores ou iguais às de instalação.")
-        # Para o setor Agro, o "km_run" armazenará as horas de uso.
         calculated_km_run = float(removal_engine_hours - tire_to_remove.install_engine_hours)
     
-    # --- FIM DA LÓGICA DE CÁLCULO ---
-
     tire_to_remove.is_active = False
     tire_to_remove.removal_km = removal_km
     tire_to_remove.removal_engine_hours = removal_engine_hours
     tire_to_remove.removal_date = datetime.datetime.now(datetime.timezone.utc)
-    tire_to_remove.km_run = calculated_km_run # Salva o valor calculado no banco de dados
+    tire_to_remove.km_run = calculated_km_run 
 
-    # Esta função faz o commit final
+    # Encontrar o Item Original através da transação de instalação
+    stmt_transaction = select(crud_inventory_transaction.InventoryTransaction).where(
+        crud_inventory_transaction.InventoryTransaction.id == tire_to_remove.inventory_transaction_id
+    ).options(selectinload(crud_inventory_transaction.InventoryTransaction.item))
+    
+    origin_transaction = (await db.execute(stmt_transaction)).scalar_one_or_none()
+    
+    item_id_for_discard = None
+    item_note = ""
+
+    if origin_transaction and origin_transaction.item:
+        item = origin_transaction.item
+        item.status = InventoryItemStatus.FIM_DE_VIDA
+        item.installed_on_vehicle_id = None
+        db.add(item)
+        item_id_for_discard = item.id
+        item_note = f"(Item ID: {item.item_identifier})"
+    else:
+        # Fallback: Se não achou o item (dados antigos?), tenta achar um item EM_USO desse pneu nesse veículo
+        # Isso é uma medida de segurança para não quebrar o sistema
+        stmt_fallback = select(InventoryItem).where(
+            InventoryItem.part_id == tire_to_remove.part_id,
+            InventoryItem.installed_on_vehicle_id == tire_to_remove.vehicle_id,
+            InventoryItem.status == InventoryItemStatus.EM_USO
+        ).limit(1)
+        fallback_item = (await db.execute(stmt_fallback)).scalar_one_or_none()
+        if fallback_item:
+            fallback_item.status = InventoryItemStatus.FIM_DE_VIDA
+            fallback_item.installed_on_vehicle_id = None
+            db.add(fallback_item)
+            item_id_for_discard = fallback_item.id
+        else:
+             # Se realmente não tiver item (sistema legado), precisaremos criar um "fictício" ou falhar?
+             # Como o banco exige item_id, vamos falhar com mensagem clara se não houver consistência.
+             raise ValueError("Erro de integridade: Não foi possível encontrar o Item de Inventário associado a este pneu para registrar o descarte.")
+
+    # Criar Transação de Descarte (Passando item_id!)
     await crud_inventory_transaction.create_transaction(
         db=db, 
         part_id=tire_to_remove.part_id,
         user_id=user_id,
         transaction_type=TransactionType.DESCARTE,
         quantity_change=0,
-        notes=f"Descarte do pneu (Série: {tire_to_remove.part.serial_number}) removido do veículo ID {tire_to_remove.vehicle_id}",
+        item_id=item_id_for_discard, # <--- OBRIGATÓRIO
+        notes=f"Descarte do pneu {item_note} (Série: {tire_to_remove.part.serial_number}) removido do veículo ID {tire_to_remove.vehicle_id}",
         related_vehicle_id=tire_to_remove.vehicle_id
     )
     
@@ -157,9 +196,6 @@ async def remove_tire(
 
 
 async def get_removed_tires_for_vehicle(db: AsyncSession, *, vehicle_id: int) -> list[VehicleTire]:
-    """
-    Busca todos os pneus que já foram instalados e removidos de um veículo.
-    """
     stmt = (
         select(VehicleTire)
         .where(

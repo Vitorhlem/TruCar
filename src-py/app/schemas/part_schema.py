@@ -39,7 +39,18 @@ class PartUpdate(PartBase):
     condition: Optional[str] = None 
     pass
 
-# --- 3. Schema Público de LISTA (usado para GET /parts/ e agora para a nova página) ---
+# --- NOVO: Schema Simplificado para uso em relações (Sem stock/items) ---
+# Isso resolve o ResponseValidationError em endpoints que carregam Part via relação
+class PartSimple(PartBase):
+    id: int
+    organization_id: int
+    photo_url: Optional[str] = None
+    invoice_url: Optional[str] = None
+    class Config:
+        from_attributes = True
+# -----------------------------------------------------------------------
+
+# --- 3. Schema Público de LISTA (usado para GET /parts/) ---
 class PartListPublic(PartBase):
     id: int
     organization_id: int
@@ -67,7 +78,6 @@ class InventoryItemDetails(InventoryItemPublic):
 
 # --- 6. NOVOS SCHEMAS PARA A PÁGINA MESTRE (InventoryItemsPage) ---
 
-# Schema mínimo para o veículo (para evitar importações circulares)
 class _VehicleInfo(BaseModel):
     id: int
     brand: Optional[str] = None
@@ -77,12 +87,10 @@ class _VehicleInfo(BaseModel):
     class Config:
         from_attributes = True
 
-# O schema para cada LINHA da nova tabela
 class InventoryItemRow(InventoryItemPublic):
-    part: PartListPublic # O template da peça (para sabermos o nome)
-    installed_on_vehicle: Optional[_VehicleInfo] = None # O veículo onde está instalado
+    part: PartListPublic 
+    installed_on_vehicle: Optional[_VehicleInfo] = None 
 
-# O schema de resposta final (a página de itens)
 class InventoryItemPage(BaseModel):
     total: int
     items: List[InventoryItemRow]
@@ -94,5 +102,5 @@ InventoryItemPublic.model_rebuild()
 PartPublic.model_rebuild()
 PartListPublic.model_rebuild()
 InventoryItemDetails.model_rebuild()
-InventoryItemRow.model_rebuild()   # <-- Adicionado
-InventoryItemPage.model_rebuild()  # <-- Adicionado
+InventoryItemRow.model_rebuild()
+InventoryItemPage.model_rebuild()

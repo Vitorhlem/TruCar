@@ -72,7 +72,7 @@
             </div>
             <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption text-grey-8 q-mt-xs">
               <span>Próx. Revisão</span>
-              <span class="text-weight-bold text-black ellipsis text-right" style="max-width: 60%;">
+              <span class="text-weight-bold ellipsis text-right" style="max-width: 60%;">
                 {{ vehicle.next_maintenance_km ? `${vehicle.next_maintenance_km.toLocaleString('pt-BR')} ${terminologyStore.distanceUnit}` : '' }}
                 {{ vehicle.next_maintenance_km && vehicle.next_maintenance_date ? ' ou ' : '' }}
                 {{ vehicle.next_maintenance_date ? (new Date(vehicle.next_maintenance_date + 'T00:00:00')).toLocaleDateString('pt-BR') : '' }}

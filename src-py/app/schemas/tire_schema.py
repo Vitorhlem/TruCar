@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
-# 1. CORREÇÃO: Remover 'Part', importar apenas 'PartPublic'
-from .part_schema import PartPublic
+# 1. CORREÇÃO: Importar PartSimple
+from .part_schema import PartPublic, PartSimple
 
 # --- Schemas para Ações ---
 
@@ -25,10 +25,12 @@ class TireRotation(BaseModel):
 class VehicleTirePublic(BaseModel):
     id: int
     position_code: str
-    installation_date: datetime # <-- CORRIGIDO: de 'install_date' para 'installation_date'
+    installation_date: datetime
     install_km: int
     install_engine_hours: Optional[float] = None
-    part: PartPublic
+    
+    # CORREÇÃO: Usar PartSimple para evitar erro de 'stock' e 'items'
+    part: PartSimple
 
     class Config:
         from_attributes = True
@@ -41,12 +43,12 @@ class TireLayoutResponse(BaseModel):
 # --- Schema de Histórico ---
 class VehicleTireHistory(BaseModel):
     id: int
-    # 2. CORREÇÃO: Usar 'PartPublic' ao invés de 'Part'
-    part: PartPublic
+    # CORREÇÃO: Usar PartSimple aqui também
+    part: PartSimple
     position_code: str
     install_km: float
     removal_km: Optional[float] = None
-    installation_date: datetime # <-- CORRIGIDO: de 'install_date' para 'installation_date'
+    installation_date: datetime 
     removal_date: Optional[datetime] = None
     km_run: float = 0.0
 

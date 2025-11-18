@@ -227,7 +227,7 @@
               color="primary" 
               class="full-width full-height q-pa-lg dashboard-card action-btn-large" 
               style="min-height: 120px"
-              to="/vehicles" 
+              to="/journeys" 
               unelevated
             >
               <div class="column items-center">
