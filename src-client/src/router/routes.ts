@@ -68,14 +68,14 @@ const routes: RouteRecordRaw[] = [
       },
       
       // --- 3. ROTAS DE GESTÃO (Bloqueadas para Driver) ---
-      // Se tentar acessar, o router/index.ts vai barrar.
+      // O Admin terá acesso a tudo isso graças à alteração no index.ts
       
-      // Detalhes de Veículo (BLOQUEADO PARA MOTORISTA AGORA)
+      // Detalhes de Veículo
       { 
         path: 'vehicles/:id', 
         name: 'vehicle-details', 
         component: () => import('pages/VehicleDetailsPage.vue'),
-        meta: { roles: ['cliente_ativo', 'cliente_demo'] } // <-- REMOVIDO 'driver'
+        meta: { roles: ['cliente_ativo', 'cliente_demo'] }
       },
       
       { 
@@ -151,12 +151,14 @@ const routes: RouteRecordRaw[] = [
         path: 'settings', 
         name: 'settings', 
         component: () => import('pages/SettingsPage.vue'),
-        meta: { roles: ['cliente_ativo', 'cliente_demo'] }
+        // Corrigido para 'admin' minúsculo
+        meta: { roles: ['cliente_ativo', 'cliente_demo', 'admin'] } 
       },
       {
         path: 'admin',
         name: 'admin',
         component: () => import('pages/AdminPage.vue'),
+        // Corrigido para 'admin' minúsculo
         meta: { requiresAuth: true, roles: ['admin'] } 
       },
     ],

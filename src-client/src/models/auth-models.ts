@@ -4,7 +4,7 @@ export interface LoginForm {
   password: string;
 }
 
-export type UserRole = 'cliente_ativo' | 'cliente_demo' | 'driver';
+export type UserRole = 'cliente_ativo' | 'cliente_demo' | 'driver' | 'admin';
 export type UserSector = 'agronegocio' | 'frete' | 'servicos' | 'construcao_civil' | null;
 
 export interface Organization {

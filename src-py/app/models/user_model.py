@@ -28,6 +28,7 @@ def generate_employee_id():
     return f"TRC-{unique_part}"
 
 class UserRole(str, enum.Enum):
+    ADMIN = "admin"  # <--- ADICIONE ESTA LINHA
     CLIENTE_ATIVO = "cliente_ativo"
     CLIENTE_DEMO = "cliente_demo"
     DRIVER = "driver"
@@ -85,4 +86,5 @@ class User(Base):
     
     @property
     def is_superuser(self) -> bool:
-        return self.email in settings.SUPERUSER_EMAILS
+        # Agora é superusuário se estiver na lista de e-mails OU se tiver o papel de ADMIN
+        return self.email in settings.SUPERUSER_EMAILS or self.role == UserRole.ADMIN

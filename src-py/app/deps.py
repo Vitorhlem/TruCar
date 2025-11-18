@@ -53,7 +53,8 @@ async def get_current_active_user(
 async def get_current_active_manager(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
-    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
+    # --- CORREÇÃO: Adicionado UserRole.ADMIN ---
+    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="O utilizador não tem permissões de gestor.",
@@ -73,7 +74,8 @@ async def get_current_active_driver(
 async def get_current_super_admin(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
-    if current_user.email not in settings.SUPERUSER_EMAILS:
+    # Admin role também é super admin
+    if current_user.role != UserRole.ADMIN and current_user.email not in settings.SUPERUSER_EMAILS:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Ação restrita a administradores do sistema."
@@ -90,15 +92,12 @@ RESOURCE_TO_CRUD_MAP = {
 def check_demo_limit(resource_type: str):
     async def dependency(
         db: AsyncSession = Depends(get_db),
-        # CORREÇÃO AQUI: Mudamos de 'get_current_active_manager' para 'get_current_active_user'
-        # Isso permite que Motoristas passem por essa verificação sem tomar erro 403.
-        current_user: User = Depends(get_current_active_user),
+        current_user: User = Depends(get_current_active_manager),
     ):
-        # A lógica de limite só se aplica se o usuário for explicitamente CLIENTE_DEMO.
-        # Se for DRIVER ou CLIENTE_ATIVO, ele passa direto (return).
+        # ADMIN e CLIENTE_ATIVO não têm limites
         if current_user.role != UserRole.CLIENTE_DEMO:
             return
-
+            
         organization_id = current_user.organization_id
         
         if resource_type in settings.DEMO_MONTHLY_LIMITS:

@@ -66,7 +66,7 @@ export interface User {
   id: number;
   full_name: string;
   email: string;
-  role: 'cliente_ativo' | 'cliente_demo' | 'driver';
+  role: 'cliente_ativo' | 'cliente_demo' | 'driver' | 'admin';
   is_active: boolean;
   avatar_url?: string | null;
   organization_id: number;

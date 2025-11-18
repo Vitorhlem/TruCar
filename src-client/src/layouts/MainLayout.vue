@@ -43,7 +43,10 @@
             <q-separator class="q-my-md" />
             <q-item clickable to="/admin" exact v-ripple class="nav-link" active-class="nav-link--active">
               <q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
-              <q-item-section><q-item-label>Painel Admin</q-item-label></q-item-section>
+              <q-item-section>
+                <q-item-label>Painel Admin</q-item-label>
+                <q-item-label caption>Gerir sistema</q-item-label>
+              </q-item-section>
             </q-item>
           </div>
         </q-list>
@@ -66,9 +69,18 @@
             <div>
               <div class="text-weight-bold">Limites do Plano de Demonstração</div>
               <q-list dense>
-                <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="local_shipping" /></q-item-section><q-item-section>Veículos: {{ stats?.vehicle_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.vehicle_limit) }}</q-item-section></q-item>
-                <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="engineering" /></q-item-section><q-item-section>Motoristas: {{ stats?.driver_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.driver_limit) }}</q-item-section></q-item>
-                <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="route" /></q-item-section><q-item-section>Jornadas este mês: {{ stats?.journey_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.freight_order_limit) }}</q-item-section></q-item>
+                <q-item class="q-pl-none">
+                  <q-item-section avatar style="min-width: 30px"><q-icon name="local_shipping" /></q-item-section>
+                  <q-item-section>Veículos: {{ stats?.vehicle_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.vehicle_limit) }}</q-item-section>
+                </q-item>
+                <q-item class="q-pl-none">
+                  <q-item-section avatar style="min-width: 30px"><q-icon name="engineering" /></q-item-section>
+                  <q-item-section>Motoristas: {{ stats?.driver_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.driver_limit) }}</q-item-section>
+                </q-item>
+                <q-item class="q-pl-none">
+                  <q-item-section avatar style="min-width: 30px"><q-icon name="route" /></q-item-section>
+                  <q-item-section>Jornadas este mês: {{ stats?.journey_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.freight_order_limit) }}</q-item-section>
+                </q-item>
               </q-list>
               <div>Clique para saber mais sobre o plano completo.</div>
             </div>
@@ -99,7 +111,7 @@
                   :key="notification.id"
                   clickable
                   v-ripple
-                  :class="{ 'notification-unread': !notification.is_read }"
+                  :class="{ 'bg-blue--1': !notification.is_read }"
                   @click="handleNotificationClick(notification)"
                 >
                   <q-item-section avatar>
@@ -170,6 +182,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Notification } from 'src/models/notification-models';
 
+// --- Inicialização ---
 const leftDrawerOpen = ref(false);
 const router = useRouter();
 const $q = useQuasar();
@@ -182,11 +195,12 @@ const { stats } = storeToRefs(demoStore);
 
 let pollTimer: number;
 
+// --- Tipos ---
 interface MenuItem {
   title: string;
   icon: string;
   to: string;
-}
+} 
 
 interface MenuCategory {
   label: string;
@@ -194,7 +208,9 @@ interface MenuCategory {
   children: MenuItem[];
 }
 
+// --- Ações ---
 function toggleLeftDrawer() { leftDrawerOpen.value = !leftDrawerOpen.value; }
+
 function handleLogout() {
   if (authStore.isImpersonating) {
     authStore.stopImpersonation();
@@ -215,6 +231,7 @@ function showUpgradeDialog() {
   });
 }
 
+// --- Formatadores ---
 function formatLimit(limit: number | undefined | null): string {
   if (limit === undefined || limit === null) {
     return '--';
@@ -244,63 +261,65 @@ function getNotificationIcon(type: string): string {
 }
 
 async function handleNotificationClick(notification: Notification) {
-  // O store marca como lida e retorna a rota, se aplicável.
-  const targetRoute = await notificationStore.handleNotificationClick(notification);
-
-  if (targetRoute) {
-    // Esta é a linha CRÍTICA que realiza a navegação no Vue Router.
-    // Se esta linha estiver faltando ou incorreta, a navegação não acontece.
-    void router.push(targetRoute); 
+  if (!notification.is_read) {
+    await notificationStore.markAsRead(notification.id);
+  }
+  
+  if (notification.related_entity_type === 'maintenance_request') {
+    void router.push('/maintenance');
   }
 }
+
+// --- Estrutura do Menu ---
 const menuStructure = computed(() => {
-  if (authStore.isManager) {
-    return getManagerMenu();
-  }
-  if (authStore.isDriver) {
-    return getDriverMenu();
-  }
-  return [];
+    if (authStore.isManager) {
+        return getManagerMenu();
+    }
+    if (authStore.isDriver) {
+        return getDriverMenu();
+    }
+    return [];
 });
 
 function getDriverMenu(): MenuCategory[] {
-  const sector = authStore.userSector;
-  const menu: MenuCategory[] = [];
+    const sector = authStore.userSector;
+    const menu: MenuCategory[] = [];
 
-  const general: MenuCategory = {
-    label: 'Principal',
-    icon: 'dashboard',
-    children: [
-      { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
-    ],
-  };
-  if (sector === 'frete') {
-    general.children.push({ title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' });
-  }
-  menu.push(general);
+    const general: MenuCategory = {
+        label: 'Principal',
+        icon: 'dashboard',
+        children: [
+            { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
+            { title: 'Mapa em Tempo Real', icon: 'public', to: '/live-map' },
+        ],
+    };
+    if (sector === 'frete') {
+        general.children.push({ title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' });
+    }
+    menu.push(general);
 
-  const operations: MenuCategory = {
-    label: 'Minhas Atividades',
-    icon: 'work_history',
-    children: [
-      { title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' },
-      { title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' },
-      { title: 'Minhas Multas', icon: 'receipt_long', to: '/fines' },
-      { title: 'Manutenções', icon: 'build', to: '/maintenance' },
-    ],
-  };
-  menu.push(operations);
+    const operations: MenuCategory = {
+        label: 'Minhas Atividades',
+        icon: 'work_history',
+        children: [
+            { title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' },
+            { title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' },
+            { title: 'Minhas Multas', icon: 'receipt_long', to: '/fines' },
+            { title: 'Manutenções', icon: 'build', to: '/maintenance' },
+        ],
+    };
+    menu.push(operations);
 
-  const fleet: MenuCategory = {
-    label: 'Frota',
-    icon: 'local_shipping',
-    children: [
-      { title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' }
-    ]
-  };
-  menu.push(fleet);
+    const fleet: MenuCategory = {
+        label: 'Frota',
+        icon: 'local_shipping',
+        children: [
+            { title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' }
+        ]
+    };
+    menu.push(fleet);
 
-  return menu;
+    return menu;
 }
 
 function getManagerMenu(): MenuCategory[] {
@@ -311,6 +330,7 @@ function getManagerMenu(): MenuCategory[] {
     label: 'Geral', icon: 'dashboard',
     children: [
       { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
+      { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' },
     ]
   };
   menu.push(general);
@@ -349,19 +369,20 @@ function getManagerMenu(): MenuCategory[] {
   }
 
   const analysis: MenuCategory = {
-    label: 'Análise', icon: 'analytics',
-    children: [
-      { title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' },
-      { title: 'Relatórios', icon: 'summarize', to: '/reports' },
-      { title: 'Manutenções', icon: 'build', to: '/maintenance' },
-      { title: 'Gestão de Multas', icon: 'receipt_long', to: '/fines' },
-    ]
+  label: 'Análise', icon: 'analytics',
+  children: [
+    { title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' },
+    { title: 'Relatórios', icon: 'summarize', to: '/reports' },
+    { title: 'Manutenções', icon: 'build', to: '/maintenance' },
+    { title: 'Gestão de Multas', icon: 'receipt_long', to: '/fines' },
+  ]
   };
   menu.push(analysis);
 
   return menu;
 }
 
+// --- Lifecycle ---
 onMounted(() => {
   if (isDemo.value) {
     void demoStore.fetchDemoStats();
@@ -484,4 +505,4 @@ onUnmounted(() => { clearInterval(pollTimer); });
   opacity: 0;
   transform: translateY(10px);
 }
-</style>
+</style>  

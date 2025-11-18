@@ -13,14 +13,11 @@ from app.models.document_model import DocumentType
 
 router = APIRouter()
 
-# Define o diretório de uploads
 UPLOAD_DIRECTORY = Path("static/uploads/documents")
 UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 
 async def save_upload_file(upload_file: UploadFile) -> str:
-    """Salva um arquivo de upload e retorna sua URL pública."""
-    # Gera um nome de arquivo único para evitar conflitos
     extension = Path(upload_file.filename).suffix
     unique_filename = f"{uuid.uuid4()}{extension}"
     file_path = UPLOAD_DIRECTORY / unique_filename
@@ -28,7 +25,6 @@ async def save_upload_file(upload_file: UploadFile) -> str:
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(upload_file.file, buffer)
         
-    # Retorna a URL relativa que o frontend pode usar
     return f"/static/uploads/documents/{unique_filename}"
 
 
@@ -46,7 +42,8 @@ async def create_document(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """Cria um novo documento, incluindo o upload do arquivo."""
-    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
+    # --- CORREÇÃO: Adicionado UserRole.ADMIN ---
+    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Apenas gestores podem criar documentos."
@@ -75,9 +72,6 @@ async def read_documents(
     expiring_in_days: int = None,
     current_user: User = Depends(deps.get_current_active_user),
 ):
-    """
-    Lista os documentos da organização, com filtros opcionais.
-    """
     documents = await crud.document.get_multi_by_org(
         db=db,
         organization_id=current_user.organization_id,
@@ -95,10 +89,8 @@ async def delete_document(
     doc_id: int,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """
-    Remove um documento. Acessível apenas por gestores.
-    """
-    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
+    # --- CORREÇÃO: Adicionado UserRole.ADMIN ---
+    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Apenas gestores podem remover documentos."
@@ -108,7 +100,6 @@ async def delete_document(
     if not doc_to_delete:
          raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado.")
 
-    # Tenta apagar o arquivo físico
     try:
         file_path_str = doc_to_delete.file_url.lstrip("/")
         file_path = Path(file_path_str)

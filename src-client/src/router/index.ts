@@ -35,7 +35,12 @@ export default route(function (/* { store, ssrContext } */) {
       // 2. Rota requer permissão (roles)?
       // Verifica se a rota tem 'meta.roles' e se o papel do usuário está incluso
       if (to.meta.roles && Array.isArray(to.meta.roles)) {
-        if (userRole && !to.meta.roles.includes(userRole)) {
+        
+        // --- CORREÇÃO: REGRA MESTRA DE ADMIN ---
+        // Se o usuário for 'admin', ele ignora a verificação de roles e passa direto.
+        const isAdmin = userRole === 'admin';
+        
+        if (userRole && !isAdmin && !to.meta.roles.includes(userRole)) {
           // Logado, mas sem permissão -> Redireciona para Dashboard ou 403
           console.warn(`Acesso negado: Usuário ${userRole} tentou acessar ${to.path}`);
           

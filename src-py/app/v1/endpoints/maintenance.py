@@ -14,6 +14,7 @@ from app.schemas.maintenance_schema import (
     InstallComponentPayload,
     MaintenanceServiceItemCreate, MaintenanceServiceItemPublic
 )
+from app.crud.crud_demo_usage import demo_usage as demo_usage_crud
 from app.models.maintenance_model import MaintenanceServiceItem # Importe o novo modelo
 from app.models.vehicle_cost_model import VehicleCost, CostType # Importe para gerar custo
 from app.crud.crud_maintenance import MaintenancePartChange
@@ -93,7 +94,9 @@ async def create_maintenance_request(
         )
         
         if current_user.role == UserRole.CLIENTE_DEMO:
-            await crud.demo_usage.increment_usage(db, organization_id=current_user.organization_id, resource_type="maintenances")
+            # --- CORREÇÃO 2: Usar a instância importada ---
+            await demo_usage_crud.increment_usage(db, organization_id=current_user.organization_id, resource_type="maintenances")
+            # ----------------------------------------------
         
         message = f"Nova solicitação de manutenção para {request.vehicle.brand} {request.vehicle.model} aberta por {current_user.full_name}."
         background_tasks.add_task(

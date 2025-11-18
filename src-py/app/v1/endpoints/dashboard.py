@@ -13,7 +13,7 @@ from app.models.fuel_log_model import FuelLog
 # --- CORREÇÃO: Importar a INSTÂNCIA 'demo_usage' diretamente ---
 from app.crud.crud_demo_usage import demo_usage as crud_demo_usage_instance
 # -------------------------------------------------------------
-
+from app.core.config import settings
 # --- NOVOS IMPORTS DOS SCHEMAS CENTRALIZADOS ---
 from app.schemas.dashboard_schema import (
     ManagerDashboardResponse, 
@@ -56,9 +56,10 @@ async def read_manager_dashboard(
 ):
     """
     Retorna os dados agregados para o dashboard principal do gestor.
-    Acessível por CLIENTE_ATIVO e CLIENTE_DEMO.
+    Acessível por CLIENTE_ATIVO, CLIENTE_DEMO e ADMIN.
     """
-    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
+    # --- CORREÇÃO: Adicionado UserRole.ADMIN na lista de permissões ---
+    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso não autorizado a este dashboard.",
@@ -67,7 +68,7 @@ async def read_manager_dashboard(
     org_id = current_user.organization_id
     start_date = _get_start_date_from_period(period)
 
-    # --- Busca de dados de custos movida para fora do 'if' ---
+    # --- Busca de dados de custos ---
     costs = await crud.report.get_costs_by_category_last_30_days(db, organization_id=org_id, start_date=start_date)
     
     # --- Busca de dados comuns a todos os gestores ---
@@ -77,8 +78,9 @@ async def read_manager_dashboard(
     upcoming_maintenances = await crud.report.get_upcoming_maintenances(db, organization_id=org_id)
     active_goal = await crud.report.get_active_goal_with_progress(db, organization_id=org_id)
 
-    # --- Busca de dados premium (apenas para CLIENTE_ATIVO) ---
-    if current_user.role == UserRole.CLIENTE_ATIVO:
+    # --- Busca de dados premium (CLIENTE_ATIVO ou ADMIN) ---
+    # O Admin vê tudo o que o Cliente Ativo vê.
+    if current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.ADMIN]:
         km_per_day = await crud.report.get_km_per_day_last_30_days(db, organization_id=org_id, start_date=start_date)
         podium = await crud.report.get_podium_drivers(db, organization_id=org_id)
 
@@ -221,7 +223,8 @@ async def read_vehicle_positions(
     Endpoint leve, projetado para ser chamado frequentemente (polling)
     pelo frontend para atualizar o mapa em tempo real.
     """
-    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
+    # --- CORREÇÃO: Adicionado UserRole.ADMIN ---
+    if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso não autorizado.",
@@ -254,31 +257,29 @@ async def read_demo_stats_rebuilt(
 
     org_id = current_user.organization_id
     
-    # Busca contagens totais (Usando os 'alias' .count() que adicionamos)
     vehicle_count = await crud.vehicle.count(db, organization_id=org_id)
     user_count = await crud.user.count(db, organization_id=org_id)
     part_count = await crud.part.count(db, organization_id=org_id)
     client_count = await crud.client.count(db, organization_id=org_id)
 
-    # Busca contagens mensais
     monthly_usage: Dict[str, int] = {}
-    for resource_type in deps.DEMO_MONTHLY_LIMITS.keys():
-        # --- CORREÇÃO: Usando a instância importada diretamente ---
+    # --- CORREÇÃO 2: Usar settings.DEMO_MONTHLY_LIMITS ---
+    for resource_type in settings.DEMO_MONTHLY_LIMITS.keys():
         usage = await crud_demo_usage_instance.get_or_create_usage(
             db, organization_id=org_id, resource_type=resource_type
         )
-        # -----------------------------------------------------
         monthly_usage[resource_type] = usage.usage_count
 
+    # --- CORREÇÃO 3: Usar settings em todo o retorno ---
     return DemoStatsResponse(
-        vehicles=DemoResourceLimit(current=vehicle_count, limit=deps.DEMO_TOTAL_LIMITS.get("vehicles", 0)),
-        users=DemoResourceLimit(current=user_count, limit=deps.DEMO_TOTAL_LIMITS.get("users", 0)),
-        parts=DemoResourceLimit(current=part_count, limit=deps.DEMO_TOTAL_LIMITS.get("parts", 0)),
-        clients=DemoResourceLimit(current=client_count, limit=deps.DEMO_TOTAL_LIMITS.get("clients", 0)),
-        reports=DemoResourceLimit(current=monthly_usage.get("reports", 0), limit=deps.DEMO_MONTHLY_LIMITS.get("reports", 0)),
-        fines=DemoResourceLimit(current=monthly_usage.get("fines", 0), limit=deps.DEMO_MONTHLY_LIMITS.get("fines", 0)),
-        documents=DemoResourceLimit(current=monthly_usage.get("documents", 0), limit=deps.DEMO_MONTHLY_LIMITS.get("documents", 0)),
-        freight_orders=DemoResourceLimit(current=monthly_usage.get("freight_orders", 0), limit=deps.DEMO_MONTHLY_LIMITS.get("freight_orders", 0)),
-        maintenance_requests=DemoResourceLimit(current=monthly_usage.get("maintenance_requests", 0), limit=deps.DEMO_MONTHLY_LIMITS.get("maintenance_requests", 0)), # CORRIGIDO: chave 'maintenance_requests'
-        fuel_logs=DemoResourceLimit(current=monthly_usage.get("fuel_logs", 0), limit=deps.DEMO_MONTHLY_LIMITS.get("fuel_logs", 0)),
+        vehicles=DemoResourceLimit(current=vehicle_count, limit=settings.DEMO_TOTAL_LIMITS.get("vehicles", 0)),
+        users=DemoResourceLimit(current=user_count, limit=settings.DEMO_TOTAL_LIMITS.get("users", 0)),
+        parts=DemoResourceLimit(current=part_count, limit=settings.DEMO_TOTAL_LIMITS.get("parts", 0)),
+        clients=DemoResourceLimit(current=client_count, limit=settings.DEMO_TOTAL_LIMITS.get("clients", 0)),
+        reports=DemoResourceLimit(current=monthly_usage.get("reports", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("reports", 0)),
+        fines=DemoResourceLimit(current=monthly_usage.get("fines", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("fines", 0)),
+        documents=DemoResourceLimit(current=monthly_usage.get("documents", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("documents", 0)),
+        freight_orders=DemoResourceLimit(current=monthly_usage.get("freight_orders", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("freight_orders", 0)),
+        maintenance_requests=DemoResourceLimit(current=monthly_usage.get("maintenance_requests", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("maintenance_requests", 0)),
+        fuel_logs=DemoResourceLimit(current=monthly_usage.get("fuel_logs", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("fuel_logs", 0)),
     )

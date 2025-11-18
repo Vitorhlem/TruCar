@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // --- PROPRIEDADES COMPUTADAS (GETTERS) ---
   const isAuthenticated = computed(() => !!accessToken.value);
-  const isManager = computed(() => ['cliente_ativo', 'cliente_demo'].includes(user.value?.role ?? ''));
+  const isManager = computed(() => ['cliente_ativo', 'cliente_demo', 'admin'].includes(user.value?.role ?? ''));
   const isDriver = computed(() => user.value?.role === 'driver');
   const userSector = computed((): UserSector => user.value?.organization?.sector ?? null);
   const isSuperuser = computed(() => user.value?.is_superuser === true);
