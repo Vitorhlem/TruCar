@@ -10,15 +10,12 @@ from app.models.user_model import User, UserRole
 from app.schemas.maintenance_schema import (
     MaintenanceRequestPublic, MaintenanceRequestCreate, MaintenanceRequestUpdate,
     MaintenanceCommentPublic, MaintenanceCommentCreate,
-    ReplaceComponentPayload, ReplaceComponentResponse # Schemas atualizados
+    ReplaceComponentPayload, ReplaceComponentResponse
 )
-from app.crud.crud_maintenance import MaintenancePartChange # Importar modelo de log
-
+from app.crud.crud_maintenance import MaintenancePartChange
 from app.models.notification_model import NotificationType
 
 router = APIRouter()
-
-
 
 def send_new_request_email_background(manager_emails: List[str], request: MaintenanceRequestPublic):
     """
@@ -30,7 +27,6 @@ def send_new_request_email_background(manager_emails: List[str], request: Mainte
 
     subject = f"Novo Chamado de Manutenção Aberto - TruCar #{request.id}"
     
-    # Template HTML para o e-mail
     message_html = f"""
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -132,16 +128,16 @@ async def read_maintenance_requests(
     skip: int = 0,
     limit: int = 100,
     search: str | None = None,
-    vehicleId: int | None = None, # <-- 1. ADICIONE ESTA LINHA
+    vehicleId: int | None = None,
 ):
-    """Retorna as solicitações de manutenção. Gestores veem tudo, motoristas veem apenas o que reportaram."""
+    """Retorna as solicitações de manutenção."""
     requests = await crud.maintenance.get_all_requests(
         db=db, 
         organization_id=current_user.organization_id, 
         search=search, 
         skip=skip, 
         limit=limit,
-        vehicle_id=vehicleId # <-- 2. ADICIONE ESTE PARÂMETRO
+        vehicle_id=vehicleId
     )
     if current_user.role == UserRole.DRIVER:
         return [req for req in requests if req.reported_by_id == current_user.id]
@@ -190,7 +186,6 @@ async def read_comments_for_request(
     comments = await crud.maintenance_comment.get_comments_for_request(
         db=db, request_id=request_id, organization_id=current_user.organization_id
     )
-    # A função CRUD já valida o acesso, então aqui só retornamos
     return comments
 
 
@@ -204,34 +199,72 @@ async def create_comment_for_request(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     try:
+        # 1. Cria o comentário (apenas Flush)
         comment = await crud.maintenance.create_comment(
             db, comment_in=comment_in, request_id=request_id, user_id=current_user.id, organization_id=current_user.organization_id
         )
         
+        # 2. Busca dados para notificação ANTES do commit
+        # (Necessário pois o request_obj vai expirar após o commit)
         request_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user.organization_id)
+        
+        reported_by_id = None
         if request_obj:
-            message = f"Novo comentário de {current_user.full_name} na solicitação de manutenção #{request_id}."
-            # Se quem comentou foi um motorista, notifica os gestores
-            if current_user.role == UserRole.DRIVER:
+            reported_by_id = request_obj.reported_by_id
+            
+        current_user_org_id = current_user.organization_id
+        current_user_role = current_user.role
+        current_user_name = current_user.full_name
+        
+        # 3. FAZ O COMMIT (Salva a mensagem no banco)
+        await db.commit()
+
+        # 4. REFRESH OBRIGATÓRIO
+        # Recarrega o comentário e seus relacionamentos para retornar ao Frontend sem erros
+        await db.refresh(comment, ["user"])
+        if comment.user:
+            await db.refresh(comment.user, ["organization"])
+        
+        # 5. Lógica de Notificação
+        if request_obj:
+            message = f"Novo comentário de {current_user_name} na solicitação de manutenção #{request_id}."
+            
+            if current_user_role == UserRole.DRIVER:
+                # Motorista comentou -> Avisa os Gestores
                 background_tasks.add_task(
-                    crud.notification.create_notification, db=db, message=message,
+                    crud.notification.create_notification, 
+                    db=db, 
+                    message=message,
                     notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                    organization_id=current_user.organization_id, send_to_managers=True,
-                    related_entity_type="maintenance_request", related_entity_id=request_id
+                    organization_id=current_user_org_id, 
+                    send_to_managers=True,
+                    related_entity_type="maintenance_request", 
+                    related_entity_id=request_id
                 )
-            # Se quem comentou foi um gestor, notifica o motorista que criou a solicitação
             else:
-                background_tasks.add_task(
-                    crud.notification.create_notification, db=db, message=message,
-                    notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                    organization_id=current_user.organization_id, user_id=request_obj.reported_by_id,
-                    related_entity_type="maintenance_request", related_entity_id=request_id
-                )
+                # Gestor comentou -> Avisa o Motorista (se houver)
+                if reported_by_id:
+                    background_tasks.add_task(
+                        crud.notification.create_notification, 
+                        db=db, 
+                        message=message,
+                        notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                        organization_id=current_user_org_id, 
+                        user_id=reported_by_id,
+                        related_entity_type="maintenance_request", 
+                        related_entity_id=request_id
+                    )
 
         return comment
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
 
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro ao enviar mensagem: {e}")
 
 @router.post("/upload-file", response_model=dict)
 async def upload_attachment_file(
@@ -248,6 +281,7 @@ async def upload_attachment_file(
         
     return {"file_url": f"/{file_location}"}
 
+# --- ENDPOINT CORRIGIDO ---
 @router.post("/{request_id}/replace-component", response_model=ReplaceComponentResponse)
 async def replace_maintenance_component(
     *,
@@ -258,6 +292,7 @@ async def replace_maintenance_component(
     current_user: User = Depends(deps.get_current_active_manager)
 ):
     try:
+        # 1. Executa a lógica
         log_entry, comment_entry, reported_by_id = await crud.maintenance.perform_component_replacement(
             db=db,
             request_id=request_id,
@@ -265,20 +300,42 @@ async def replace_maintenance_component(
             user=current_user
         )
         
-        # 1. Lemos o texto ANTES de retornar (isso está correto)
+        # 2. Guarda dados simples antes do commit
         comment_text_for_notification = comment_entry.comment_text
+        current_user_org_id = current_user.organization_id
         
-        # 2. Fazemos o commit
-        # await db.commit()  <--- REMOVA ESTA LINHA
+        # 3. FAZ O COMMIT
+        await db.commit()
 
-        # 3. Lógica de Notificação
+        # 4. REFRESH OBRIGATÓRIO (Correção dos 12 erros de validação)
+        # Recarregar o Comentário
+        await db.refresh(comment_entry, ["user"])
+        if comment_entry.user:
+            await db.refresh(comment_entry.user, ["organization"])
+
+        # Recarregar o Log de Troca e suas relações complexas
+        await db.refresh(log_entry, ["user", "component_removed", "component_installed"])
+        
+        # Precisamos garantir que os componentes carreguem suas 'parts' e 'transactions'
+        # pois o Schema de resposta provavelmente exibe o nome da peça.
+        if log_entry.component_removed:
+            await db.refresh(log_entry.component_removed, ["part", "inventory_transaction"])
+            if log_entry.component_removed.part:
+                 await db.refresh(log_entry.component_removed.part, ["items"]) # Carrega items se necessário
+        
+        if log_entry.component_installed:
+            await db.refresh(log_entry.component_installed, ["part", "inventory_transaction"])
+            if log_entry.component_installed.part:
+                 await db.refresh(log_entry.component_installed.part, ["items"])
+
+        # 5. Lógica de Notificação
         if reported_by_id:
              background_tasks.add_task(
                  crud.notification.create_notification, 
-                 db=db,  # <--- ADICIONE ESTA LINHA
+                 db=db,
                  message=comment_text_for_notification,
                  notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                 organization_id=current_user.organization_id, 
+                 organization_id=current_user_org_id,
                  user_id=reported_by_id, 
                  related_entity_type="maintenance_request", 
                  related_entity_id=request_id
@@ -307,7 +364,7 @@ async def replace_maintenance_component(
         )
 
 
-# --- NOVO ENDPOINT DE REVERSÃO ---
+# --- CORREÇÃO NA FUNÇÃO DE REVERSÃO ---
 @router.post("/part-changes/{change_id}/revert", response_model=MaintenanceCommentPublic)
 async def revert_part_change(
     *,
@@ -326,31 +383,44 @@ async def revert_part_change(
             user=current_user
         )
         
+        # 1. Guarda dados simples antes do commit (para evitar erro na task)
         comment_text_for_notification = new_comment.comment_text
+        current_user_org_id = current_user.organization_id
+        maintenance_req_id = log_entry.maintenance_request_id
         
+        # 2. Faz o Commit
         await db.commit()
         
+        # 3. REFRESH OBRIGATÓRIO (Correção do ResponseValidationError)
+        # Como fizemos commit, o objeto 'new_comment' expirou. 
+        # Precisamos recarregá-lo junto com o usuário para o Pydantic validar a resposta.
+        await db.refresh(new_comment, ["user"])
+        if new_comment.user:
+            await db.refresh(new_comment.user, ["organization"])
+        
+        # 4. Notificação
         if reported_by_id:
              background_tasks.add_task(
                  crud.notification.create_notification, 
                  db=db, 
                  message=comment_text_for_notification,
                  notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                 organization_id=current_user.organization_id, 
+                 organization_id=current_user_org_id,
                  user_id=reported_by_id, 
                  related_entity_type="maintenance_request", 
-                 related_entity_id=log_entry.maintenance_request_id
+                 related_entity_id=maintenance_req_id
              )
+             
         return new_comment
 
     except ValueError as e:
-        await db.rollback() # <--- DESCOMENTE (ATIVE) ESTA LINHA
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        await db.rollback() # <--- DESCOMENTE (ATIVE) ESTA LINHA
+        await db.rollback()
         import traceback
         traceback.print_exc()
         raise HTTPException(

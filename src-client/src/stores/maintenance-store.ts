@@ -79,16 +79,30 @@ Notify.create({ type: 'negative', message: 'Erro ao atualizar solicitação.' })
     // --- FUNÇÃO CORRIGIDA ---
     async addComment(requestId: number, payload: MaintenanceCommentCreate): Promise<void> {
       try {
-        await api.post<MaintenanceComment>(`/maintenance/${requestId}/comments`, payload);
-        // Em vez de buscar apenas um, buscamos a lista inteira.
-        // Isto força a reatividade em todos os componentes que dependem da lista.
-        await this.fetchMaintenanceRequests();
+        // 1. Captura a resposta da API, que contém o comentário criado (com ID, Data, Usuário, etc.)
+        const response = await api.post<MaintenanceComment>(`/maintenance/${requestId}/comments`, payload);
+        
+        // 2. Encontra o chamado específico na memória (state)
+        const request = this.maintenances.find(r => r.id === requestId);
+        
+        // 3. Adiciona o novo comentário diretamente à lista de comentários desse chamado
+        // Isso garante que o Vue detecte a mudança e atualize o chat na hora, sem precisar recarregar a página.
+        if (request) {
+           // Garante que o array existe
+           if (!request.comments) {
+             request.comments = [];
+           }
+           request.comments.push(response.data);
+        }
+        
+        // Observação: Removemos o 'await this.fetchMaintenanceRequests()' pois ele substituía 
+        // a lista inteira e podia quebrar a referência do objeto que o diálogo estava usando.
+
       } catch (error) {
         Notify.create({ type: 'negative', message: 'Erro ao enviar comentário.' });
         throw error;
       }
     },
-
     async revertPartChange(requestId: number, changeId: number): Promise<boolean> {
       this.isLoading = true;
       try {
