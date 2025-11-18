@@ -135,11 +135,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/ImplementsPage.vue'),
         meta: { roles: ['cliente_ativo', 'cliente_demo'] }
       },
-      { 
-        path: 'live-map', 
-        component: () => import('pages/LiveMapPage.vue'),
-        meta: { roles: ['cliente_ativo', 'cliente_demo'] }
-      },
+
       { 
         path: 'freight-orders', 
         component: () => import('pages/FreightOrdersPage.vue'),

@@ -272,7 +272,6 @@ function getDriverMenu(): MenuCategory[] {
     icon: 'dashboard',
     children: [
       { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
-      { title: 'Mapa em Tempo Real', icon: 'public', to: '/live-map' },
     ],
   };
   if (sector === 'frete') {
@@ -312,7 +311,6 @@ function getManagerMenu(): MenuCategory[] {
     label: 'Geral', icon: 'dashboard',
     children: [
       { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
-      { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' },
     ]
   };
   menu.push(general);
