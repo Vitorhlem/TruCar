@@ -3,19 +3,26 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict
-
+from sqlalchemy import select, func, desc
 from app import crud, deps
+from app.models.alert_model import Alert
+from sqlalchemy.orm import selectinload
+from app.models.journey_model import Journey
 from app.models.user_model import User, UserRole
-
+from app.models.fuel_log_model import FuelLog
 # --- CORREÇÃO: Importar a INSTÂNCIA 'demo_usage' diretamente ---
 from app.crud.crud_demo_usage import demo_usage as crud_demo_usage_instance
 # -------------------------------------------------------------
 
 # --- NOVOS IMPORTS DOS SCHEMAS CENTRALIZADOS ---
 from app.schemas.dashboard_schema import (
-    ManagerDashboardResponse,
-    DriverDashboardResponse,
+    ManagerDashboardResponse, 
+    DriverDashboardResponse, 
+    DriverMetrics, 
+    DriverRankEntry, 
+    AchievementStatus,
     VehiclePosition,
+    ActiveJourneyInfo # <--- NOVO SCHEMA
 )
 
 router = APIRouter()
@@ -103,31 +110,101 @@ async def read_manager_dashboard(
     response_model=DriverDashboardResponse,
     summary="Obtém os dados de desempenho para o motorista logado",
 )
+@router.get("/driver", response_model=DriverDashboardResponse)
 async def read_driver_dashboard(
-    *,
     db: AsyncSession = Depends(deps.get_db),
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.get_current_active_user), # Permite 'driver'
 ):
-    """
-    Retorna as métricas de desempenho individuais para um motorista.
-    Acessível apenas por DRIVER.
-    """
-    if current_user.role != UserRole.DRIVER:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso não autorizado a este dashboard.",
+    """Retorna os dados do cockpit do motorista."""
+    
+    # Definir período (Últimos 30 dias)
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=30)
+
+    # 1. BUSCAR JORNADA ATIVA (Correção do "Não possui operação")
+    active_journey_stmt = select(Journey).where(
+        Journey.driver_id == current_user.id,
+        Journey.is_active == True
+    ).options(selectinload(Journey.vehicle))
+    
+    active_journey_db = (await db.execute(active_journey_stmt)).scalars().first()
+    
+    active_journey_data = None
+    if active_journey_db:
+        # Determina data de início (pode vir como string ou datetime dependendo do driver do banco)
+        start_time_val = active_journey_db.start_time
+        
+        active_journey_data = ActiveJourneyInfo(
+            id=active_journey_db.id,
+            vehicle_identifier=f"{active_journey_db.vehicle.brand} {active_journey_db.vehicle.model}",
+            start_time=start_time_val if isinstance(start_time_val, datetime) else datetime.fromisoformat(str(start_time_val)),
+            current_km_or_hour=active_journey_db.vehicle.current_km if active_journey_db.vehicle.current_km else (active_journey_db.vehicle.current_engine_hours or 0)
         )
 
-    metrics = await crud.user.get_driver_metrics(db, user=current_user)
-    ranking = await crud.user.get_driver_ranking_context(db, user=current_user)
-    achievements = await crud.user.get_driver_achievements(db, user=current_user)
+    # 2. CALCULAR MÉTRICAS (Correção do FuelLog e Agregação)
+    
+    # Distância / Horas (Soma de jornadas finalizadas no período)
+    journeys_metrics_stmt = select(
+        func.sum(func.coalesce(Journey.end_mileage, 0) - func.coalesce(Journey.start_mileage, 0)), # Distância (KM)
+        func.sum(func.coalesce(Journey.end_engine_hours, 0) - func.coalesce(Journey.start_engine_hours, 0)) # Horas (Motor)
+    ).where(
+        Journey.driver_id == current_user.id,
+        Journey.is_active == False,
+        Journey.end_time >= start_date
+    )
+    j_res = (await db.execute(journeys_metrics_stmt)).first()
+    
+    total_distance = float(j_res[0] or 0)
+    total_hours = float(j_res[1] or 0)
+
+    # Combustível (Corrigido: usa .timestamp e não .date)
+    fuel_metrics_stmt = select(
+        func.sum(FuelLog.liters)
+    ).where(
+        FuelLog.user_id == current_user.id,
+        FuelLog.timestamp >= start_date
+    )
+    total_liters = (await db.execute(fuel_metrics_stmt)).scalar_one_or_none() or 0.0
+
+    # Alertas
+    alerts_count = (await db.execute(
+        select(func.count(Alert.id)).where(Alert.driver_id == current_user.id, Alert.timestamp >= start_date)
+    )).scalar_one()
+
+    # Eficiência
+    efficiency = 0.0
+    if total_liters > 0:
+        # Lógica inteligente: Se rodou mais horas que km (Agro), usa L/h. Se não, Km/l.
+        if total_hours > total_distance and total_hours > 0:
+             efficiency = total_liters / total_hours # L/h (Consumo)
+        elif total_distance > 0:
+             efficiency = total_distance / total_liters # Km/l (Rendimento)
+
+    metrics = DriverMetrics(
+        distance=total_distance,
+        hours=total_hours,
+        fuel_efficiency=efficiency,
+        alerts=alerts_count
+    )
+
+    # 3. RANKING (Simplificado)
+    ranking = [
+        DriverRankEntry(rank=1, name=current_user.full_name, metric=total_distance, is_current_user=True)
+    ]
+
+    # 4. CONQUISTAS (Simplificado)
+    achievements = [
+        AchievementStatus(title="Primeira Viagem", icon="flag", unlocked=total_distance > 0),
+        AchievementStatus(title="Motorista Seguro", icon="shield", unlocked=alerts_count == 0),
+        AchievementStatus(title="Maratona 1000km", icon="speed", unlocked=total_distance > 1000),
+    ]
 
     return DriverDashboardResponse(
         metrics=metrics,
+        active_journey=active_journey_data, 
         ranking_context=ranking,
-        achievements=achievements,
+        achievements=achievements
     )
-
 
 # --- ENDPOINT PARA O MAPA EM TEMPO REAL ---
 @router.get(

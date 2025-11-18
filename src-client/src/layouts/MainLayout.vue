@@ -9,8 +9,8 @@
     >
       <q-scroll-area class="fit">
         <div class="q-pa-md text-center sidebar-header">
-            <img src="~assets/trucar-logo-white.png" class="logo-dark-theme" style="height: 35px;" alt="TruCar Logo">
-            <img src="~assets/trucar-logo-dark.png" class="logo-light-theme" style="height: 35px;" alt="TruCar Logo">
+          <img src="~assets/trucar-logo-white.png" class="logo-dark-theme" style="height: 35px;" alt="TruCar Logo">
+          <img src="~assets/trucar-logo-dark.png" class="logo-light-theme" style="height: 35px;" alt="TruCar Logo">
         </div>
         
         <q-list padding>
@@ -66,11 +66,10 @@
             <div>
               <div class="text-weight-bold">Limites do Plano de Demonstração</div>
               <q-list dense>
-                
                 <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="local_shipping" /></q-item-section><q-item-section>Veículos: {{ stats?.vehicle_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.vehicle_limit) }}</q-item-section></q-item>
                 <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="engineering" /></q-item-section><q-item-section>Motoristas: {{ stats?.driver_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.driver_limit) }}</q-item-section></q-item>
                 <q-item class="q-pl-none"><q-item-section avatar style="min-width: 30px"><q-icon name="route" /></q-item-section><q-item-section>Jornadas este mês: {{ stats?.journey_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.freight_order_limit) }}</q-item-section></q-item>
-                </q-list>
+              </q-list>
               <div>Clique para saber mais sobre o plano completo.</div>
             </div>
           </q-tooltip>
@@ -100,7 +99,7 @@
                   :key="notification.id"
                   clickable
                   v-ripple
-                  :class="{ 'bg-blue--1': !notification.is_read }"
+                  :class="{ 'bg-blue-1': !notification.is_read }"
                   @click="handleNotificationClick(notification)"
                 >
                   <q-item-section avatar>
@@ -120,6 +119,7 @@
             </q-list>
           </q-menu>
         </q-btn>
+
         <q-btn-dropdown flat :label="authStore.user?.full_name || 'Usuário'">
           <q-list>
             <q-item clickable v-close-popup :to="`/users/${authStore.user?.id}/stats`" v-if="authStore.isDriver">
@@ -134,7 +134,7 @@
         </q-btn-dropdown>
       </q-toolbar>
       
-        <q-banner v-if="authStore.isImpersonating" inline-actions class="bg-deep-orange text-white text-center shadow-2">
+      <q-banner v-if="authStore.isImpersonating" inline-actions class="bg-deep-orange text-white text-center shadow-2">
          <template v-slot:avatar>
            <q-icon name="visibility_off" color="white" />
          </template>
@@ -144,7 +144,7 @@
          <template v-slot:action>
            <q-btn flat dense color="white" label="Voltar à minha conta" @click="authStore.stopImpersonation()" />
          </template>
-        </q-banner>
+      </q-banner>
     </q-header>
 
     <q-page-container class="app-page-container">
@@ -161,17 +161,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-// --- ATUALIZADO: Importar storeToRefs ---
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'stores/auth-store';
 import { useNotificationStore } from 'stores/notification-store';
 import { useTerminologyStore } from 'stores/terminology-store';
 import { useDemoStore } from 'stores/demo-store';
-// --- IMPORTAÇÕES ADICIONADAS ---
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Notification } from 'src/models/notification-models';
-// --- FIM DAS IMPORTAÇÕES ---
 
 const leftDrawerOpen = ref(false);
 const router = useRouter();
@@ -181,10 +178,7 @@ const notificationStore = useNotificationStore();
 const terminologyStore = useTerminologyStore();
 const demoStore = useDemoStore();
 
-// --- ATUALIZADO: Tornar o 'stats' reativo usando storeToRefs ---
-// Isso garante que o template será atualizado sempre que a store mudar.
 const { stats } = storeToRefs(demoStore);
-// --- FIM DA ATUALIZAÇÃO ---
 
 let pollTimer: number;
 
@@ -192,12 +186,12 @@ interface MenuItem {
   title: string;
   icon: string;
   to: string;
-} 
+}
 
 interface MenuCategory {
-    label: string;
-    icon: string;
-    children: MenuItem[];
+  label: string;
+  icon: string;
+  children: MenuItem[];
 }
 
 function toggleLeftDrawer() { leftDrawerOpen.value = !leftDrawerOpen.value; }
@@ -221,20 +215,16 @@ function showUpgradeDialog() {
   });
 }
 
-// --- FUNÇÃO ADICIONADA PARA FORMATAR O LIMITE ---
 function formatLimit(limit: number | undefined | null): string {
   if (limit === undefined || limit === null) {
-    return '--'; // Aguardando carregar
+    return '--';
   }
   if (limit < 0) {
     return 'Ilimitado';
   }
   return limit.toString();
 }
-// --- FIM DA FUNÇÃO ---
 
-
-// --- FUNÇÕES ADICIONADAS PARA O MENU DE NOTIFICAÇÕES ---
 function formatNotificationDate(date: string) {
   return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
 }
@@ -259,126 +249,120 @@ async function handleNotificationClick(notification: Notification) {
   }
   
   if (notification.related_entity_type === 'maintenance_request') {
-    void router.push('/maintenance'); // Navega para a página de manutenções
+    void router.push('/maintenance');
   }
-  // Adicione outras lógicas de navegação aqui conforme necessário
 }
-// --- FIM DAS FUNÇÕES ADICIONADAS ---
 
 const menuStructure = computed(() => {
-    if (authStore.isManager) {
-        return getManagerMenu();
-    }
-    if (authStore.isDriver) {
-        return getDriverMenu();
-    }
-    return [];
+  if (authStore.isManager) {
+    return getManagerMenu();
+  }
+  if (authStore.isDriver) {
+    return getDriverMenu();
+  }
+  return [];
 });
 
 function getDriverMenu(): MenuCategory[] {
-// ... (função igual)
-    const sector = authStore.userSector;
-    const menu: MenuCategory[] = [];
+  const sector = authStore.userSector;
+  const menu: MenuCategory[] = [];
 
-    const general: MenuCategory = {
-        label: 'Principal',
-        icon: 'dashboard',
-        children: [
-            { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
-            { title: 'Mapa em Tempo Real', icon: 'public', to: '/live-map' },
-        ],
-    };
-    if (sector === 'frete') {
-        general.children.push({ title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' });
-    }
-    menu.push(general);
+  const general: MenuCategory = {
+    label: 'Principal',
+    icon: 'dashboard',
+    children: [
+      { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
+      { title: 'Mapa em Tempo Real', icon: 'public', to: '/live-map' },
+    ],
+  };
+  if (sector === 'frete') {
+    general.children.push({ title: 'Minha Rota', icon: 'explore', to: '/driver-cockpit' });
+  }
+  menu.push(general);
 
-    const operations: MenuCategory = {
-        label: 'Minhas Atividades',
-        icon: 'work_history',
-        children: [
-            { title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' },
-            { title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' },
-            { title: 'Minhas Multas', icon: 'receipt_long', to: '/fines' },
-            { title: 'Manutenções', icon: 'build', to: '/maintenance' },
-        ],
-    };
-    menu.push(operations);
+  const operations: MenuCategory = {
+    label: 'Minhas Atividades',
+    icon: 'work_history',
+    children: [
+      { title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' },
+      { title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' },
+      { title: 'Minhas Multas', icon: 'receipt_long', to: '/fines' },
+      { title: 'Manutenções', icon: 'build', to: '/maintenance' },
+    ],
+  };
+  menu.push(operations);
 
-    const fleet: MenuCategory = {
-        label: 'Frota',
-        icon: 'local_shipping',
-        children: [
-            { title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' }
-        ]
-    };
-    menu.push(fleet);
+  const fleet: MenuCategory = {
+    label: 'Frota',
+    icon: 'local_shipping',
+    children: [
+      { title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' }
+    ]
+  };
+  menu.push(fleet);
 
-    return menu;
+  return menu;
 }
-
 
 function getManagerMenu(): MenuCategory[] {
-const sector = authStore.userSector;
-const menu: MenuCategory[] = [];
+  const sector = authStore.userSector;
+  const menu: MenuCategory[] = [];
 
-const general: MenuCategory = {
- label: 'Geral', icon: 'dashboard',
-children: [
- { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
- { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' },
- ]
- };
- menu.push(general);
+  const general: MenuCategory = {
+    label: 'Geral', icon: 'dashboard',
+    children: [
+      { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
+      { title: 'Mapa em Tempo Real', icon: 'map', to: '/live-map' },
+    ]
+  };
+  menu.push(general);
 
- const operations: MenuCategory = { label: 'Operações', icon: 'alt_route', children: [] as MenuItem[] };
- if (sector === 'agronegocio' || sector === 'servicos') {
-operations.children.push({ title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' });
- }
- if (sector === 'frete') {
-operations.children.push({ title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' });
- }
- if (operations.children.length > 0) {
- menu.push(operations);
+  const operations: MenuCategory = { label: 'Operações', icon: 'alt_route', children: [] as MenuItem[] };
+  if (sector === 'agronegocio' || sector === 'servicos') {
+    operations.children.push({ title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' });
+  }
+  if (sector === 'frete') {
+    operations.children.push({ title: 'Ordens de Frete', icon: 'list_alt', to: '/freight-orders' });
+  }
+  if (operations.children.length > 0) {
+    menu.push(operations);
+  }
+
+  const management: MenuCategory = { label: 'Gestão', icon: 'settings_suggest', children: [] as MenuItem[] };
+  if (sector === 'agronegocio' || sector === 'servicos' || sector === 'frete') {
+    management.children.push({ title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' });
+  }
+  if (sector === 'agronegocio') {
+    management.children.push({ title: 'Implementos', icon: 'precision_manufacturing', to: '/implements' });
+  }
+  if (sector === 'frete') {
+    management.children.push({ title: 'Clientes', icon: 'groups', to: '/clients' });
+  }
+  management.children.push({ title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' });
+  management.children.push({ title: 'Inventário', icon: 'inventory_2', to: '/parts' });
+  management.children.push({ title: 'Rastreabilidade', icon: 'manage_search', to: '/inventory-items' });
+
+  management.children.push({ title: 'Gestão de Custos', icon: 'monetization_on', to: '/costs' });
+  management.children.push({ title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' });
+  management.children.push({ title: 'Documentos', icon: 'folder_shared', to: '/documents' });
+  
+  if (management.children.length > 0) {
+    menu.push(management);
+  }
+
+  const analysis: MenuCategory = {
+    label: 'Análise', icon: 'analytics',
+    children: [
+      { title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' },
+      { title: 'Relatórios', icon: 'summarize', to: '/reports' },
+      { title: 'Manutenções', icon: 'build', to: '/maintenance' },
+      { title: 'Gestão de Multas', icon: 'receipt_long', to: '/fines' },
+    ]
+  };
+  menu.push(analysis);
+
+  return menu;
 }
-
- const management: MenuCategory = { label: 'Gestão', icon: 'settings_suggest', children: [] as MenuItem[] };
- if (sector === 'agronegocio' || sector === 'servicos' || sector === 'frete') {
- management.children.push({ title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' });
- }
-if (sector === 'agronegocio') {
-management.children.push({ title: 'Implementos', icon: 'precision_manufacturing', to: '/implements' });
- }
- if (sector === 'frete') {
- management.children.push({ title: 'Clientes', icon: 'groups', to: '/clients' });
- }
- management.children.push({ title: 'Gestão de Utilizadores', icon: 'manage_accounts', to: '/users' }); 
- // --- CORREÇÃO AQUI ---
- management.children.push({ title: 'Inventário', icon: 'inventory_2', to: '/parts' });
- management.children.push({ title: 'Rastreabilidade', icon: 'manage_search', to: '/inventory-items' });
- // --- FIM DA CORREÇÃO ---
-
- management.children.push({ title: 'Gestão de Custos', icon: 'monetization_on', to: '/costs' });
- management.children.push({ title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' });
- management.children.push({ title: 'Documentos', icon: 'folder_shared', to: '/documents' });
- if (management.children.length > 0) {
-menu.push(management);
- }
-
-const analysis: MenuCategory = {
-label: 'Análise', icon: 'analytics',
-children: [
-{ title: 'Ranking de Motoristas', icon: 'leaderboard', to: '/performance' },
- { title: 'Relatórios', icon: 'summarize', to: '/reports' },
- { title: 'Manutenções', icon: 'build', to: '/maintenance' },
- { title: 'Gestão de Multas', icon: 'receipt_long', to: '/fines' },
- ]
- };
- menu.push(analysis);
-
- return menu;
-}
-
 
 onMounted(() => {
   if (isDemo.value) {
@@ -394,7 +378,6 @@ onUnmounted(() => { clearInterval(pollTimer); });
 </script>
 
 <style lang="scss" scoped>
-/* ... (todo o seu CSS permanece igual) ... */
 .main-layout-container {
   background-color: #f4f6f9;
   

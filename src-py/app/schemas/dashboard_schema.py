@@ -29,6 +29,15 @@ class VehiclePosition(BaseModel):
     class Config:
         from_attributes = True
 
+class ActiveJourneyInfo(BaseModel):
+    id: int
+    vehicle_identifier: str
+    start_time: datetime
+    current_km_or_hour: float
+
+    class Config:
+        from_attributes = True
+
 class AlertSummary(BaseModel):
     """Estrutura de um alerta para o widget de 'Alertas Recentes'."""
     id: int
@@ -94,3 +103,4 @@ class DriverDashboardResponse(BaseModel):
     metrics: DriverMetrics
     ranking_context: List[DriverRankEntry]
     achievements: List[AchievementStatus]
+    active_journey: Optional[ActiveJourneyInfo] = None

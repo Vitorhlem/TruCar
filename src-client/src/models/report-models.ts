@@ -7,6 +7,13 @@ import type { DocumentPublic } from './document-models'; // Este estava certo
 import type { VehicleTire } from './tire-models'; // Corrigido de Tire para VehicleTire
 
 // --- CORREÇÃO: Exportar DashboardSummary ---
+export interface ActiveJourneyInfo {
+  id: number;
+  vehicle_identifier: string;
+  start_time: string;
+  current_km_or_hour: number;
+}
+
 export interface DashboardSummary {
   total_vehicles: number;
   active_journeys: number;
@@ -159,6 +166,7 @@ export interface DriverDashboardResponse {
   metrics: DriverMetrics;
   ranking_context: DriverRankEntry[];
   achievements: AchievementStatus[];
+  active_journey: ActiveJourneyInfo | null;
 }
 
 export interface VehicleReportPerformanceSummary {

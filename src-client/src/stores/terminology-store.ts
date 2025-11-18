@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia';
-// 'computed' foi REMOVIDO da importação porque já não é usado diretamente
 import type { UserSector } from 'src/models/auth-models';
 import { AgroStrategy, ServicesStrategy, ConstructionStrategy, FreightStrategy } from 'src/sector-strategies';
 import type { ISectorStrategy } from 'src/sector-strategies/strategy.interface';
 
-// Definimos o tipo do estado para ajudar o TypeScript
 interface TerminologyState {
   currentSector: UserSector;
 }
@@ -15,7 +13,6 @@ export const useTerminologyStore = defineStore('terminology', {
   }),
 
   getters: {
-    // Getter principal que define a estratégia
     activeStrategy(state): ISectorStrategy {
       switch (state.currentSector) {
         case 'agronegocio':
@@ -31,14 +28,21 @@ export const useTerminologyStore = defineStore('terminology', {
       }
     },
     
-    // --- CORRIGIDO ---
-    // Todos os outros getters agora usam 'this' para aceder ao getter 'activeStrategy'
-    // Isto remove o erro 'Unexpected any' e é a forma correta de encadear getters.
     vehicleNoun(): string { return this.activeStrategy.vehicleNoun; },
     vehicleNounPlural(): string { return this.activeStrategy.vehicleNounPlural; },
     journeyNoun(): string { return this.activeStrategy.journeyNoun; },
     journeyNounPlural(): string { return this.activeStrategy.journeyNounPlural; },
     distanceUnit(): string { return this.activeStrategy.distanceUnit; },
+    
+    // --- NOVO GETTER (Calculado) ---
+    // Define a unidade de combustível baseada na unidade de distância/tempo
+    fuelUnit(): string {
+      const dist = this.activeStrategy.distanceUnit.toLowerCase();
+      // Se for km, retorna km/l. Se for horas (h), retorna l/h.
+      return dist.includes('km') ? 'km/l' : 'l/h';
+    },
+    // ------------------------------
+
     plateOrIdentifierLabel(): string { return this.activeStrategy.plateOrIdentifierLabel; },
     startJourneyButtonLabel(): string { return this.activeStrategy.startJourneyButtonLabel; },
     vehiclePageTitle(): string { return this.activeStrategy.vehiclePageTitle; },

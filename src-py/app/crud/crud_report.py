@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, date
 from typing import List, Optional, Dict, Any
 import logging
 from sqlalchemy.orm import selectinload
-
+from app.models.inventory_transaction_model import InventoryTransaction
 from app import crud
 # --- IMPORTS DE MODELS ---
 from app.models.user_model import User, UserRole
@@ -16,16 +16,14 @@ from app.models.organization_model import Organization
 from app.models.report_models import DashboardKPIs, KmPerDay, UpcomingMaintenance, CostByCategory, DashboardPodiumDriver
 from app.models.vehicle_cost_model import VehicleCost
 from app.models.fuel_log_model import FuelLog
-# --- ATUALIZAÇÃO: Importar MaintenanceStatus ---
 from app.models.maintenance_model import MaintenanceRequest, MaintenancePartChange, MaintenanceComment, MaintenanceStatus
-# ------------------------------------------------
 from app.models.vehicle_component_model import VehicleComponent
 from app.models.part_model import Part
 from app.models.fine_model import Fine
 from app.models.document_model import Document
 from app.models.tire_model import VehicleTire as Tire
-from app.models.inventory_transaction_model import InventoryTransaction
-# ... (Imports de Schemas permanecem iguais) ...
+
+# --- IMPORTS DE SCHEMAS ---
 from app.schemas.dashboard_schema import KpiEfficiency, AlertSummary, GoalStatus, VehiclePosition
 from app.schemas.report_schema import (
     DashboardSummary,
@@ -40,18 +38,20 @@ from app.schemas.report_schema import (
     VehicleReportSections
 )
 
-# ... (get_fleet_management_data e outras funções helpers permanecem iguais) ...
+# --- FUNÇÃO HELPER ---
 async def get_fleet_management_data(
     db: AsyncSession, *, start_date: date, end_date: date, organization_id: int
 ) -> FleetManagementReport:
-    # ... (conteúdo da função sem alterações)
+    """
+    Agrega dados de custo e performance de toda a frota para um período.
+    """
     # 1. Obter todos os veículos da organização
     vehicles_stmt = select(Vehicle).where(Vehicle.organization_id == organization_id)
     vehicles = (await db.execute(vehicles_stmt)).scalars().all()
     
     vehicle_ids = [v.id for v in vehicles]
 
-    # 2. Obter todos os custos e abastecimentos do período em consultas otimizadas
+    # 2. Obter todos os custos e abastecimentos do período
     costs_stmt = select(VehicleCost).where(
         VehicleCost.organization_id == organization_id,
         VehicleCost.date.between(start_date, end_date)
@@ -64,7 +64,7 @@ async def get_fleet_management_data(
     all_costs = (await db.execute(costs_stmt)).scalars().all()
     all_fuel_logs = (await db.execute(fuel_logs_stmt)).scalars().all()
 
-    # 3. Calcular Resumos e Agregações Gerais
+    # 3. Calcular Resumos
     total_fleet_cost = sum(c.amount for c in all_costs)
     
     costs_by_category: Dict[str, float] = {}
@@ -72,7 +72,7 @@ async def get_fleet_management_data(
         category_key = str(cost.cost_type.value)
         costs_by_category[category_key] = costs_by_category.get(category_key, 0) + cost.amount
 
-    # 4. Processar dados por veículo para criar os rankings
+    # 4. Processar dados por veículo
     vehicle_metrics: List[Dict] = []
     total_fleet_distance = 0.0
 
@@ -103,13 +103,12 @@ async def get_fleet_management_data(
             "avg_consumption": avg_consumption
         })
 
-    # 5. Criar os Rankings
+    # 5. Rankings
     top_expensive = sorted(vehicle_metrics, key=lambda v: v.get('total_cost', 0), reverse=True)[:5]
     top_cost_per_km = sorted(vehicle_metrics, key=lambda v: v.get('cost_per_km', 0), reverse=True)[:5]
     top_efficient = sorted(vehicle_metrics, key=lambda v: v.get('avg_consumption', 0), reverse=True)[:5]
     least_efficient = sorted([v for v in vehicle_metrics if v.get('avg_consumption', 0) > 0], key=lambda v: v.get('avg_consumption', 0))[:5]
 
-    # 6. Montar o objeto final do relatório
     summary = FleetReportSummary(
         total_cost=total_fleet_cost,
         total_distance_km=total_fleet_distance,
@@ -147,9 +146,9 @@ def _format_relative_time(dt: datetime) -> str:
         days = int(seconds / 86400)
         return f"há {days} dia{'s' if days > 1 else ''}"
 
-# --- FUNÇÃO CORRIGIDA PARA O PROBLEMA ---
+# --- FUNÇÕES DE DASHBOARD ---
+
 async def get_dashboard_kpis(db: AsyncSession, *, organization_id: int) -> dict:
-    # 1. Contagem normal de Status de Veículos
     stmt = select(Vehicle.status, func.count(Vehicle.id)).where(
         Vehicle.organization_id == organization_id
     ).group_by(Vehicle.status)
@@ -157,31 +156,21 @@ async def get_dashboard_kpis(db: AsyncSession, *, organization_id: int) -> dict:
     result = await db.execute(stmt)
     status_counts = {status: count for status, count in result.all()}
 
-    # 2. NOVA LÓGICA: Contar Veículos com Chamados ATIVOS (Independente do status do veículo)
-    # Contamos veículos distintos que têm pelo menos um chamado não-concluído/rejeitado
     maintenance_stmt = select(func.count(func.distinct(MaintenanceRequest.vehicle_id))).where(
         MaintenanceRequest.organization_id == organization_id,
-        MaintenanceRequest.status.notin_([
-            MaintenanceStatus.CONCLUIDA, 
-            MaintenanceStatus.REJEITADA
-        ])
+        MaintenanceRequest.status.notin_([MaintenanceStatus.CONCLUIDA, MaintenanceStatus.REJEITADA])
     )
     active_maintenance_count = (await db.execute(maintenance_stmt)).scalar_one_or_none() or 0
 
     kpis_model = DashboardKPIs(
         total_vehicles=sum(status_counts.values()),
-        
-        # Mantém a lógica original para Disponível/Em Uso
         available_vehicles=status_counts.get(VehicleStatus.AVAILABLE.value, 0),
         in_use_vehicles=status_counts.get(VehicleStatus.IN_USE.value, 0),
-        
-        # ALTERAÇÃO: Usa a contagem de chamados ativos para o card "Em Manutenção"
         maintenance_vehicles=active_maintenance_count,
     )
     return kpis_model.model_dump()
-# ----------------------------------------
 
-# ... (As demais funções do arquivo get_costs_by_category_last_30_days, get_podium_drivers, etc. permanecem iguais) ...
+
 async def get_costs_by_category_last_30_days(db: AsyncSession, *, organization_id: int, start_date: date | None = None) -> List[CostByCategory]:
     if not start_date:
         start_date = datetime.utcnow().date() - timedelta(days=30)
@@ -203,10 +192,24 @@ async def get_costs_by_category_last_30_days(db: AsyncSession, *, organization_i
     return [CostByCategory(cost_type=row.cost_type.value, total_amount=float(row.total_amount or 0)) for row in result.all()]
 
 
+# --- CORREÇÃO PRINCIPAL: Instanciação Manual do Modelo ---
 async def get_podium_drivers(db: AsyncSession, *, organization_id: int) -> List[DashboardPodiumDriver]:
     leaderboard_data = await crud.user.get_leaderboard_data(db, organization_id=organization_id)
     top_drivers_raw = leaderboard_data.get("leaderboard", [])[:3]
-    return [DashboardPodiumDriver.model_validate(driver_data) for driver_data in top_drivers_raw]
+    
+    # Aqui convertemos manualmente as Linhas (Rows) do SQLAlchemy para o Objeto Pydantic
+    # Isso resolve o erro "Input should be a valid dictionary..."
+    result = []
+    for row in top_drivers_raw:
+        driver = DashboardPodiumDriver(
+            full_name=row.full_name,
+            avatar_url=row.avatar_url,
+            primary_metric_value=float(row.primary_metric_value or 0.0)
+        )
+        result.append(driver)
+        
+    return result
+# ---------------------------------------------------------
 
 
 async def get_km_per_day_last_30_days(db: AsyncSession, *, organization_id: int, start_date: date | None = None) -> List[KmPerDay]:
@@ -214,8 +217,7 @@ async def get_km_per_day_last_30_days(db: AsyncSession, *, organization_id: int,
         start_date = datetime.utcnow().date() - timedelta(days=30)
         
     org = await db.get(Organization, organization_id)
-    if not org:
-        return []
+    if not org: return []
 
     if org.sector == 'agronegocio':
         distance_col = func.sum(Journey.end_engine_hours - Journey.start_engine_hours)
@@ -404,7 +406,6 @@ async def get_vehicle_consolidated_data(
         
     maintenance_data = []
     if sections.maintenance_detailed:
-        # Carregamento profundo de relações para o relatório
         maintenance_stmt = select(MaintenanceRequest).where(
             MaintenanceRequest.vehicle_id == vehicle_id,
             func.date(MaintenanceRequest.created_at).between(start_date, end_date)
@@ -539,6 +540,10 @@ async def get_vehicle_consolidated_data(
 async def get_driver_performance_data(
     db: AsyncSession, *, start_date: date, end_date: date, organization_id: int
 ) -> DriverPerformanceReport:
+    """
+    Busca e agrega dados de desempenho para todos os motoristas de uma organização
+    em um período específico.
+    """
     drivers_stmt = select(User).where(
         User.organization_id == organization_id, 
         User.role == 'driver'
@@ -657,4 +662,4 @@ async def get_dashboard_summary(self, db: AsyncSession, current_user: User, star
             active_journeys=0,
             total_costs_last_30_days=0.0,
             maintenance_open_requests=0
-        )   
+        )
