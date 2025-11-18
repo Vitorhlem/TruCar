@@ -8,7 +8,9 @@ import type {
   MaintenanceComment,
   MaintenanceCommentCreate,
   ReplaceComponentPayload, // <-- 1. Importa o payload atualizado
-  ReplaceComponentResponse, // <-- 2. Importa a resposta atualizada
+  ReplaceComponentResponse,
+  InstallComponentPayload,
+  InstallComponentResponse, // <-- 2. Importa a resposta atualizada
 } from 'src/models/maintenance-models';
 import { isAxiosError } from 'axios';
 // Interface para os parâmetros de busca
@@ -103,6 +105,46 @@ Notify.create({ type: 'negative', message: 'Erro ao atualizar solicitação.' })
         throw error;
       }
     },
+
+    async installComponent(
+      requestId: number,
+      payload: InstallComponentPayload
+    ): Promise<boolean> {
+      this.isLoading = true;
+      try {
+        const response = await api.post<InstallComponentResponse>(
+          `/maintenance/${requestId}/install-component`,
+          payload
+        );
+
+        const requestToUpdate = this.maintenances.find((r) => r.id === requestId);
+
+        if (requestToUpdate) {
+          const { new_comment, part_change_log } = response.data;
+          
+          // Atualiza chat
+          if (!requestToUpdate.comments) requestToUpdate.comments = [];
+          requestToUpdate.comments.push(new_comment);
+
+          // Atualiza timeline
+          if (!requestToUpdate.part_changes) requestToUpdate.part_changes = [];
+          requestToUpdate.part_changes.push(part_change_log);
+        } else {
+          await this.fetchMaintenanceRequests();
+          await this.fetchRequestById(requestId);
+        }
+
+        Notify.create({ type: 'positive', message: 'Componente instalado com sucesso!' });
+        return true;
+      } catch (error) {
+        const message = isAxiosError(error) ? error.response?.data?.detail : 'Erro ao instalar componente.';
+        Notify.create({ type: 'negative', message: message as string });
+        return false;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     async revertPartChange(requestId: number, changeId: number): Promise<boolean> {
       this.isLoading = true;
       try {

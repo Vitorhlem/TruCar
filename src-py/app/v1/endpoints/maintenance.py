@@ -10,7 +10,8 @@ from app.models.user_model import User, UserRole
 from app.schemas.maintenance_schema import (
     MaintenanceRequestPublic, MaintenanceRequestCreate, MaintenanceRequestUpdate,
     MaintenanceCommentPublic, MaintenanceCommentCreate,
-    ReplaceComponentPayload, ReplaceComponentResponse
+    ReplaceComponentPayload, ReplaceComponentResponse, InstallComponentResponse,
+    InstallComponentPayload
 )
 from app.crud.crud_maintenance import MaintenancePartChange
 from app.models.notification_model import NotificationType
@@ -363,6 +364,71 @@ async def replace_maintenance_component(
             detail=f"Erro interno ao processar a substituição: {e}"
         )
 
+
+@router.post("/{request_id}/install-component", response_model=InstallComponentResponse)
+async def install_maintenance_component(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    background_tasks: BackgroundTasks,
+    request_id: int,
+    payload: InstallComponentPayload,
+    current_user: User = Depends(deps.get_current_active_manager)
+):
+    try:
+        # 1. Executa a lógica
+        log_entry, comment_entry, reported_by_id = await crud.maintenance.perform_new_installation(
+            db=db,
+            request_id=request_id,
+            payload=payload,
+            user=current_user
+        )
+        
+        # 2. Guarda dados para notificação
+        comment_text_for_notification = comment_entry.comment_text
+        current_user_org_id = current_user.organization_id
+        
+        # 3. Commit
+        await db.commit()
+
+        # 4. Refresh Obrigatório
+        await db.refresh(comment_entry, ["user"])
+        if comment_entry.user:
+            await db.refresh(comment_entry.user, ["organization"])
+
+        await db.refresh(log_entry, ["user", "component_installed"])
+        if log_entry.component_installed:
+            await db.refresh(log_entry.component_installed, ["part", "inventory_transaction"])
+            if log_entry.component_installed.part:
+                 await db.refresh(log_entry.component_installed.part, ["items"])
+
+        # 5. Notificação
+        if reported_by_id:
+             background_tasks.add_task(
+                 crud.notification.create_notification, 
+                 db=db,
+                 message=comment_text_for_notification,
+                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                 organization_id=current_user_org_id,
+                 user_id=reported_by_id, 
+                 related_entity_type="maintenance_request", 
+                 related_entity_id=request_id
+             )
+
+        return InstallComponentResponse(
+            success=True,
+            message="Instalação realizada com sucesso.",
+            part_change_log=log_entry,
+            new_comment=comment_entry
+        )
+
+    except ValueError as e:
+        await db.rollback() 
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        await db.rollback() 
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro interno: {e}")
 
 # --- CORREÇÃO NA FUNÇÃO DE REVERSÃO ---
 @router.post("/part-changes/{change_id}/revert", response_model=MaintenanceCommentPublic)

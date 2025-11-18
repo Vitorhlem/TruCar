@@ -29,28 +29,40 @@ class MaintenancePartChangePublic(BaseModel):
     user: UserPublic
     notes: Optional[str] = None
     
-    component_removed: VehicleComponentPublic 
+    # --- ALTERAÇÃO AQUI: Agora é Optional ---
+    component_removed: Optional[VehicleComponentPublic] = None
+    # --- FIM DA ALTERAÇÃO ---
+    
     component_installed: VehicleComponentPublic 
     
-    # --- CAMPO NOVO (BÔNUS) ---
     is_reverted: bool
-    # --- FIM DA ADIÇÃO ---
     
     model_config = { "from_attributes": True }
 
 
 class ReplaceComponentPayload(BaseModel):
     component_to_remove_id: int 
-    new_item_id: int # <-- Já está correto
+    new_item_id: int 
     old_item_status: InventoryItemStatus = InventoryItemStatus.FIM_DE_VIDA
     notes: Optional[str] = None
-
 
 class ReplaceComponentResponse(BaseModel):
     success: bool = True
     message: str
     part_change_log: MaintenancePartChangePublic 
     new_comment: MaintenanceCommentPublic
+
+# --- NOVOS SCHEMAS PARA INSTALAÇÃO ---
+class InstallComponentPayload(BaseModel):
+    new_item_id: int
+    notes: Optional[str] = None
+
+class InstallComponentResponse(BaseModel):
+    success: bool = True
+    message: str
+    part_change_log: MaintenancePartChangePublic 
+    new_comment: MaintenanceCommentPublic
+# --- FIM DOS NOVOS SCHEMAS ---
 
 class MaintenanceRequestBase(BaseModel):
     problem_description: str

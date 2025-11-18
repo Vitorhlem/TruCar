@@ -17,8 +17,8 @@ from app.models.user_model import User
 from app.models.part_model import Part, InventoryItem, InventoryItemStatus
 from app.schemas.maintenance_schema import (
     MaintenanceRequestCreate, MaintenanceRequestUpdate, MaintenanceCommentCreate,
-    ReplaceComponentPayload, 
-    ReplaceComponentResponse
+    ReplaceComponentPayload, ReplaceComponentResponse,
+    InstallComponentPayload # <-- Importe isso
 )
 from app import crud
 # --- FIM DOS IMPORTS ---
@@ -352,6 +352,119 @@ async def revert_part_change(
     
     
     return log_entry, new_comment, log_entry.maintenance_request.reported_by_id
+
+async def perform_new_installation(
+    db: AsyncSession, 
+    *, 
+    request_id: int, 
+    payload: InstallComponentPayload, 
+    user: User
+) -> Tuple[MaintenancePartChange, MaintenanceComment, Optional[int]]: 
+    
+    # 1. Validar o chamado
+    request = await db.get(MaintenanceRequest, request_id)
+    if not request or request.organization_id != user.organization_id:
+        raise ValueError("Chamado de manutenção não encontrado.")
+    if not request.vehicle_id:
+        raise ValueError("Chamado não está associado a um veículo.")
+        
+    vehicle_id = request.vehicle_id
+    organization_id = user.organization_id
+    reported_by_id = request.reported_by_id 
+
+    # 2. Buscar o Item Novo (Disponível)
+    new_item = await crud.crud_part.get_item_by_id(db, item_id=payload.new_item_id, organization_id=organization_id)
+    if not new_item:
+        raise ValueError(f"Item novo (ID: {payload.new_item_id}) não encontrado.")
+    if new_item.status != InventoryItemStatus.DISPONIVEL:
+        raise ValueError(f"Item novo (ID: {payload.new_item_id}) não está 'Disponível'. Status atual: {new_item.status}")
+
+    # 3. Realizar a Instalação (Mudar status para EM_USO)
+    try:
+        install_notes = f"Instalação Direta via Chamado #{request_id}"
+        if payload.notes:
+            install_notes = f"{payload.notes} ({install_notes})"
+
+        updated_item = await crud.crud_part.change_item_status(
+            db=db,
+            item=new_item,
+            new_status=InventoryItemStatus.EM_USO,
+            user_id=user.id,
+            vehicle_id=vehicle_id,
+            notes=install_notes 
+        )
+    except Exception as e:
+        raise e
+
+    # 4. Buscar o Componente recém-criado
+    stmt_comp = select(VehicleComponent).join(
+        InventoryTransaction, VehicleComponent.inventory_transaction_id == InventoryTransaction.id
+    ).where(
+        InventoryTransaction.item_id == updated_item.id,
+        InventoryTransaction.transaction_type == TransactionType.INSTALACAO
+    ).order_by(InventoryTransaction.timestamp.desc()).limit(1)
+
+    res_comp = await db.execute(stmt_comp)
+    new_component = res_comp.scalars().first()
+    
+    if not new_component:
+        raise Exception("Falha ao encontrar o registro do componente após a instalação.")
+
+    # 5. Carregar relações para o Log
+    await db.refresh(new_component, ["part", "inventory_transaction"])
+    if new_component.inventory_transaction:
+        await db.refresh(new_component.inventory_transaction, ["item"])
+
+    new_part_name = new_component.part.name
+    new_item_identifier = new_component.inventory_transaction.item.item_identifier
+
+    # 6. Criar o Log de Troca (component_removed_id é NULL)
+    db_log = MaintenancePartChange(
+        maintenance_request_id=request_id,
+        user_id=user.id,
+        notes=payload.notes,
+        component_removed_id=None, # <-- NENHUM REMOVIDO
+        component_installed_id=new_component.id
+    )
+    db.add(db_log)
+    
+    # 7. Criar Comentário Automático
+    comment_text = (
+        f"Instalação de novo componente realizada por {user.full_name}:\n"
+        f"- [INSTALADO] {new_part_name} (Cód. Item: {new_item_identifier})"
+        f"\nNota: {payload.notes or 'N/A'}"
+    )
+    
+    comment_schema = MaintenanceCommentCreate(comment_text=comment_text)
+    new_comment = await create_comment(
+        db=db,
+        comment_in=comment_schema,
+        request_id=request_id,
+        user_id=user.id,
+        organization_id=organization_id
+    )
+    
+    # 8. Flush e Refresh
+    await db.flush()
+    
+    await db.refresh(new_comment, ["user"])
+    if new_comment.user:
+        await db.refresh(new_comment.user, ["organization"])
+
+    await db.refresh(db_log, ["user", "component_installed"])
+    if db_log.user:
+        await db.refresh(db_log.user, ["organization"])
+    
+    if db_log.component_installed:
+        await db.refresh(db_log.component_installed, ["part", "inventory_transaction"])
+        if db_log.component_installed.part:
+            await db.refresh(db_log.component_installed.part, ["items"])
+        if db_log.component_installed.inventory_transaction:
+            await db.refresh(db_log.component_installed.inventory_transaction, ["item", "user"])
+            if db_log.component_installed.inventory_transaction.user:
+                 await db.refresh(db_log.component_installed.inventory_transaction.user, ["organization"])
+
+    return db_log, new_comment, reported_by_id
 
 # --- FUNÇÃO get_request (Sem alterações) ---
 async def get_request(

@@ -134,21 +134,26 @@
                         : ''
                     "
                   >
-                    <div>
+                    <div v-if="log.component_removed">
                       <q-badge color="negative" class="q-mr-xs">SAIU</q-badge>
-                      <strong>{{ log.component_removed.part.name }}</strong>
+                      <strong>{{ log.component_removed?.part?.name }}</strong>
                       (Cód. Item:
                       {{
-                        log.component_removed.inventory_transaction?.item
+                        log.component_removed?.inventory_transaction?.item
                           ?.item_identifier || 'N/A'
                       }})
                     </div>
+                    <div v-else>
+                         <q-badge color="info" class="q-mr-xs">NOVO</q-badge>
+                         Instalação direta (Nenhuma peça removida)
+                    </div>
+
                     <div class="q-mt-xs">
                       <q-badge color="positive" class="q-mr-xs">ENTROU</q-badge>
-                      <strong>{{ log.component_installed.part.name }}</strong>
+                      <strong>{{ log.component_installed?.part?.name }}</strong>
                       (Cód. Item:
                       {{
-                        log.component_installed.inventory_transaction?.item
+                        log.component_installed?.inventory_transaction?.item
                           ?.item_identifier || 'N/A'
                       }})
                     </div>
@@ -203,6 +208,17 @@
         </q-tab-panel>
 
         <q-tab-panel name="components">
+          <div class="row justify-end q-mb-md">
+            <q-btn
+              label="Instalar Novo Componente"
+              icon="add_circle"
+              color="positive"
+              unelevated
+              @click="isInstallDialogOpen = true"
+              :disable="!authStore.isManager || isClosed"
+            />
+          </div>
+
           <q-table
             title="Componentes Atualmente Instalados"
             :rows="componentStore.components"
@@ -291,6 +307,13 @@
       :component-to-replace="selectedComponent"
       @replacement-done="handleReplacementDone"
     />
+    
+    <InstallComponentDialog
+      v-model="isInstallDialogOpen"
+      :maintenance-request="request"
+      @installation-done="handleReplacementDone" 
+    />
+
   </q-dialog>
 </template>
 
@@ -305,10 +328,11 @@ import {
   type MaintenanceRequest,
   type MaintenanceRequestUpdate,
   type MaintenanceCommentCreate,
-  type MaintenancePartChangePublic, // <-- IMPORTAR
+  type MaintenancePartChangePublic,
 } from 'src/models/maintenance-models';
 import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import ReplaceComponentDialog from './ReplaceComponentDialog.vue';
+import InstallComponentDialog from './InstallComponentDialog.vue';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -324,6 +348,7 @@ const newCommentText = ref('');
 const tab = ref('details');
 
 const isReplaceDialogOpen = ref(false);
+const isInstallDialogOpen = ref(false);
 const selectedComponent = ref<VehicleComponent | null>(null);
 
 const componentColumns: QTableColumn<VehicleComponent>[] = [
@@ -365,22 +390,24 @@ function openReplaceDialog(component: VehicleComponent) {
   isReplaceDialogOpen.value = true;
 }
 
-// Recarrega os componentes ativos após a substituição
 function handleReplacementDone() {
   if (props.request?.vehicle?.id) {
     void componentStore.fetchComponents(props.request.vehicle.id);
   }
-  // Também recarrega os componentes se a reversão for feita
-  // (a store já terá atualizado o 'request' local)
 }
 
-// --- NOVA FUNÇÃO DE REVERSÃO ---
 function onRevert(log: MaintenancePartChangePublic) {
   if (!props.request) return;
 
-  const partName = log.component_installed.part.name;
+  // --- CORREÇÃO: Validação de segurança ---
+  if (!log.component_installed) {
+      console.error("Componente instalado não encontrado no log.");
+      return;
+  }
+
+  const partName = log.component_installed.part?.name || 'N/A';
   const itemIdentifier =
-    log.component_installed.inventory_transaction?.item?.item_identifier;
+    log.component_installed.inventory_transaction?.item?.item_identifier || 'N/A';
 
   $q.dialog({
     title: 'Reverter Troca',
@@ -390,12 +417,10 @@ function onRevert(log: MaintenancePartChangePublic) {
     ok: 'Confirmar Reversão',
     persistent: false,
     color: 'negative',
-    // vvvv MODIFIQUE A PARTIR DAQUI vvvv
   }).onOk(() => {
-    // 1. Crie uma função async interna
     const performRevert = async () => {
       try {
-        if (!props.request) return; // Verificação de segurança
+        if (!props.request) return; 
         const success = await maintenanceStore.revertPartChange(
           props.request.id,
           log.id
@@ -404,7 +429,6 @@ function onRevert(log: MaintenancePartChangePublic) {
           handleReplacementDone();
         }
       } catch (error) {
-        // 2. Capture erros que a promise possa ter
         console.error('Falha ao reverter a troca:', error);
         $q.notify({
           type: 'negative',
@@ -413,19 +437,15 @@ function onRevert(log: MaintenancePartChangePublic) {
       }
     };
 
-    // 3. Chame a função com 'void' para satisfazer o linter
     void performRevert();
   });
 }
-// --- FIM DA NOVA FUNÇÃO ---
 
 watch(
   () => tab.value,
   (newTab) => {
     if (newTab === 'components' && props.request?.vehicle?.id) {
-      // vvvv MODIFIQUE ESTA LINHA vvvv
       const storeVehicleId = componentStore.currentVehicleId;
-      // ^^^^ MODIFIQUE ESTA LINHA ^^^^
       if (storeVehicleId !== props.request.vehicle.id) {
         void componentStore.fetchComponents(props.request.vehicle.id);
       }
@@ -438,7 +458,6 @@ watch(
   (newId, oldId) => {
     if (newId !== oldId) {
       tab.value = 'details';
-      // Carrega os componentes do veículo correto quando o chamado é aberto
       if (props.request?.vehicle.id) {
         void componentStore.fetchComponents(props.request.vehicle.id);
       }

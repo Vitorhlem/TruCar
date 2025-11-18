@@ -79,8 +79,8 @@ class MaintenancePartChange(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    component_removed_id: Mapped[int] = mapped_column(Integer, ForeignKey("vehicle_components.id"))
-    component_installed_id: Mapped[int] = mapped_column(Integer, ForeignKey("vehicle_components.id"))
+    component_removed_id = Column(Integer, ForeignKey("vehicle_components.id"), nullable=True)
+    component_installed_id = Column(Integer, ForeignKey("vehicle_components.id"), nullable=True)
 
     # --- CAMPO NOVO (BÔNUS) ---
     is_reverted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)

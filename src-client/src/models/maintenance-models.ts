@@ -28,27 +28,40 @@ export interface MaintenanceComment {
   user: User | null;
 }
 
-// --- CORREÇÃO AQUI ---
-// Este é o "contrato" com a API
 export interface ReplaceComponentPayload {
-  component_to_remove_id: number; // O ID do VehicleComponent que está saindo
-  new_item_id: number; // <-- REVERTIDO: O ID do InventoryItem que está entrando
-  old_item_status: InventoryItemStatus; // O destino da peça antiga
+  component_to_remove_id: number;
+  new_item_id: number;
+  old_item_status: InventoryItemStatus;
   notes?: string | null;
 }
-// --- FIM DA CORREÇÃO ---
+
+export interface InstallComponentPayload {
+  new_item_id: number;
+  notes?: string | null;
+}
 
 export interface MaintenancePartChangePublic {
   id: number;
   timestamp: string;
   user: User;
   notes: string | null;
-  component_removed: VehicleComponent;
-  component_installed: VehicleComponent;
-  is_reverted: boolean; // <-- CAMPO NOVO
+  
+  // --- ATENÇÃO AQUI ---
+  component_removed: VehicleComponent | null; // Pode ser null (Instalação Direta)
+  component_installed: VehicleComponent;      // Obrigatório (Sempre entra algo)
+  // --------------------
+  
+  is_reverted: boolean;
 }
 
 export interface ReplaceComponentResponse {
+  success: boolean;
+  message: string;
+  part_change_log: MaintenancePartChangePublic;
+  new_comment: MaintenanceComment;
+}
+
+export interface InstallComponentResponse {
   success: boolean;
   message: string;
   part_change_log: MaintenancePartChangePublic;
