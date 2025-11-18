@@ -24,6 +24,7 @@ class KmPerDay(BaseModel):
     total_km: float
 
 class UpcomingMaintenance(BaseModel):
+    vehicle_id: int 
     vehicle_info: str
     due_date: Optional[date] = None
     due_km: Optional[float] = None

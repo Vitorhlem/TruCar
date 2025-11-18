@@ -1,78 +1,129 @@
 <template>
   <q-dialog :model-value="modelValue" @update:model-value="val => emit('update:modelValue', val)">
-    <q-card style="width: 500px; max-width: 90vw;">
+    <q-card style="min-width: 500px">
       <q-card-section>
-        <div class="text-h6">Solicitar Manutenção</div>
+        <div class="text-h6">Novo Chamado de Manutenção</div>
       </q-card-section>
 
-      <q-form @submit.prevent="handleSubmit">
-        <q-card-section class="q-gutter-y-md">
+      <q-card-section>
+        <q-form @submit="onSubmit">
           <q-select
-            outlined
-            v-model="formData.vehicle_id"
+            v-model="form.vehicle_id"
             :options="vehicleOptions"
             label="Veículo *"
-            emit-value map-options
-            :rules="[val => !!val || 'Selecione um veículo']"
-          />
-          <q-select
+            option-value="id"
+            option-label="identifier"
+            emit-value
+            map-options
             outlined
-            v-model="formData.category"
+            dense
+            :rules="[val => !!val || 'Campo obrigatório']"
+            class="q-mb-md"
+          />
+          
+          <q-select
+            v-model="form.category"
             :options="categoryOptions"
-            label="Categoria do Problema *"
-            emit-value map-options
-            :rules="[val => !!val || 'Selecione uma categoria']"
+            label="Categoria *"
+            outlined
+            dense
+            class="q-mb-md"
           />
           <q-input
-            outlined
-            v-model="formData.problem_description"
+            v-model="form.problem_description"
+            label="Descrição do Problema *"
             type="textarea"
-            label="Descrição Detalhada do Problema *"
-            :rules="[val => !!val || 'Campo obrigatório']"
-            autogrow
+            outlined
+            dense
+            class="q-mb-md"
           />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancelar" v-close-popup />
-          <q-btn type="submit" unelevated color="primary" label="Enviar Solicitação" :loading="maintenanceStore.isLoading" />
-        </q-card-actions>
-      </q-form>
+
+          <div class="row justify-end q-gutter-sm">
+            <q-btn label="Cancelar" color="negative" flat v-close-popup />
+            <q-btn label="Criar Chamado" type="submit" color="primary" unelevated :loading="loading" />
+          </div>
+        </q-form>
+      </q-card-section>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useMaintenanceStore } from 'stores/maintenance-store';
+import { ref, onMounted, watch } from 'vue';
 import { useVehicleStore } from 'stores/vehicle-store';
-import { MaintenanceCategory, type MaintenanceRequestCreate } from 'src/models/maintenance-models';
+import { useMaintenanceStore } from 'stores/maintenance-store';
+import { MaintenanceCategory } from 'src/models/maintenance-models';
 
-defineProps<{ modelValue: boolean }>();
-const emit = defineEmits(['update:modelValue']);
+const props = defineProps<{
+  modelValue: boolean;
+  preSelectedVehicleId?: number | null;
+  maintenanceType?: 'PREVENTIVA' | 'CORRETIVA'; // <--- NOVA PROP
+}>();
 
-const maintenanceStore = useMaintenanceStore();
+const emit = defineEmits(['update:modelValue', 'request-created']);
+
 const vehicleStore = useVehicleStore();
+const maintenanceStore = useMaintenanceStore();
 
-const formData = ref<MaintenanceRequestCreate>({
-  vehicle_id: 0,
-  problem_description: '',
-  category: MaintenanceCategory.MECHANICAL // Valor padrão
-});
+const loading = ref(false);
 
-const vehicleOptions = computed(() => vehicleStore.vehicles.map(v => ({
-  label: `${v.brand} ${v.model} (${v.license_plate})`,
-  value: v.id
-})));
+// --- CORREÇÃO: Tipagem correta ---
+interface VehicleOption {
+  id: number;
+  identifier: string;
+}
+const vehicleOptions = ref<VehicleOption[]>([]);
+// --------------------------------
 
-// Opções para o novo seletor de categoria
 const categoryOptions = Object.values(MaintenanceCategory);
 
-async function handleSubmit() {
-  try {
-    await maintenanceStore.createRequest(formData.value);
+const form = ref({
+  vehicle_id: null as number | null,
+  problem_description: '',
+  category: MaintenanceCategory.MECHANICAL,
+  maintenance_type: 'CORRETIVA' as 'PREVENTIVA' | 'CORRETIVA' // <--- NOVO CAMPO NO FORM
+});
+
+onMounted(async () => {
+  await vehicleStore.fetchAllVehicles({ rowsPerPage: 100 });
+  vehicleOptions.value = vehicleStore.vehicles.map(v => ({
+    id: v.id,
+    identifier: `${v.brand} ${v.model} (${v.license_plate || v.identifier})`
+  }));
+});
+
+watch(() => props.modelValue, (isOpen) => {
+  if (isOpen) {
+    if (props.preSelectedVehicleId) {
+      form.value.vehicle_id = props.preSelectedVehicleId;
+    } else {
+      form.value.vehicle_id = null;
+    }
+    form.value.maintenance_type = props.maintenanceType || 'CORRETIVA';
+    if (form.value.maintenance_type === 'PREVENTIVA') {
+       form.value.problem_description = 'Manutenção Preventiva Agendada';
+    } else {
+       form.value.problem_description = '';
+    }
+    form.value.category = MaintenanceCategory.MECHANICAL;
+  }
+});
+
+async function onSubmit() {
+  if (!form.value.vehicle_id) return;
+  
+  loading.value = true;
+  const success = await maintenanceStore.createRequest({
+    vehicle_id: form.value.vehicle_id,
+    problem_description: form.value.problem_description,
+    category: form.value.category,
+    maintenance_type: form.value.maintenance_type // <--- ENVIA O TIPO
+  });
+  loading.value = false;
+
+  if (success) {
     emit('update:modelValue', false);
-  } catch {
-    // A store já notifica o erro
+    emit('request-created');
   }
 }
 </script>

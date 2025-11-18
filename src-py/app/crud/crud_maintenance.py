@@ -10,7 +10,8 @@ from app.models.maintenance_model import (
     MaintenanceRequest, 
     MaintenanceComment, 
     MaintenancePartChange,
-    MaintenanceServiceItem # Importante para tipagem se necessário
+    MaintenanceServiceItem, # Importante
+    MaintenanceStatus
 )
 from app.models.vehicle_model import Vehicle
 from app.models.inventory_transaction_model import InventoryTransaction, TransactionType
@@ -34,6 +35,7 @@ async def create_request(
     if not vehicle or vehicle.organization_id != organization_id:
         raise ValueError("Veículo não encontrado nesta organização.")
 
+    # O campo maintenance_type vem no request_in e é salvo automaticamente
     db_obj = MaintenanceRequest(**request_in.model_dump(), reported_by_id=reporter_id, organization_id=organization_id)
     db.add(db_obj)
     
@@ -453,7 +455,7 @@ async def revert_part_change(
     return log_entry, new_comment, log_entry.maintenance_request.reported_by_id
 
 
-# --- FUNÇÃO get_request (CORRIGIDA COM SERVICES) ---
+# --- FUNÇÃO get_request (CORRIGIDA COM CARREGAMENTO PROFUNDO) ---
 async def get_request(
     db: AsyncSession, *, request_id: int, organization_id: int
 ) -> MaintenanceRequest | None:
@@ -465,21 +467,19 @@ async def get_request(
         selectinload(MaintenanceRequest.approver).selectinload(User.organization),
         selectinload(MaintenanceRequest.vehicle),
         
-        # --- CORREÇÃO AQUI: Carregar Serviços ---
+        # Carrega os serviços (NOVO)
         selectinload(MaintenanceRequest.services), 
-        # ---------------------------------------
         
         selectinload(MaintenanceRequest.comments).options(
             selectinload(MaintenanceComment.user).selectinload(User.organization)
         ),
 
+        # Carrega as trocas de peças (COM PROFUNDIDADE)
         selectinload(MaintenanceRequest.part_changes).options(
             selectinload(MaintenancePartChange.user).selectinload(User.organization),
             
             selectinload(MaintenancePartChange.component_removed).options(
-                selectinload(VehicleComponent.part).options(
-                    selectinload(Part.items) 
-                ),
+                selectinload(VehicleComponent.part).options(selectinload(Part.items)),
                 selectinload(VehicleComponent.inventory_transaction).options(
                     selectinload(InventoryTransaction.item),
                     selectinload(InventoryTransaction.user).selectinload(User.organization)
@@ -487,9 +487,7 @@ async def get_request(
             ),
             
             selectinload(MaintenancePartChange.component_installed).options(
-                selectinload(VehicleComponent.part).options( 
-                    selectinload(Part.items) 
-                ),
+                selectinload(VehicleComponent.part).options(selectinload(Part.items)),
                 selectinload(VehicleComponent.inventory_transaction).options(
                     selectinload(InventoryTransaction.item),
                     selectinload(InventoryTransaction.user).selectinload(User.organization)
@@ -501,7 +499,7 @@ async def get_request(
     return result.scalar_one_or_none()
 
 
-# --- FUNÇÃO get_all_requests (CORRIGIDA COM SERVICES) ---
+# --- FUNÇÃO get_all_requests (CORRIGIDA COM CARREGAMENTO PROFUNDO) ---
 async def get_all_requests(
     db: AsyncSession, *, 
     organization_id: int, 
@@ -535,14 +533,14 @@ async def get_all_requests(
         selectinload(MaintenanceRequest.approver).selectinload(User.organization),
         selectinload(MaintenanceRequest.vehicle),
         
-        # --- CORREÇÃO AQUI: Carregar Serviços ---
+        # Carrega os serviços (CORREÇÃO DO ERRO 500)
         selectinload(MaintenanceRequest.services),
-        # ---------------------------------------
         
         selectinload(MaintenanceRequest.comments).options(
              selectinload(MaintenanceComment.user).selectinload(User.organization)
         ),
         
+        # Carrega as trocas de peças (COM PROFUNDIDADE PARA EVITAR MissingGreenlet)
         selectinload(MaintenanceRequest.part_changes).options(
             selectinload(MaintenancePartChange.user).selectinload(User.organization),
             selectinload(MaintenancePartChange.component_removed).options(
@@ -565,21 +563,46 @@ async def get_all_requests(
     return result.scalars().all()
 
 
-# --- Demais funções (update, comment, etc.) sem alteração ---
+# --- FUNÇÃO update_request_status (CORRIGIDA PARA ATUALIZAR VEÍCULO) ---
 async def update_request_status(
     db: AsyncSession, *, db_obj: MaintenanceRequest, update_data: MaintenanceRequestUpdate, manager_id: int
 ) -> MaintenanceRequest:
+    """Atualiza o status de uma solicitação e agenda a próxima manutenção se fornecido."""
+    
     request_id = db_obj.id
     org_id = db_obj.organization_id
+    
     db_obj.status = update_data.status
     db_obj.manager_notes = update_data.manager_notes
     db_obj.approver_id = manager_id
+    
+    # Atualizar agendamento do veículo ao concluir
+    if update_data.status == MaintenanceStatus.CONCLUIDA:
+        if not db_obj.vehicle:
+             vehicle = await db.get(Vehicle, db_obj.vehicle_id)
+             db_obj.vehicle = vehicle
+
+        if db_obj.vehicle:
+            changed = False
+            if update_data.next_maintenance_date:
+                db_obj.vehicle.next_maintenance_date = update_data.next_maintenance_date
+                changed = True
+            
+            if update_data.next_maintenance_km is not None:
+                db_obj.vehicle.next_maintenance_km = update_data.next_maintenance_km
+                changed = True
+            
+            if changed:
+                db.add(db_obj.vehicle)
+
     db.add(db_obj)
+    
     await db.commit()
     
     loaded_request = await get_request(db, request_id=request_id, organization_id=org_id)
     if not loaded_request:
         raise Exception("Falha ao recarregar o chamado após a atualização.")
+        
     return loaded_request
 
 async def create_comment(

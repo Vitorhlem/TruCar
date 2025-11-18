@@ -24,6 +24,7 @@ export interface KmPerDay {
   total_km: number;
 }
 export interface UpcomingMaintenance {
+  vehicle_id: number; 
   vehicle_info: string;
   due_date: string | null;
   due_km: number | null;

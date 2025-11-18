@@ -3,189 +3,321 @@
     <div class="page-content-container">
 
       <template v-if="isManager">
+        
         <div class="flex items-center justify-between q-mb-md">
           <div>
             <h1 class="text-h4 text-weight-bold q-my-none">Dashboard de Gestão</h1>
-            <div class="text-subtitle1 text-grey-7">Bem-vindo, {{ authStore.user?.full_name }}.</div>
+            <div class="text-subtitle1 text-grey-7">
+              Visão geral da operação • {{ authStore.user?.full_name }}
+            </div>
           </div>
+          
           <div class="flex items-center q-gutter-md">
             <q-select
               v-model="selectedPeriod"
               :options="periodOptions"
-              label="Período"
-              dense outlined style="min-width: 200px;"
-              class="gt-xs"
-            />
-            <q-btn-dropdown
-              color="primary" icon="add" label="Ações Rápidas"
-              unelevated class="gt-xs"
+              label="Período de Análise"
+              dense 
+              outlined 
+              bg-color="white"
+              style="min-width: 200px;"
+              class="gt-xs shadow-1"
             >
-              <q-list dense>
-                <q-item clickable v-close-popup @click="router.push('/vehicles')"><q-item-section avatar><q-icon name="local_shipping" /></q-item-section><q-item-section>Adicionar Veículo</q-item-section></q-item>
-                <q-item clickable v-close-popup @click="router.push('/users')"><q-item-section avatar><q-icon name="person_add" /></q-item-section><q-item-section>Adicionar Motorista</q-item-section></q-item>
-                <q-item clickable v-close-popup @click="router.push('/journeys')"><q-item-section avatar><q-icon name="route" /></q-item-section><q-item-section>Iniciar Jornada</q-item-section></q-item>
+              <template v-slot:prepend>
+                <q-icon name="calendar_today" />
+              </template>
+            </q-select>
+
+            <q-btn
+              outline
+              color="primary"
+              icon="tune"
+              label="Personalizar"
+              class="gt-xs bg-white"
+              @click="showCustomizationDialog = true"
+            >
+              <q-tooltip>Mostrar/Ocultar Widgets</q-tooltip>
+            </q-btn>
+
+            <q-btn-dropdown
+              color="primary" 
+              icon="flash_on" 
+              label="Ações"
+              unelevated 
+              class="gt-xs"
+            >
+              <q-list dense style="min-width: 200px">
+                <q-item clickable v-close-popup @click="router.push('/vehicles')">
+                  <q-item-section avatar><q-icon name="local_shipping" color="primary"/></q-item-section>
+                  <q-item-section>Novo Veículo</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="router.push('/users')">
+                  <q-item-section avatar><q-icon name="person_add" color="primary"/></q-item-section>
+                  <q-item-section>Novo Motorista</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="router.push('/journeys')">
+                  <q-item-section avatar><q-icon name="route" color="primary"/></q-item-section>
+                  <q-item-section>Lançar Jornada</q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item clickable v-close-popup @click="scheduleMaintenanceGeneral">
+                  <q-item-section avatar><q-icon name="build" color="negative"/></q-item-section>
+                  <q-item-section>Abrir Chamado</q-item-section>
+                </q-item>
               </q-list>
             </q-btn-dropdown>
           </div>
         </div>
 
-        <div class="row q-col-gutter-lg q-mb-lg">
-    <div class="col-12 col-sm-6 col-lg-3">
-        <StatCard
-  label="Total de Veículos"
-  :value="kpis?.total_vehicles ?? 0"
-  :limit="authStore.isDemo ? (authStore.user?.organization?.vehicle_limit ?? -1) : -1"
-  icon="local_shipping"
-  color="primary"
-  :loading="dashboardStore.isLoading"
-  to="/vehicles"
-/>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-3">
-        <StatCard label="Disponíveis" :value="kpis?.available_vehicles ?? 0" icon="check_circle_outline" color="positive" :loading="dashboardStore.isLoading" to="/vehicles?status=available"/>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-3">
-        <StatCard :label="journeyNounInProgress" :value="kpis?.in_use_vehicles ?? 0" icon="alt_route" color="warning" :loading="dashboardStore.isLoading" to="/vehicles?status=in_use"/>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-3">
-        <StatCard
-          label="Em Manutenção"
-          :value="kpis?.maintenance_vehicles ?? 0"
-          icon="build"
-          color="negative"
-          :loading="dashboardStore.isLoading"
-          to="/maintenance"
-        />
-    </div>
-    <div class="col-12 col-sm-6 col-lg-3">
-        <StatCard label="Custo por KM" :value="`R$ ${efficiencyKpis?.cost_per_km.toFixed(2) ?? '0.00'}`" icon="paid" color="deep-purple" :loading="dashboardStore.isLoading"/>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-3">
-        <StatCard label="Gasto Combustível" :value="`R$ ${fuelCostTotal.toFixed(2)}`" icon="local_gas_station" color="orange-9" :loading="dashboardStore.isLoading"/>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-3">
-        <StatCard label="Taxa de Utilização" :value="`${efficiencyKpis?.utilization_rate.toFixed(1) ?? '0.0'}%`" icon="pie_chart" color="teal" :loading="dashboardStore.isLoading"/>
-    </div>
-</div>
-        <div class="row q-col-gutter-lg" v-if="dashboardStore.managerDashboard">
-          <div class="col-12 col-lg-8">
-            <div class="column q-gutter-y-lg">
-              <q-card class="dashboard-card">
-                <q-card-section>
-                  <div class="text-h6">Operação em Tempo Real</div>
-                </q-card-section>
-                <q-separator />
-                <q-card-section class="q-pa-none">
-                  <div style="height: 450px; width: 100%;">
-                    <l-map ref="mapRef" v-model:zoom="zoom" :center="center" :use-global-leaflet="false">
-                      <l-tile-layer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        layer-type="base"
-                        name="OpenStreetMap"
-                        attribution="&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>"
-                      ></l-tile-layer>
-                      <l-marker
-                        v-for="vehicle in dashboardStore.vehiclePositions"
-                        :key="vehicle.id"
-                        :lat-lng="[vehicle.latitude, vehicle.longitude]"
-                      >
-                        <l-icon :icon-url="getVehicleIcon(vehicle.status)" :icon-size="[38, 48]" />
-                        <l-popup>
-                          <strong>{{ vehicle.license_plate || vehicle.identifier }}</strong><br>
-                          Status: {{ vehicle.status }}
-                        </l-popup>
-                      </l-marker>
-                    </l-map>
-                  </div>
-                </q-card-section>
-              </q-card>
-
-              <div></div>
-              <div class="row q-col-gutter-lg">
-                <div class="col-12 col-md-6">
-                  <PremiumWidget title="Análise de Custos" :icon="`insights`" :description="`Análise de custos do período de ${selectedPeriod.label}`">
-                    <ApexChart type="bar" height="280" :options="costAnalysisChart.options" :series="costAnalysisChart.series" />
-                  </PremiumWidget>
-                </div>
-                <div class="col-12 col-md-6">
-                  <PremiumWidget title="Análise de Atividade" :icon="`show_chart`" :description="`Análise de atividade do período de ${selectedPeriod.label}`">
-                    <ApexChart type="area" height="280" :options="lineChart.options" :series="lineChart.series" />
-                  </PremiumWidget>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12 col-lg-4">
-              <div class="column q-gutter-y-lg">
-              <q-card class="dashboard-card">
-                <q-card-section>
-                  <div class="text-h6">Alertas Recentes</div>
-                </q-card-section>
-                <q-list separator>
-                  <q-item v-for="alert in recentAlerts" :key="alert.id">
-                    <q-item-section avatar>
-                      <q-icon :name="alert.icon" :color="alert.color" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label>{{ alert.title }}</q-item-label>
-                      <q-item-label caption>{{ alert.subtitle }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side top>
-                      <q-item-label caption>{{ alert.time }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                    <q-item v-if="!recentAlerts?.length">
-                    <q-item-section class="text-center text-grey-6">Nenhum alerta recente.</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-card>
-
-              <q-card class="dashboard-card">
-                <q-card-section>
-                  <div class="text-h6">Próximas Manutenções</div>
-                </q-card-section>
-                <q-list separator>
-                    <q-item v-for="maint in upcomingMaintenances" :key="maint.vehicle_info">
-                    <q-item-section>
-                      <q-item-label>{{ maint.vehicle_info }}</q-item-label>
-                      <q-item-label caption>Vence em {{ maint.due_date ? new Date(maint.due_date).toLocaleDateString() : `${maint.due_km} km` }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                      <q-btn dense flat round icon="event" color="primary" @click="scheduleMaintenance(maint.vehicle_info)">
-                        <q-tooltip>Agendar</q-tooltip>
-                      </q-btn>
-                    </q-item-section>
-                  </q-item>
-                  <q-item v-if="!upcomingMaintenances?.length">
-                    <q-item-section class="text-center text-grey-6">Nenhuma manutenção próxima.</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-card>
-              
-              <q-card class="dashboard-card" v-if="activeGoal">
-                  <q-card-section>
-                    <div class="text-h6">Meta do Mês: {{ activeGoal.title }}</div>
-                    <div class="text-subtitle2 text-grey-7">Progresso: {{ activeGoal.current_value.toFixed(2) }} / {{ activeGoal.target_value }} ({{ activeGoal.unit }})</div>
-                  </q-card-section>
-                  <q-card-section>
-                    <q-linear-progress size="25px" :value="goalProgress" color="positive" class="q-mt-sm">
-                      <div class="absolute-full flex flex-center">
-                        <q-badge color="white" text-color="black" :label="`${(goalProgress * 100).toFixed(1)}%`" />
-                      </div>
-                    </q-linear-progress>
-                  </q-card-section>
-              </q-card>
-
-              <PremiumWidget title="Top 3 Motoristas do Mês" icon="emoji_events" description="Reconheça os seus motoristas com melhor performance.">
-                <div class="row items-end justify-center q-pa-md" style="min-height: 252px;">
-                  <PodiumDriverCard v-for="(driver, index) in podiumDrivers" :key="driver.full_name" :driver="driver" :rank="index + 1" :unit="terminologyStore.distanceUnit" />
-                    <div v-if="!podiumDrivers?.length" class="text-grey-6">Dados insuficientes para gerar o pódio.</div>
-                </div>
-              </PremiumWidget>
-            </div>
-          </div>
+        <div v-if="dashboardStore.isLoading" class="row q-col-gutter-md">
+           <div class="col-12 col-md-3" v-for="n in 4" :key="n">
+             <q-skeleton type="rect" height="120px" class="rounded-borders" />
+           </div>
+           <div class="col-12 col-md-8">
+             <q-skeleton type="rect" height="400px" class="rounded-borders" />
+           </div>
+           <div class="col-12 col-md-4">
+             <q-skeleton type="rect" height="400px" class="rounded-borders" />
+           </div>
         </div>
+
+        <div v-else class="fade-in">
+          
+          <div v-if="visibleWidgets.kpis" class="row q-col-gutter-md q-mb-lg">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+              <StatCard
+                label="Total da Frota"
+                :value="kpis?.total_vehicles ?? 0"
+                :limit="authStore.isDemo ? (authStore.user?.organization?.vehicle_limit ?? -1) : -1"
+                icon="local_shipping"
+                color="primary"
+                :loading="dashboardStore.isLoading"
+                to="/vehicles"
+                class="full-height"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+              <StatCard 
+                label="Disponíveis" 
+                :value="kpis?.available_vehicles ?? 0" 
+                icon="check_circle_outline" 
+                color="positive" 
+                :loading="dashboardStore.isLoading" 
+                to="/vehicles?status=available"
+                class="full-height"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+              <StatCard 
+                :label="journeyNounInProgress" 
+                :value="kpis?.in_use_vehicles ?? 0" 
+                icon="alt_route" 
+                color="warning" 
+                :loading="dashboardStore.isLoading" 
+                to="/vehicles?status=in_use"
+                class="full-height"
+              />
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+              <StatCard
+                label="Em Manutenção"
+                :value="kpis?.maintenance_vehicles ?? 0"
+                icon="build"
+                color="negative"
+                :loading="dashboardStore.isLoading"
+                to="/maintenance"
+                class="full-height"
+              />
+            </div>
+          </div>
+
+          <div v-if="visibleWidgets.financialKpis" class="row q-col-gutter-md q-mb-lg">
+             <div class="col-12 col-sm-6 col-lg-4">
+                <MetricCard 
+                  title="Custo por KM Rodado"
+                  :value="efficiencyKpis?.cost_per_km ?? 0"
+                  unit="R$/km"
+                  icon="paid"
+                  color="deep-purple"
+                  trend="+2.5%" 
+                  trend-color="negative"
+                  tooltip="Baseado nos últimos 30 dias"
+                />
+             </div>
+             <div class="col-12 col-sm-6 col-lg-4">
+                <MetricCard 
+                  title="Gasto Total Combustível"
+                  :value="fuelCostTotal"
+                  unit="R$"
+                  icon="local_gas_station"
+                  color="orange-9"
+                  :formatter="(v) => `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`"
+                />
+             </div>
+             <div class="col-12 col-sm-6 col-lg-4">
+                <MetricCard 
+                  title="Taxa de Utilização da Frota"
+                  :value="efficiencyKpis?.utilization_rate ?? 0"
+                  unit="%"
+                  icon="pie_chart"
+                  color="teal"
+                  :formatter="(v) => `${v.toFixed(1)}%`"
+                  tooltip="% de veículos em uso vs total"
+                />
+             </div>
+          </div>
+
+          <div class="row q-col-gutter-lg">
+            
+            <div class="col-12 col-lg-8 column q-gutter-y-lg">
+              
+              <div v-if="visibleWidgets.costChart">
+                <PremiumWidget 
+                  title="Análise Detalhada de Custos" 
+                  icon="insights" 
+                  :description="`Distribuição de gastos no período (${selectedPeriod.label}).`"
+                >
+                  <ApexChart 
+                    type="bar" 
+                    height="350" 
+                    :options="costAnalysisChart.options" 
+                    :series="costAnalysisChart.series" 
+                  />
+                </PremiumWidget>
+              </div>
+
+              <div v-if="visibleWidgets.activityChart">
+                <PremiumWidget 
+                  title="Volume de Atividade" 
+                  icon="show_chart" 
+                  :description="`Histórico de ${terminologyStore.distanceUnit} rodados por dia.`"
+                >
+                  <ApexChart 
+                    type="area" 
+                    height="300" 
+                    :options="lineChart.options" 
+                    :series="lineChart.series" 
+                  />
+                </PremiumWidget>
+              </div>
+
+              <div v-if="visibleWidgets.maintenance">
+                <q-card class="dashboard-card">
+                  <q-card-section>
+                    <div class="text-h6">Próximas Manutenções</div>
+                  </q-card-section>
+                  <q-list separator>
+                      <q-item v-for="maint in upcomingMaintenances" :key="maint.vehicle_id">
+                      <q-item-section avatar>
+                         <q-icon name="engineering" color="grey-7" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-weight-bold">{{ maint.vehicle_info }}</q-item-label>
+                        <q-item-label caption class="text-negative">
+                           <q-icon name="event_busy" size="xs"/>
+                           Vence em {{ maint.due_date ? new Date(maint.due_date).toLocaleDateString() : `${maint.due_km} km` }}
+                        </q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-btn outline dense size="sm" color="primary" label="Agendar" @click="scheduleMaintenance(maint.vehicle_id)" />
+                      </q-item-section>
+                    </q-item>
+                    <q-item v-if="!upcomingMaintenances?.length">
+                      <q-item-section class="text-center text-grey-6 q-pa-md">Nenhuma manutenção próxima.</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-card>
+             </div>
+
+            </div> <div class="col-12 col-lg-4 column q-gutter-y-lg">
+              
+              <div v-if="visibleWidgets.goal && activeGoal">
+                <q-card class="dashboard-card bg-gradient-primary text-white">
+                    <q-card-section>
+                      <div class="text-overline text-blue-1">OBJETIVO DA ORGANIZAÇÃO</div>
+                      <div class="text-h5 text-weight-bold">{{ activeGoal.title }}</div>
+                    </q-card-section>
+                    <q-card-section class="q-pt-none">
+                       <div class="flex justify-between items-end q-mb-sm">
+                          <div class="text-h4">{{ activeGoal.current_value.toFixed(0) }} <span class="text-body1">{{ activeGoal.unit }}</span></div>
+                          <div class="text-subtitle1">Meta: {{ activeGoal.target_value }}</div>
+                       </div>
+                       <q-linear-progress 
+                          size="15px" 
+                          :value="goalProgress" 
+                          color="white" 
+                          track-color="blue-8"
+                          class="rounded-borders"
+                        >
+                          <div class="absolute-full flex flex-center">
+                            <q-badge color="transparent" text-color="primary" class="text-weight-bold" :label="`${(goalProgress * 100).toFixed(1)}%`" />
+                          </div>
+                       </q-linear-progress>
+                    </q-card-section>
+                </q-card>
+              </div>
+
+              <div v-if="visibleWidgets.fleetStatusChart">
+                <PremiumWidget 
+                  title="Status da Frota" 
+                  icon="donut_large" 
+                  description="Distribuição atual."
+                >
+                  <div class="flex flex-center" style="min-height: 300px">
+                     <ApexChart 
+                      type="donut" 
+                      height="280" 
+                      :options="fleetStatusChart.options" 
+                      :series="fleetStatusChart.series" 
+                    />
+                  </div>
+                </PremiumWidget>
+              </div>
+
+              <div v-if="visibleWidgets.alerts">
+                 <q-card class="dashboard-card">
+                  <q-card-section class="row items-center justify-between">
+                    <div class="text-h6 flex items-center">
+                      <q-icon name="notifications_active" color="warning" class="q-mr-sm"/>
+                      Alertas
+                    </div>
+                    <q-btn flat round icon="refresh" color="grey-7" size="sm" @click="refreshData" />
+                  </q-card-section>
+                  <q-separator />
+                  <q-scroll-area style="height: 300px;">
+                    <q-list separator>
+                      <q-item v-for="alert in recentAlerts" :key="alert.id" class="q-py-md hover-bg">
+                        <q-item-section avatar>
+                          <q-avatar :icon="alert.icon" :color="alert.color + '-1'" :text-color="alert.color" size="md"/>
+                        </q-item-section>
+                        <q-item-section>
+                          <q-item-label class="text-weight-medium">{{ alert.title }}</q-item-label>
+                          <q-item-label caption lines="2">{{ alert.subtitle }}</q-item-label>
+                        </q-item-section>
+                        <q-item-section side top>
+                          <q-item-label caption>{{ alert.time }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                        <q-item v-if="!recentAlerts?.length" class="q-pa-lg">
+                        <q-item-section class="text-center text-grey-6">
+                          <q-icon name="check_circle" size="3em" color="positive" class="q-mb-sm self-center"/>
+                          Nenhum alerta.
+                        </q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-scroll-area>
+                </q-card>
+              </div>
+
+              <div v-if="visibleWidgets.podium">
+                <PremiumWidget title="Top Motoristas" icon="emoji_events" description="Melhor performance.">
+                  <div class="column q-pa-md q-gutter-y-sm">
+                    <PodiumDriverCard v-for="(driver, index) in podiumDrivers" :key="driver.full_name" :driver="driver" :rank="index + 1" :unit="terminologyStore.distanceUnit" />
+                  </div>
+                </PremiumWidget>
+              </div>
+
+            </div> </div> </div>
       </template>
 
       <template v-else-if="isDriver">
@@ -240,33 +372,64 @@
                   </q-card-section>
                 </q-card>
 
-                <q-card class="dashboard-card">
-                    <q-card-section>
-                    <div class="text-h6">Minhas Próximas Jornadas</div>
+                <q-card class="dashboard-card bg-primary text-white">
+                    <q-card-section class="text-center">
+                      <div class="text-h6 q-mb-md">Ação Rápida</div>
+                      <q-btn unelevated color="white" text-color="primary" label="Iniciar Nova Jornada" size="lg" class="full-width" to="/driver-cockpit" />
                   </q-card-section>
-                  <q-list separator>
-                    <q-item>
-                      <q-item-section class="text-center text-grey-6">Nenhuma jornada agendada.</q-item-section>
-                    </q-item>
-                  </q-list>
                 </q-card>
               </div>
           </div>
         </div>
       </template>
 
-        <template v-else-if="dashboardStore.isLoading">
+      <template v-else-if="dashboardStore.isLoading">
         <div class="flex flex-center" style="height: 80vh">
           <q-spinner-dots color="primary" size="4em"/>
         </div>
       </template>
 
     </div>
+
+    <q-dialog v-model="showCustomizationDialog">
+      <q-card style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">Personalizar Dashboard</div>
+          <div class="text-caption text-grey">Escolha quais widgets deseja visualizar.</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <div class="column q-gutter-sm">
+            <q-toggle v-model="visibleWidgets.kpis" label="Indicadores Gerais (Topo)" color="primary" />
+            <q-toggle v-model="visibleWidgets.financialKpis" label="Indicadores Financeiros" color="primary" />
+            <q-toggle v-model="visibleWidgets.costChart" label="Gráfico de Custos" color="primary" />
+            <q-toggle v-model="visibleWidgets.fleetStatusChart" label="Gráfico de Status da Frota" color="primary" />
+            <q-toggle v-model="visibleWidgets.activityChart" label="Gráfico de Atividade" color="primary" />
+            <q-toggle v-model="visibleWidgets.alerts" label="Alertas Recentes" color="primary" />
+            <q-toggle v-model="visibleWidgets.maintenance" label="Próximas Manutenções" color="primary" />
+            <q-toggle v-model="visibleWidgets.goal" label="Meta do Mês" color="primary" />
+            <q-toggle v-model="visibleWidgets.podium" label="Pódio de Motoristas" color="primary" />
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Fechar" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    
+    <CreateRequestDialog 
+      v-model="showCreateMaintenanceDialog"
+      :pre-selected-vehicle-id="selectedVehicleIdForMaintenance"
+      :maintenance-type="createDialogType"
+      @request-created="refreshData"
+    />
+
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, ref, watch, nextTick } from 'vue';
+import { onMounted, onUnmounted, computed, ref, watch, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar, colors } from 'quasar';
 import { useDashboardStore } from 'stores/dashboard-store';
@@ -274,61 +437,14 @@ import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
 import type { KmPerDay, CostByCategory } from 'src/models/report-models';
 import ApexChart from 'vue3-apexcharts';
+
+// Componentes
 import StatCard from 'components/StatCard.vue';
+import MetricCard from 'components/MetricCard.vue'; 
 import PremiumWidget from 'components/PremiumWidget.vue';
 import PodiumDriverCard from 'components/PodiumDriverCard.vue';
+import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue'; // <-- IMPORTAÇÃO DO DIALOG
 
-// --- Importações do Leaflet ---
-import "leaflet/dist/leaflet.css";
-import {
-  LMap,
-  LTileLayer,
-  LMarker,
-  LPopup,
-  LIcon,
-} from "@vue-leaflet/vue-leaflet";
-
-
-
-// --- LÓGICA DOS ÍCONES DO MAPA ---
-/**
-  * Gera um ícone de pino de mapa em SVG como uma data URI,
-  * contendo um ícone do Material Design no centro.
-  * @param pinColor Cor de fundo do pino (ex: '#21BA45').
-  * @param iconPath String do path SVG para o ícone interno.
-  * @returns Uma string de data URI para ser usada em `iconUrl`.
-  */
-function createQuasarIconPin(pinColor: string, iconPath: string): string {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 42" width="38" height="48">
-      <path fill="${pinColor}" stroke="#fff" stroke-width="1.5"
-        d="M16 2C9.925 2 5 6.925 5 13c0 7.75 11 18 11 18s11-10.25 11-18C27 6.925 22.075 2 16 2z"/>
-      <path fill="white" transform="translate(8, 8) scale(0.7)"
-        d="${iconPath}"/>
-    </svg>
-  `;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
-// Paths dos ícones do Material Design (viewport 24x24)
-const iconPaths = {
-  checkCircle: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
-  altRoute: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 14h-2v-4H9V9h4V5h2v4h2v4h-2v4z',
-  build: 'M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z',
-};
-
-// Gera os ícones uma vez para reutilização
-const iconAvailable = createQuasarIconPin('#21BA45', iconPaths.checkCircle);
-const iconInUse = createQuasarIconPin('#F2C037', iconPaths.altRoute);
-const iconMaintenance = createQuasarIconPin('#C10015', iconPaths.build);
-const fuelCostTotal = computed(() => {
-  const costs = managerData.value?.costs_by_category || [];
-  
-  // A correção está em comparar a string em minúsculas com 'combustível' (também em minúsculas).
-  const fuel = costs.find((cost: CostByCategory) => cost.cost_type.toLowerCase() === 'combustível');
-  
-  return fuel ? fuel.total_amount : 0;
-});
 // INICIALIZAÇÃO
 const dashboardStore = useDashboardStore();
 const authStore = useAuthStore();
@@ -336,7 +452,7 @@ const terminologyStore = useTerminologyStore();
 const $q = useQuasar();
 const router = useRouter();
 
-// === CONTROLO DE VISUALIZAÇÃO E DADOS ===
+// === CONTROLE DE VISUALIZAÇÃO ===
 const isManager = computed(() => authStore.isManager);
 const isDriver = computed(() => authStore.isDriver);
 
@@ -346,23 +462,27 @@ const periodOptions = [
   { label: 'Últimos 30 dias', value: 'last_30_days' },
   { label: 'Este Mês', value: 'this_month' },
 ];
-let positionInterval: ReturnType<typeof setInterval> | null = null;
 
-// === Configurações do Mapa ===
-const mapRef = ref<typeof LMap | null>(null);
-const zoom = ref(4);
-// CORRIGIDO: Tipagem explícita para o `center` para resolver o erro do vue-tsc
-const center = ref<[number, number]>([-15.793889, -47.882778]); // Centro do Brasil
+// === ESTADO PARA MODAIS ===
+const showCustomizationDialog = ref(false);
+const showCreateMaintenanceDialog = ref(false); 
+const selectedVehicleIdForMaintenance = ref<number | null>(null);
+const createDialogType = ref<'PREVENTIVA' | 'CORRETIVA'>('CORRETIVA');
 
-function getVehicleIcon(status: string) {
-  if (status === 'Disponível') return iconAvailable;
-  if (status === 'Em uso') return iconInUse;
-  if (status === 'Em manutenção') return iconMaintenance;
-  return iconAvailable;
-}
+// Estado persistente (poderia salvar no LocalStorage)
+const visibleWidgets = reactive({
+  kpis: true,
+  financialKpis: true,
+  costChart: true,
+  fleetStatusChart: true,
+  activityChart: true,
+  alerts: true,
+  maintenance: true,
+  goal: true,
+  podium: true
+});
 
-// === COMPUTED PROPERTIES PARA LIMPAR O TEMPLATE ===
-// Gestor
+// === DADOS COMPUTADOS ===
 const managerData = computed(() => dashboardStore.managerDashboard);
 const kpis = computed(() => managerData.value?.kpis);
 const efficiencyKpis = computed(() => managerData.value?.efficiency_kpis);
@@ -370,12 +490,18 @@ const recentAlerts = computed(() => managerData.value?.recent_alerts);
 const upcomingMaintenances = computed(() => managerData.value?.upcoming_maintenances);
 const activeGoal = computed(() => managerData.value?.active_goal);
 const podiumDrivers = computed(() => managerData.value?.podium_drivers);
+
+const fuelCostTotal = computed(() => {
+  const costs = managerData.value?.costs_by_category || [];
+  const fuel = costs.find((cost: CostByCategory) => cost.cost_type.toLowerCase() === 'combustível');
+  return fuel ? fuel.total_amount : 0;
+});
+
 const goalProgress = computed(() => {
   if (!activeGoal.value) return 0;
-  // Se o objetivo é reduzir, o progresso é o inverso
-  if (activeGoal.value.current_value > activeGoal.value.target_value) {
-      const progress = activeGoal.value.target_value / activeGoal.value.current_value;
-      return Math.min(progress, 1);
+  if (activeGoal.value.current_value > activeGoal.value.target_value && activeGoal.value.unit === 'R$') {
+      const progress = activeGoal.value.current_value / activeGoal.value.target_value;
+      return Math.min(progress, 1.2); 
   }
   const progress = activeGoal.value.current_value / activeGoal.value.target_value;
   return Math.min(progress, 1);
@@ -387,67 +513,44 @@ const driverMetrics = computed(() => driverData.value?.metrics);
 const driverRanking = computed(() => driverData.value?.ranking_context);
 const driverAchievements = computed(() => driverData.value?.achievements);
 
-
-// === WATCHERS ===
-watch(() => dashboardStore.vehiclePositions, (newPositions) => {
-  if (newPositions && newPositions.length > 0 && mapRef.value?.leafletObject) {
-    const bounds = newPositions.map(p => [p.latitude, p.longitude] as [number, number]);
-    void nextTick(() => {
-      mapRef.value?.leafletObject.fitBounds(bounds);
-    });
-  }
-}, { deep: true });
-
-watch(selectedPeriod, (newPeriod) => {
-  if (isManager.value && newPeriod) {
-    void dashboardStore.fetchManagerDashboard(newPeriod.value);
-  }
-});
-
-// === CICLO DE VIDA DO COMPONENTE ===
-onMounted(async () => {
-  if (isManager.value) {
-    await dashboardStore.fetchManagerDashboard(selectedPeriod.value.value);
-    await dashboardStore.fetchVehiclePositions();
-    positionInterval = setInterval(() => {
-      void dashboardStore.fetchVehiclePositions();
-    }, 30000);
-  } else if (isDriver.value) {
-    await dashboardStore.fetchDriverDashboard();
-  }
-});
-
-onUnmounted(() => {
-  if (positionInterval) {
-    clearInterval(positionInterval);
-  }
-  dashboardStore.clearDashboardData();
-});
-
-
-// === FUNÇÕES DE AÇÃO ===
-function scheduleMaintenance(vehicleInfo: string) {
-  $q.notify({
-    color: 'primary',
-    icon: 'event',
-    message: `Ação para agendar manutenção para ${vehicleInfo} foi disparada.`,
-  });
-}
-
-// === LÓGICA DE TERMINOLOGIA E GRÁFICOS ===
-// CORRIGIDO: Acessa a store diretamente, supondo que journeyNoun é uma string
 const journeyNounInProgress = computed(() => `Em ${terminologyStore.journeyNoun}`);
 
+// === GRÁFICOS COM DRILL-DOWN ===
+
+// 1. Gráfico de Custos (Barras)
 const costAnalysisChart = computed(() => {
-  // CORRIGIDO: Acessa os dados diretamente do objeto principal, removendo o aninhamento.
   const data = managerData.value?.costs_by_category || [];
   const series = [{ name: 'Custo Total', data: data.map((item: CostByCategory) => parseFloat(item.total_amount.toFixed(2))) }];
+  
   const options = {
-    chart: { type: 'bar', toolbar: { show: false } },
-    xaxis: { categories: data.map((item: CostByCategory) => item.cost_type), labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' } } },
+    chart: { 
+      type: 'bar', 
+      toolbar: { show: false },
+      events: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dataPointSelection: (_e: any, _chart: any, config: any) => {
+           const index = config.dataPointIndex as number;
+           if (typeof index === 'number' && data[index]) {
+             const categoryName = data[index].cost_type; 
+             void router.push({ path: '/costs', query: { category: categoryName } });
+             $q.notify({ message: `Filtrando custos por: ${categoryName}`, color: 'primary', icon: 'filter_alt', timeout: 1000 });
+           }
+        }
+      }
+    },
+    xaxis: { 
+      categories: data.map((item: CostByCategory) => item.cost_type), 
+      labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' } } 
+    },
     yaxis: { labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' }, formatter: (val: number) => `R$ ${val.toLocaleString('pt-BR')}` } },
-    plotOptions: { bar: { horizontal: false, columnWidth: '55%', distributed: true } },
-    colors: [colors.getPaletteColor('blue-grey-5'), colors.getPaletteColor('blue-5'), colors.getPaletteColor('teal-5'), colors.getPaletteColor('indigo-5'), colors.getPaletteColor('red-5'), colors.getPaletteColor('orange-5')],
+    plotOptions: { bar: { horizontal: false, columnWidth: '55%', distributed: true, borderRadius: 4 } },
+    colors: [
+      colors.getPaletteColor('primary'), 
+      colors.getPaletteColor('secondary'), 
+      colors.getPaletteColor('accent'), 
+      colors.getPaletteColor('positive'),
+      colors.getPaletteColor('warning')
+    ],
     dataLabels: { enabled: false },
     legend: { show: false },
     tooltip: { y: { formatter: (val: number) => `R$ ${val.toFixed(2)}` } },
@@ -456,43 +559,171 @@ const costAnalysisChart = computed(() => {
   return { series, options };
 });
 
+// 2. Gráfico de Atividade (Área)
 const lineChart = computed(() => {
-  // CORRIGIDO: Acessa os dados diretamente do objeto principal, removendo o aninhamento.
   const data = managerData.value?.km_per_day_last_30_days || [];
   const series = [{ name: `${terminologyStore.distanceUnit} Rodados`, data: data.map((item: KmPerDay) => item.total_km) }];
+  
   const options = {
-    chart: { id: 'km-per-day-chart', toolbar: { show: false }, zoom: { enabled: false } },
+    chart: { 
+      id: 'km-per-day-chart', 
+      toolbar: { show: false }, 
+      zoom: { enabled: false },
+      events: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        markerClick: (_e: any, _c: any, { dataPointIndex }: any) => {
+           if (typeof dataPointIndex === 'number' && data[dataPointIndex]) {
+              const clickedDate = data[dataPointIndex].date;
+              void router.push({ path: '/journeys', query: { date: clickedDate.toString() } });
+              $q.notify({ message: `Ver jornadas de: ${new Date(clickedDate).toLocaleDateString()}`, color: 'secondary', icon: 'event', timeout: 1000 });
+           }
+        }
+      }
+    },
     xaxis: { categories: data.map((item: KmPerDay) => new Date(item.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })), labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' } } },
     yaxis: { labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' } } },
     stroke: { curve: 'smooth', width: 3 },
-    colors: [colors.getPaletteColor('primary')],
+    colors: [colors.getPaletteColor('secondary')],
     dataLabels: { enabled: false },
     tooltip: { x: { format: 'dd/MM/yy' } },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.9, stops: [0, 90, 100] } },
     theme: { mode: $q.dark.isActive ? 'dark' : 'light' }
   };
   return { series, options };
 });
+
+// 3. NOVO GRÁFICO: Status da Frota (Donut)
+const fleetStatusChart = computed(() => {
+  if (!kpis.value) return { series: [], options: {} };
+  
+  const series = [
+    kpis.value.available_vehicles,
+    kpis.value.in_use_vehicles,
+    kpis.value.maintenance_vehicles
+  ];
+  
+  const options = {
+    labels: ['Disponíveis', 'Em Uso', 'Manutenção'],
+    colors: [
+      colors.getPaletteColor('positive'),
+      colors.getPaletteColor('warning'),
+      colors.getPaletteColor('negative')
+    ],
+    chart: { type: 'donut' },
+    legend: { position: 'bottom', labels: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' } },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '65%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: 'Total',
+              color: $q.dark.isActive ? '#FFFFFF' : '#000000',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter: function (w: any) {
+                return w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0)
+              }
+            }
+          }
+        }
+      }
+    },
+    dataLabels: { enabled: false },
+    theme: { mode: $q.dark.isActive ? 'dark' : 'light' }
+  };
+  
+  return { series, options };
+});
+
+// === CICLO DE VIDA E WATCHERS ===
+watch(selectedPeriod, (newPeriod) => {
+  if (isManager.value && newPeriod) {
+    void dashboardStore.fetchManagerDashboard(newPeriod.value);
+  }
+});
+
+onMounted(async () => {
+  if (isManager.value) {
+    await dashboardStore.fetchManagerDashboard(selectedPeriod.value.value);
+  } else if (isDriver.value) {
+    await dashboardStore.fetchDriverDashboard();
+  }
+});
+
+onUnmounted(() => {
+  dashboardStore.clearDashboardData();
+});
+
+function refreshData() {
+  if (isManager.value) {
+    void dashboardStore.fetchManagerDashboard(selectedPeriod.value.value);
+    $q.notify({ message: 'Dashboard atualizado', color: 'positive', icon: 'check', timeout: 1000 });
+  }
+}
+
+// === FUNÇÕES DE AÇÃO ===
+function scheduleMaintenance(vehicleId: number) {
+  selectedVehicleIdForMaintenance.value = vehicleId;
+  createDialogType.value = 'PREVENTIVA'; // <--- FORÇA PREVENTIVA (Vem do botão Agendar)
+  showCreateMaintenanceDialog.value = true;
+}
+
+function scheduleMaintenanceGeneral() {
+  selectedVehicleIdForMaintenance.value = null;
+  createDialogType.value = 'CORRETIVA'; // <--- FORÇA CORRETIVA (Botão Genérico)
+  showCreateMaintenanceDialog.value = true;
+}
 </script>
 
 <style scoped lang="scss">
 .dashboard-page {
-  background-color: $grey-1;
+  background-color: #f5f7fa; 
   .body--dark & {
     background-color: $dark-page;
   }
 }
+
 .page-content-container {
-  max-width: 1800px;
+  max-width: 1600px;
   margin: 0 auto;
 }
+
 .dashboard-card {
-  border-radius: $generic-border-radius;
-  box-shadow: none;
-  border: 1px solid $grey-3;
-  transition: all 0.2s ease-in-out;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: white;
   
-  .body--dark & {
-    border-color: $grey-8;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.08);
   }
+
+  .body--dark & {
+    background: $dark;
+    border: 1px solid $grey-8;
+    box-shadow: none;
+  }
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--q-primary) 0%, darken($primary, 15%) 100%);
+}
+
+.hover-bg:hover {
+  background-color: rgba(0,0,0,0.03);
+  cursor: default;
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

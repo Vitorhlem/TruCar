@@ -39,7 +39,7 @@ class MaintenanceRequest(Base):
     approved_by_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     vehicle_id: Mapped[int] = mapped_column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), nullable=False)
-
+    maintenance_type: Mapped[Optional[str]] = mapped_column(String, default="CORRETIVA", nullable=True)
     reporter: Mapped[Optional["User"]] = relationship("User", foreign_keys=[reported_by_id], back_populates="reported_requests")
     approver: Mapped[Optional["User"]] = relationship("User", foreign_keys=[approved_by_id])
     vehicle: Mapped["Vehicle"] = relationship("Vehicle", back_populates="maintenance_requests")
@@ -116,3 +116,4 @@ class MaintenanceServiceItem(Base):
     # Relações
     maintenance_request = relationship("MaintenanceRequest", back_populates="services")
     added_by = relationship("User")
+    maintenance_type = Column(String, default="CORRETIVA") # 'PREVENTIVA' ou 'CORRETIVA'

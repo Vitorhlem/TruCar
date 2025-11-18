@@ -95,6 +95,7 @@ export interface MaintenanceRequest {
   updated_at: string | null;
   comments: MaintenanceComment[];
   part_changes: MaintenancePartChangePublic[];
+  maintenance_type: 'PREVENTIVA' | 'CORRETIVA'; 
   services: MaintenanceServiceItem[]; // <-- Adicionado anteriormente
 }
 
@@ -102,11 +103,14 @@ export interface MaintenanceRequestCreate {
   vehicle_id: number;
   problem_description: string;
   category: MaintenanceCategory;
+  maintenance_type?: 'PREVENTIVA' | 'CORRETIVA';
 }
 
 export interface MaintenanceRequestUpdate {
   status: MaintenanceStatus;
   manager_notes?: string | null;
+  next_maintenance_date?: string | null; // Formato YYYY-MM-DD
+  next_maintenance_km?: number | null;
 }
 
 export interface MaintenanceCommentCreate {

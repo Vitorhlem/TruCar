@@ -15,6 +15,9 @@
         </div>
         <div class="text-subtitle2">
           Solicitado por {{ request.reporter?.full_name || 'N/A' }}
+          <q-badge color="orange" text-color="black" class="q-ml-sm">
+             {{ request.maintenance_type || 'CORRETIVA' }}
+          </q-badge>
         </div>
       </q-card-section>
 
@@ -66,45 +69,13 @@
         narrow-indicator
       >
         <q-tab name="details" label="Detalhes e Histórico" />
-        <q-tab name="services" label="Serviços / Mão de Obra" />
         <q-tab name="components" label="Componentes do Veículo" />
       </q-tabs>
 
       <q-separator />
 
       <q-tab-panels v-model="tab" animated>
-        <q-tab-panel name="services">
-          <div class="row q-col-gutter-sm q-mb-md" v-if="authStore.isManager && !isClosed">
-             <div class="col-12 text-subtitle2">Adicionar Serviço (Gera custo automático)</div>
-             <div class="col-4">
-                 <q-input v-model="newService.description" label="Descrição (Ex: Mão de Obra)" dense outlined />
-             </div>
-             <div class="col-3">
-                 <q-input v-model.number="newService.cost" label="Valor (R$)" type="number" dense outlined prefix="R$" />
-             </div>
-             <div class="col-3">
-                 <q-input v-model="newService.provider_name" label="Fornecedor (Opcional)" dense outlined />
-             </div>
-             <div class="col-2">
-                 <q-btn icon="add" color="primary" round dense @click="handleAddService" :disable="!newService.description || !newService.cost" />
-             </div>
-          </div>
-          
-          <q-separator class="q-mb-md" />
-
-          <q-table
-            :rows="request.services || []"
-            :columns="[
-                { name: 'desc', label: 'Descrição', field: 'description', align: 'left' },
-                { name: 'provider', label: 'Fornecedor', field: 'provider_name', align: 'left' },
-                { name: 'cost', label: 'Custo', field: 'cost', format: (v) => `R$ ${v.toFixed(2)}`, align: 'right' }
-            ]"
-            dense
-            flat
-            bordered
-            no-data-label="Nenhum serviço lançado."
-          />
-        </q-tab-panel>
+        
         <q-tab-panel name="details">
           <q-scroll-area style="height: 400px">
             <q-card-section>
@@ -112,13 +83,10 @@
                 <q-item>
                   <q-item-section>
                     <q-item-label caption>Veículo</q-item-label>
-                    <q-item-label
-                      >{{ request.vehicle?.brand }}
-                      {{ request.vehicle?.model }} ({{
-                        request.vehicle?.license_plate ||
-                        request.vehicle?.identifier
-                      }})</q-item-label
-                    >
+                    <q-item-label>
+                      {{ request.vehicle?.brand }} {{ request.vehicle?.model }} 
+                      ({{ request.vehicle?.license_plate || request.vehicle?.identifier }})
+                    </q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item>
@@ -130,11 +98,9 @@
                 <q-item>
                   <q-item-section>
                     <q-item-label caption>Problema Reportado</q-item-label>
-                    <q-item-label
-                      class="text-body2"
-                      style="white-space: pre-wrap"
-                      >{{ request.problem_description }}</q-item-label
-                    >
+                    <q-item-label class="text-body2" style="white-space: pre-wrap">
+                      {{ request.problem_description }}
+                    </q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -144,37 +110,20 @@
               v-if="request.part_changes && request.part_changes.length > 0"
               class="q-pt-none"
             >
-              <div class="text-subtitle1 q-mb-sm">
-                Histórico de Substituições
-              </div>
+              <div class="text-subtitle1 q-mb-sm">Histórico de Substituições</div>
               <q-timeline color="primary" dense>
                 <q-timeline-entry
                   v-for="log in request.part_changes"
                   :key="log.id"
-                  :subtitle="
-                    new Date(log.timestamp).toLocaleString('pt-BR', {
-                      dateStyle: 'short',
-                      timeStyle: 'short',
-                    })
-                  "
+                  :subtitle="new Date(log.timestamp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })"
                   :title="`Troca realizada por ${log.user.full_name}`"
                   icon="build"
                 >
-                  <div
-                    :style="
-                      log.is_reverted
-                        ? 'text-decoration: line-through; opacity: 0.7;'
-                        : ''
-                    "
-                  >
+                  <div :style="log.is_reverted ? 'text-decoration: line-through; opacity: 0.7;' : ''">
                     <div v-if="log.component_removed">
                       <q-badge color="negative" class="q-mr-xs">SAIU</q-badge>
-                      <strong>{{ log.component_removed?.part?.name }}</strong>
-                      (Cód. Item:
-                      {{
-                        log.component_removed?.inventory_transaction?.item
-                          ?.item_identifier || 'N/A'
-                      }})
+                      <strong>{{ log.component_removed.part?.name || 'Peça Desconhecida' }}</strong>
+                      (Cód. Item: {{ log.component_removed.inventory_transaction?.item?.item_identifier || 'N/A' }})
                     </div>
                     <div v-else>
                          <q-badge color="info" class="q-mr-xs">NOVO</q-badge>
@@ -183,28 +132,17 @@
 
                     <div class="q-mt-xs">
                       <q-badge color="positive" class="q-mr-xs">ENTROU</q-badge>
-                      <strong>{{ log.component_installed?.part?.name }}</strong>
-                      (Cód. Item:
-                      {{
-                        log.component_installed?.inventory_transaction?.item
-                          ?.item_identifier || 'N/A'
-                      }})
+                      <strong>{{ log.component_installed?.part?.name || 'Peça Desconhecida' }}</strong>
+                      (Cód. Item: {{ log.component_installed?.inventory_transaction?.item?.item_identifier || 'N/A' }})
                     </div>
-                    <div
-                      v-if="log.notes"
-                      class="text-caption text-grey-7 q-mt-sm"
-                    >
+                    
+                    <div v-if="log.notes" class="text-caption text-grey-7 q-mt-sm">
                       <strong>Nota:</strong> {{ log.notes }}
                     </div>
                   </div>
 
                   <div class="q-mt-sm" v-if="authStore.isManager && !isClosed">
-                    <q-badge
-                      v-if="log.is_reverted"
-                      color="grey-7"
-                      label="Revertido"
-                      icon="undo"
-                    />
+                    <q-badge v-if="log.is_reverted" color="grey-7" label="Revertido" icon="undo" />
                     <q-btn
                       v-else
                       label="Reverter esta troca"
@@ -220,6 +158,7 @@
                 </q-timeline-entry>
               </q-timeline>
             </q-card-section>
+
             <q-card-section class="q-pt-none">
               <div class="text-subtitle1 q-mb-sm">Histórico / Chat</div>
               <q-chat-message
@@ -228,13 +167,9 @@
                 :name="comment.user?.full_name || 'Usuário removido'"
                 :sent="comment.user?.id === authStore.user?.id"
                 text-color="white"
-                :bg-color="
-                  comment.user?.id === authStore.user?.id ? 'primary' : 'grey-7'
-                "
+                :bg-color="comment.user?.id === authStore.user?.id ? 'primary' : 'grey-7'"
               >
-                <div style="white-space: pre-wrap">
-                  {{ comment.comment_text }}
-                </div>
+                <div style="white-space: pre-wrap">{{ comment.comment_text }}</div>
               </q-chat-message>
             </q-card-section>
           </q-scroll-area>
@@ -271,11 +206,7 @@
                   {{ props.row.part?.name || 'Peça N/A' }}
                 </div>
                 <div class="text-caption text-grey">
-                  Cód. Item:
-                  {{
-                    props.row.inventory_transaction?.item?.item_identifier ||
-                    'N/A'
-                  }}
+                  Cód. Item: {{ props.row.inventory_transaction?.item?.item_identifier || 'N/A' }}
                 </div>
               </q-td>
             </template>
@@ -295,6 +226,7 @@
           </q-table>
         </q-tab-panel>
       </q-tab-panels>
+
       <q-separator />
 
       <q-card-section v-if="tab === 'details' && !isClosed" class="">
@@ -321,10 +253,7 @@
         </q-input>
       </q-card-section>
 
-      <q-card-section
-        v-if="isClosed"
-        class="text-center text-grey-7 q-pa-lg"
-      >
+      <q-card-section v-if="isClosed" class="text-center text-grey-7 q-pa-lg">
         <q-icon name="lock" size="2em" />
         <div v-if="request.updated_at">
           Este chamado foi finalizado em
@@ -347,6 +276,12 @@
       @installation-done="handleReplacementDone" 
     />
 
+    <FinishMaintenanceDialog
+      v-model="showFinishDialog"
+      :request="request"
+      @confirm="onFinishConfirmed"
+    />
+
   </q-dialog>
 </template>
 
@@ -364,14 +299,11 @@ import {
   type MaintenancePartChangePublic,
 } from 'src/models/maintenance-models';
 import type { VehicleComponent } from 'src/models/vehicle-component-models';
+
+// Imports dos Diálogos
 import ReplaceComponentDialog from './ReplaceComponentDialog.vue';
 import InstallComponentDialog from './InstallComponentDialog.vue';
-
-const newService = ref({
-    description: '',
-    cost: null as number | null,
-    provider_name: ''
-});
+import FinishMaintenanceDialog from './FinishMaintenanceDialog.vue';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -383,13 +315,18 @@ const $q = useQuasar();
 const maintenanceStore = useMaintenanceStore();
 const authStore = useAuthStore();
 const componentStore = useVehicleComponentStore();
+
 const newCommentText = ref('');
 const tab = ref('details');
 
+// Estados dos Diálogos
 const isReplaceDialogOpen = ref(false);
 const isInstallDialogOpen = ref(false);
+const showFinishDialog = ref(false);
+
 const selectedComponent = ref<VehicleComponent | null>(null);
 
+// Configuração da Tabela
 const componentColumns: QTableColumn<VehicleComponent>[] = [
   {
     name: 'component_and_item',
@@ -415,20 +352,7 @@ const isClosed = computed(
     props.request?.status === MaintenanceStatus.REJEITADA
 );
 
-async function handleAddService() {
-    if(!props.request || !newService.value.description || !newService.value.cost) return;
-    
-    const payload = {
-        description: newService.value.description,
-        cost: newService.value.cost,
-        provider_name: newService.value.provider_name
-    };
-    
-    await maintenanceStore.addServiceItem(props.request.id, payload);
-    
-    // Limpa form
-    newService.value = { description: '', cost: null, provider_name: '' };
-}
+// === AÇÕES BÁSICAS ===
 
 async function postComment() {
   if (!props.request || !newCommentText.value.trim()) return;
@@ -445,23 +369,25 @@ function openReplaceDialog(component: VehicleComponent) {
 }
 
 function handleReplacementDone() {
+  // Recarrega a lista de componentes do veículo para refletir a troca/instalação
   if (props.request?.vehicle?.id) {
     void componentStore.fetchComponents(props.request.vehicle.id);
   }
 }
 
+// === LÓGICA DE REVERSÃO (Segura) ===
+
 function onRevert(log: MaintenancePartChangePublic) {
   if (!props.request) return;
 
-  // --- CORREÇÃO: Validação de segurança ---
+  // Verificação de segurança: componente instalado deve existir
   if (!log.component_installed) {
       console.error("Componente instalado não encontrado no log.");
       return;
   }
 
   const partName = log.component_installed.part?.name || 'N/A';
-  const itemIdentifier =
-    log.component_installed.inventory_transaction?.item?.item_identifier || 'N/A';
+  const itemIdentifier = log.component_installed.inventory_transaction?.item?.item_identifier || 'N/A';
 
   $q.dialog({
     title: 'Reverter Troca',
@@ -490,10 +416,67 @@ function onRevert(log: MaintenancePartChangePublic) {
         });
       }
     };
-
     void performRevert();
   });
 }
+
+// === MUDANÇA DE STATUS DO CHAMADO ===
+
+function handleUpdateStatus(newStatus: MaintenanceStatus) {
+  if (!props.request) return;
+
+  // Cenário 1: Concluir (Logica Condicional)
+  if (newStatus === MaintenanceStatus.CONCLUIDA) {
+    
+    // VERIFICA SE O CHAMADO É PREVENTIVO (Vindo do Agendamento)
+    // CORREÇÃO: Removido o @ts-expect-error pois a propriedade agora existe no modelo
+    if (props.request.maintenance_type === 'PREVENTIVA') {
+        // Se for Preventiva, abre o modal para definir a PRÓXIMA data
+        showFinishDialog.value = true;
+    } else {
+        // Se for Corretiva (quebra), finaliza direto sem perguntar data futura
+        void performDirectUpdate({ status: newStatus });
+    }
+
+  } 
+  // Cenário 2: Rejeitar (Pede motivo)
+  else if (newStatus === MaintenanceStatus.REJEITADA) {
+    $q.dialog({
+      title: 'Motivo da Rejeição',
+      message: 'Por que este chamado está sendo rejeitado?',
+      prompt: { model: '', type: 'textarea' },
+      cancel: true,
+      persistent: false,
+    }).onOk((data: string) => {
+       // CORREÇÃO: Uso do void para promessa não aguardada
+       void performDirectUpdate({ status: newStatus, manager_notes: data });
+    });
+  } 
+  // Cenário 3: Aprovar / Em Andamento (Direto)
+  else {
+    // CORREÇÃO: Uso do void para promessa não aguardada
+    void performDirectUpdate({ status: newStatus, manager_notes: props.request.manager_notes });
+  }
+}
+
+// Atualização simples (sem diálogo extra)
+const performDirectUpdate = async (payload: MaintenanceRequestUpdate) => {
+    if (!props.request) return;
+    await maintenanceStore.updateRequest(props.request.id, payload);
+    
+    if (payload.status === MaintenanceStatus.CONCLUIDA || payload.status === MaintenanceStatus.REJEITADA) {
+      emit('update:modelValue', false);
+    }
+};
+
+// Chamado quando o FinishMaintenanceDialog confirma (Apenas para Preventivas)
+async function onFinishConfirmed(payload: MaintenanceRequestUpdate) {
+    if (!props.request) return;
+    await maintenanceStore.updateRequest(props.request.id, payload);
+    emit('update:modelValue', false);
+}
+
+// === WATCHERS ===
 
 watch(
   () => tab.value,
@@ -519,40 +502,4 @@ watch(
   },
   { immediate: true }
 );
-
-function handleUpdateStatus(newStatus: MaintenanceStatus) {
-  if (!props.request) return;
-
-  const performUpdate = async (notes?: string) => {
-    if (!props.request) return;
-    const payload: MaintenanceRequestUpdate = {
-      status: newStatus,
-      manager_notes: notes ?? props.request.manager_notes,
-    };
-    await maintenanceStore.updateRequest(props.request.id, payload);
-    if (
-      newStatus === MaintenanceStatus.CONCLUIDA ||
-      newStatus === MaintenanceStatus.REJEITADA
-    ) {
-      emit('update:modelValue', false);
-    }
-  };
-
-  if (
-    newStatus === MaintenanceStatus.CONCLUIDA ||
-    newStatus === MaintenanceStatus.REJEITADA
-  ) {
-    $q.dialog({
-      title: 'Anotações Finais (Opcional)',
-      message: 'Adicione uma nota de conclusão para este chamado.',
-      prompt: { model: props.request.manager_notes || '', type: 'textarea' },
-      cancel: true,
-      persistent: false,
-    }).onOk((data: string) => {
-      void performUpdate(data);
-    });
-  } else {
-    void performUpdate();
-  }
-}
 </script>

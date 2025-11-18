@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
 
 from app.models.maintenance_model import MaintenanceStatus, MaintenanceCategory
 from .user_schema import UserPublic
@@ -68,11 +68,14 @@ class MaintenanceRequestBase(BaseModel):
     problem_description: str
     vehicle_id: int
     category: MaintenanceCategory
+    maintenance_type: str = "CORRETIVA" 
 
 class MaintenanceRequestCreate(MaintenanceRequestBase):
     pass
 
 class MaintenanceRequestUpdate(BaseModel):
+    next_maintenance_date: Optional[date] = None
+    next_maintenance_km: Optional[float] = None
     status: MaintenanceStatus
     manager_notes: Optional[str] = None
 
@@ -87,7 +90,7 @@ class MaintenanceRequestPublic(MaintenanceRequestBase):
     manager_notes: Optional[str] = None
     services: List[MaintenanceServiceItemPublic] = []
     comments: List[MaintenanceCommentPublic] = []
-    
+    maintenance_type: Optional[str] = "CORRETIVA"
     part_changes: List[MaintenancePartChangePublic] = []
     
     model_config = { "from_attributes": True }
