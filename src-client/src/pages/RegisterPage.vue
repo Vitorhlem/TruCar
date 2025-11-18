@@ -1,7 +1,6 @@
 <template>
   <q-page>
     <div class="row window-height">
-      <!-- Coluna Esquerda: REFORMULADA com tema escuro, glassmorphism e novas animações -->
       <div 
         ref="formPanel"
         class="col-12 col-md-6 flex flex-center form-panel"
@@ -9,11 +8,9 @@
         @mouseleave="handleMouseLeave"
       >
         <q-card ref="registerCard" flat class="register-card q-pa-md">
-          <!-- EFEITO DE BRILHO ADICIONADO -->
           <div class="card-shine"></div>
           
           <q-card-section class="text-center q-pb-none">
-            <!-- ANIMAÇÕES SEQUENCIAIS ADICIONADAS -->
             <img 
               src="~assets/trucar-logo-white.png" 
               alt="TruCar Logo" 
@@ -35,7 +32,6 @@
             class="q-mt-md transparent-stepper animated-form-element"
             style="animation-delay: 0.4s;"
           >
-            <!-- Etapa 1: Empresa -->
             <q-step
               :name="1"
               title="Sua Empresa"
@@ -73,7 +69,6 @@
               </q-stepper-navigation>
             </q-step>
 
-            <!-- Etapa 2: Utilizador -->
             <q-step
               :name="2"
               title="Seus Dados"
@@ -94,7 +89,6 @@
                     <q-btn flat @click="() => stepper?.previous()" color="primary" label="Voltar" class="full-width" />
                 </div>
                   <div class="col-6">
-                    <!-- BOTÃO COM MICRO-INTERAÇÃO -->
                     <q-btn 
                       @click="onSubmit" 
                       :color="getButtonColor" 
@@ -119,7 +113,6 @@
 
             <q-separator dark class="q-my-lg animated-form-element" style="animation-delay: 0.6s;" />
 
-            <!-- Selos de Segurança -->
             <div class="security-seals text-center animated-form-element" style="animation-delay: 0.7s;">
               <div class="seal-item">
                 <q-icon name="verified_user" color="positive" />
@@ -138,7 +131,6 @@
         </q-card>
       </div>
 
-      <!-- Coluna Direita: A Área Visual com ficheiros de imagem locais -->
       <div class="col-md-6 register-visual-container gt-sm">
         <div class="image-strip" :style="{ backgroundImage: `url(${visual1})` }"></div>
         <div class="image-strip" :style="{ backgroundImage: `url(${visual2})` }"></div>
@@ -175,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, type ComponentPublicInstance } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar, QStepper } from 'quasar';
 import { api } from 'boot/axios';
@@ -188,7 +180,8 @@ import visual3 from 'assets/register-visual-3.jpg';
 import visual4 from 'assets/register-visual-4.jpg';
 
 const formPanel = ref<HTMLElement | null>(null);
-const registerCard = ref<HTMLElement | null>(null);
+// CORREÇÃO 1: Tipo 'any' para acomodar o componente QCard
+const registerCard = ref<ComponentPublicInstance | null>(null);
 const router = useRouter();
 const $q = useQuasar();
 const isLoading = ref(false);
@@ -262,19 +255,25 @@ async function onSubmit() {
 }
 
 function handleMouseMove(event: MouseEvent) {
-  if (registerCard.value) {
-    const rect = registerCard.value.getBoundingClientRect();
+  // CORREÇÃO 2: Verificamos registerCard.value.$el
+  if (registerCard.value && registerCard.value.$el) {
+    const cardEl = registerCard.value.$el as HTMLElement;
+    const rect = cardEl.getBoundingClientRect();
     const shineX = event.clientX - rect.left;
     const shineY = event.clientY - rect.top;
-    registerCard.value.style.setProperty('--shine-x', `${shineX}px`);
-    registerCard.value.style.setProperty('--shine-y', `${shineY}px`);
-    registerCard.value.style.setProperty('--shine-opacity', '1');
+    
+    // Usamos cardEl.style em vez de registerCard.value.style
+    cardEl.style.setProperty('--shine-x', `${shineX}px`);
+    cardEl.style.setProperty('--shine-y', `${shineY}px`);
+    cardEl.style.setProperty('--shine-opacity', '1');
   }
 }
 
 function handleMouseLeave() {
-  if (registerCard.value) {
-    registerCard.value.style.setProperty('--shine-opacity', '0');
+  // CORREÇÃO 3: Acesso correto ao estilo
+  if (registerCard.value && registerCard.value.$el) {
+    const cardEl = registerCard.value.$el as HTMLElement;
+    cardEl.style.setProperty('--shine-opacity', '0');
   }
 }
 </script>
@@ -338,7 +337,7 @@ function handleMouseLeave() {
   opacity: 0;
 }
 
-// Estilos para o painel visual direito (mantidos)
+// Estilos para o painel visual direito
 .register-visual-container {
   position: relative;
   display: flex;
@@ -413,4 +412,3 @@ function handleMouseLeave() {
   gap: 8px;
 }
 </style>
-

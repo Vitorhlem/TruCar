@@ -99,12 +99,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, type ComponentPublicInstance } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'stores/auth-store';
 
-const loginCard = ref<HTMLElement | null>(null);
+const loginCard = ref<ComponentPublicInstance | null>(null);
 const backgroundVideo = ref<HTMLVideoElement | null>(null);
 
 const $q = useQuasar();
@@ -153,34 +153,31 @@ function handleMouseMove(event: MouseEvent) {
   const mouseX = (clientX / width) * 2 - 1;
   const mouseY = (clientY / height) * 2 - 1;
 
-  if (loginCard.value) {
+  if (loginCard.value && loginCard.value.$el) {
+    const cardEl = loginCard.value.$el as HTMLElement;
+    
     const rotateY = mouseX * 8;
     const rotateX = -mouseY * 8;
-    loginCard.value.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    cardEl.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
 
-    const rect = loginCard.value.getBoundingClientRect();
+    const rect = cardEl.getBoundingClientRect();
     const shineX = event.clientX - rect.left;
     const shineY = event.clientY - rect.top;
-    loginCard.value.style.setProperty('--shine-x', `${shineX}px`);
-    loginCard.value.style.setProperty('--shine-y', `${shineY}px`);
-    loginCard.value.style.setProperty('--shine-opacity', '1');
+    cardEl.style.setProperty('--shine-x', `${shineX}px`);
+    cardEl.style.setProperty('--shine-y', `${shineY}px`);
+    cardEl.style.setProperty('--shine-opacity', '1');
   }
   
-  if (backgroundVideo.value) {
-    const transX = -mouseX * 20;
-    const transY = -mouseY * 20;
-    backgroundVideo.value.style.transform = `translateX(${transX}px) translateY(${transY}px) scale(1.1)`;
-  }
+  // REMOVIDO: Lógica que movia o backgroundVideo
 }
 
 function handleMouseLeave() {
-  if (loginCard.value) {
-    loginCard.value.style.transform = 'rotateX(0deg) rotateY(0deg)';
-    loginCard.value.style.setProperty('--shine-opacity', '0');
+  if (loginCard.value && loginCard.value.$el) {
+    const cardEl = loginCard.value.$el as HTMLElement;
+    cardEl.style.transform = 'rotateX(0deg) rotateY(0deg)';
+    cardEl.style.setProperty('--shine-opacity', '0');
   }
-  if (backgroundVideo.value) {
-    backgroundVideo.value.style.transform = 'translateX(0px) translateY(0px) scale(1.1)';
-  }
+  // REMOVIDO: Lógica que resetava o backgroundVideo
 }
 </script>
 
@@ -202,6 +199,7 @@ function handleMouseLeave() {
   width: auto;
   height: auto;
   z-index: 1;
+  /* CSS garante a centralização. Não mexemos mais nisso via JS */
   transform: translateX(-50%) translateY(-50%) scale(1.1);
   transition: transform 0.3s ease-out;
 }

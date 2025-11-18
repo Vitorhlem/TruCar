@@ -86,12 +86,24 @@
             <div class="col-12 col-lg-8 column q-gutter-y-lg">
               <div v-if="visibleWidgets.costChart">
                 <PremiumWidget title="Análise Detalhada de Custos" icon="insights" :description="`Distribuição de gastos no período (${selectedPeriod.label}).`">
-                  <ApexChart type="bar" height="350" :options="costAnalysisChart.options" :series="costAnalysisChart.series" />
+                  <ApexChart 
+                    v-if="(costAnalysisChart.series[0]?.data.length || 0) > 0"
+                    type="bar" 
+                    height="350" 
+                    :options="costAnalysisChart.options" 
+                    :series="costAnalysisChart.series" 
+                  />
                 </PremiumWidget>
               </div>
               <div v-if="visibleWidgets.activityChart">
                 <PremiumWidget title="Volume de Atividade" icon="show_chart" :description="`Histórico de ${terminologyStore.distanceUnit} rodados por dia.`">
-                  <ApexChart type="area" height="300" :options="lineChart.options" :series="lineChart.series" />
+                   <ApexChart 
+                    v-if="(lineChart.series[0]?.data.length || 0) > 0"
+                    type="area" 
+                    height="300" 
+                    :options="lineChart.options" 
+                    :series="lineChart.series" 
+                  />
                 </PremiumWidget>
               </div>
               <div v-if="visibleWidgets.maintenance">
@@ -129,7 +141,15 @@
               </div>
               <div v-if="visibleWidgets.fleetStatusChart">
                 <PremiumWidget title="Status da Frota" icon="donut_large" description="Distribuição atual.">
-                  <div class="flex flex-center" style="min-height: 300px"><ApexChart type="donut" height="280" :options="fleetStatusChart.options" :series="fleetStatusChart.series" /></div>
+                  <div class="flex flex-center" style="min-height: 300px">
+                    <ApexChart 
+                        v-if="fleetStatusChart.series.length > 0" 
+                        type="donut" 
+                        height="280" 
+                        :options="fleetStatusChart.options" 
+                        :series="fleetStatusChart.series" 
+                    />
+                  </div>
                 </PremiumWidget>
               </div>
               <div v-if="visibleWidgets.alerts">
@@ -173,30 +193,30 @@
 
         <div class="q-mb-lg">
            <q-banner v-if="activeJourney" class="bg-green-1 text-positive rounded-borders q-pa-md border-positive shadow-1 body--dark-bg-adjust">
-              <template v-slot:avatar>
-                <q-spinner-radio color="positive" size="2em" />
-              </template>
-              <div class="text-h6 text-weight-bold q-mb-xs">
+             <template v-slot:avatar>
+               <q-spinner-radio color="positive" size="2em" />
+             </template>
+             <div class="text-h6 text-weight-bold q-mb-xs">
                  Em Operação: {{ activeJourney.vehicle_identifier }}
-              </div>
-              <div class="text-body2">
+             </div>
+             <div class="text-body2">
                  Iniciado às {{ new Date(activeJourney.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}
-              </div>
-              <template v-slot:action>
+             </div>
+             <template v-slot:action>
                  <q-btn unelevated color="positive" label="Acessar Painel" to="/journeys" />
-              </template>
+             </template>
            </q-banner>
 
            <q-banner v-else class="bg-blue-1 text-primary rounded-borders q-pa-md border-primary shadow-1 body--dark-bg-adjust">
-              <template v-slot:avatar>
-                <q-icon name="info" color="primary" />
-              </template>
-              <div class="text-body1 text-weight-medium">
-                Você não possui nenhuma {{ terminologyStore.journeyNoun }} ativa no momento.
-              </div>
-              <template v-slot:action>
-                <q-btn flat label="Ver Histórico" :to="`/users/${authStore.user?.id}/stats`" />
-              </template>
+             <template v-slot:avatar>
+               <q-icon name="info" color="primary" />
+             </template>
+             <div class="text-body1 text-weight-medium">
+               Você não possui nenhuma {{ terminologyStore.journeyNoun }} ativa no momento.
+             </div>
+             <template v-slot:action>
+               <q-btn flat label="Ver Histórico" :to="`/users/${authStore.user?.id}/stats`" />
+             </template>
            </q-banner>
         </div>
 
@@ -474,7 +494,7 @@ const lineChart = computed(() => {
 
 const fleetStatusChart = computed(() => {
   if (!kpis.value) return { series: [], options: {} };
-    const isDark = $q.dark.isActive;
+   const isDark = $q.dark.isActive;
   const textColor = isDark ? '#FFFFFF' : '#373d3f';
   const series = [kpis.value.available_vehicles, kpis.value.in_use_vehicles, kpis.value.maintenance_vehicles];
   const cardBgColor = isDark ? '#1d1d1d' : '#ffffff';

@@ -10,8 +10,8 @@ from app.models.user_model import User, UserRole
 
 router = APIRouter()
 
-
-@router.get("/", response_model=List[UserPublic])
+# --- CORREÇÃO: Rota alterada de "/" para "" (Remove barra final) ---
+@router.get("", response_model=List[UserPublic])
 async def read_users(
     db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,
@@ -24,51 +24,31 @@ async def read_users(
     )
     return users
 
-
-@router.post("/open", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
+# --- CORREÇÃO: Rota alterada de "/" para "" (Remove barra final) ---
+@router.post("", response_model=UserPublic, status_code=status.HTTP_201_CREATED,
+            dependencies=[Depends(deps.check_demo_limit("users"))])
 async def create_user(
     *,
     db: AsyncSession = Depends(deps.get_db),
     user_in: UserCreate,
+    current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """
-    Cria um novo utilizador sem necessidade de estar logado (Registo Público).
-    """
-    # Verifique se o utilizador já existe
-    user = await crud.user.get_by_email(db, email=user_in.email)
+    """Cria um novo utilizador (motorista) DENTRO da organização do gestor logado."""
+    # Verifica se o e-mail já existe globalmente para evitar conflitos
+    user = await crud.user.get_user_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
-            status_code=400,
-            detail="O utilizador com este e-mail já existe no sistema.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O e-mail fornecido já está registado no sistema.",
         )
     
-    # --- CORREÇÃO: Lógica para forçar Admin ---
-    # Se o e-mail for o do admin, define is_superuser=True e role apropriada
-    is_admin_email = user_in.email.lower() == "admin@admin.com"
-    
-    # Prepara os dados para criação
-    # Nota: O UserCreateOpen geralmente não tem campo 'role', então criamos o objeto UserRole manualmente aqui se necessário
-    # ou confiamos que o CRUD aceita kwargs extras se o seu modelo Pydantic permitir.
-    
-    # A abordagem mais segura usando o seu CRUD existente:
-    user_create_data = user_in.model_dump()
-    
-    if is_admin_email:
-        # Força superusuário e role de Admin (ajuste 'UserRole.ADMIN' se o seu enum for diferente)
-        # Se não tiver UserRole.ADMIN, use UserRole.CLIENTE_ATIVO com is_superuser=True
-        user = await crud.user.create(db, obj_in=user_in) 
-        
-        # Atualização manual pós-criação para garantir privilégios
-        user.is_superuser = True
-        # user.role = UserRole.ADMIN # Descomente se tiver esta role
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-    else:
-        # Fluxo normal (Cliente Demo)
-        user = await crud.user.create(db, obj_in=user_in)
-
-    return user
+    # Admin e Gestores criam usuários na sua organização
+    new_user = await crud.user.create(
+        db=db, user_in=user_in, 
+        organization_id=current_user.organization_id,
+        role=user_in.role or UserRole.DRIVER
+    )
+    return new_user
 
 @router.put("/me/password", response_model=UserPublic)
 async def update_current_user_password(
@@ -117,7 +97,7 @@ async def read_user_by_id(
     user_id: int,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Busca os dados de um único utilizador da organização do gestor."""
+    """Busca os dados de um único utilizador."""
     user = await crud.user.get(
         db, id=user_id, organization_id=current_user.organization_id
     )
@@ -136,7 +116,7 @@ async def update_user(
     user_in: UserUpdate,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Atualiza um utilizador da organização do gestor."""
+    """Atualiza um utilizador da organização."""
     user_to_update = await crud.user.get(
         db, id=user_id, organization_id=current_user.organization_id
     )
@@ -164,7 +144,7 @@ async def delete_user(
     user_id: int,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Exclui um utilizador da organização do gestor."""
+    """Exclui um utilizador da organização."""
     if user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -188,10 +168,8 @@ async def read_user_stats(
 ):
     """
     Retorna as estatísticas de um utilizador.
-    - Admins e Gestores podem ver estatísticas de qualquer um na organização.
-    - Motoristas podem ver apenas as suas próprias.
     """
-    # --- CORREÇÃO: Adicionado UserRole.ADMIN ---
+    # Garante que ADMIN tenha permissão
     is_manager = current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]
     is_driver_requesting_own_stats = (current_user.role == UserRole.DRIVER and current_user.id == user_id)
 
@@ -201,20 +179,14 @@ async def read_user_stats(
             detail="Você não tem permissão para ver estas estatísticas."
         )
 
-    # Garante que o usuário solicitado pertence à mesma organização
-    # Nota: Se você quiser que o Admin veja de OUTRAS organizações, remova a verificação de org abaixo.
-    # Por enquanto, assumimos que o Admin pertence à mesma organização que está gerenciando.
     target_user = await crud.user.get(db, id=user_id)
-    if not target_user:
-         raise HTTPException(status_code=404, detail="Utilizador não encontrado.")
-         
-    if target_user.organization_id != current_user.organization_id:
-        raise HTTPException(status_code=404, detail="Utilizador não encontrado nesta organização.")
+    if not target_user or target_user.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=404, detail="Utilizador não encontrado.")
 
     stats = await crud.user.get_user_stats(
         db, user_id=user_id, organization_id=current_user.organization_id
     )
     if not stats:
-        raise HTTPException(status_code=404, detail="Não foi possível gerar estatísticas.")
+        raise HTTPException(status_code=404, detail="Dados insuficientes para gerar estatísticas.")
     
     return stats

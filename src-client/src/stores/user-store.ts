@@ -4,8 +4,8 @@ import { Notify } from 'quasar';
 import { isAxiosError } from 'axios';
 import type { User } from 'src/models/auth-models';
 import type { UserCreate, UserUpdate, UserStats } from 'src/models/user-models';
-import { useAuthStore } from './auth-store'; // <-- IMPORTAMOS A AUTH STORE
-import { useDemoStore } from './demo-store'; // <-- IMPORTAMOS A DEMO STORE
+import { useAuthStore } from './auth-store'; 
+import { useDemoStore } from './demo-store';
 
 const initialState = () => ({
   users: [] as User[],
@@ -21,7 +21,9 @@ export const useUserStore = defineStore('user', {
     async fetchAllUsers() {
       this.isLoading = true;
       try {
-        const response = await api.get<User[]>('/users/');
+        // --- CORREÇÃO: Removida a barra final ---
+        const response = await api.get<User[]>('/users');
+        // ----------------------------------------
         this.users = response.data;
       } catch (error) {
         Notify.create({ type: 'negative', message: 'Falha ao carregar usuários.' });
@@ -34,16 +36,16 @@ export const useUserStore = defineStore('user', {
     async addNewUser(userData: UserCreate) {
       this.isLoading = true;
       try {
-        const response = await api.post<User>('/users/', userData);
+        // --- CORREÇÃO: Removida a barra final ---
+        const response = await api.post<User>('/users', userData);
+        // ----------------------------------------
         this.users.unshift(response.data);
         Notify.create({ type: 'positive', message: 'Usuário adicionado com sucesso!' });
 
-        // --- ATUALIZAÇÃO AUTOMÁTICA ADICIONADA ---
         const authStore = useAuthStore();
         if (authStore.isDemo) {
-        await useDemoStore().fetchDemoStats(true);
+          await useDemoStore().fetchDemoStats(true);
         }
-        // --- FIM DA ADIÇÃO ---
 
       } catch (error: unknown) {
         let message = 'Erro ao criar usuário.';
@@ -57,6 +59,7 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    // ... (restante do arquivo: updateUser, deleteUser, etc. permanecem iguais)
     async updateUser(userId: number, userData: UserUpdate) {
       this.isLoading = true;
       try {
@@ -81,12 +84,10 @@ export const useUserStore = defineStore('user', {
         this.users = this.users.filter(u => u.id !== userId);
         Notify.create({ type: 'positive', message: 'Usuário excluído com sucesso!' });
 
-        // --- ATUALIZAÇÃO AUTOMÁTICA ADICIONADA ---
         const authStore = useAuthStore();
         if (authStore.isDemo) {
           await useDemoStore().fetchDemoStats(true);
         }
-        // --- FIM DA ADIÇÃO ---
 
       } catch (error: unknown) {
         let message = 'Erro ao excluir usuário.';

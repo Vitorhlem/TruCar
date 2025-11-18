@@ -1,4 +1,4 @@
-# backend/app/api/deps.py
+# src-py/app/deps.py
 from typing import Generator, Any
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
@@ -53,7 +53,7 @@ async def get_current_active_user(
 async def get_current_active_manager(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
-    # --- CORREÇÃO: Adicionado UserRole.ADMIN ---
+    # --- CORREÇÃO: ADMIN ADICIONADO AQUI ---
     if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -74,7 +74,7 @@ async def get_current_active_driver(
 async def get_current_super_admin(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
-    # Admin role também é super admin
+    # Admin role também conta como super admin
     if current_user.role != UserRole.ADMIN and current_user.email not in settings.SUPERUSER_EMAILS:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -94,7 +94,7 @@ def check_demo_limit(resource_type: str):
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_manager),
     ):
-        # ADMIN e CLIENTE_ATIVO não têm limites
+        # ADMIN e CLIENTE_ATIVO não têm limites, retornam imediatamente
         if current_user.role != UserRole.CLIENTE_DEMO:
             return
             
