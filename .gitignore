@@ -33,3 +33,5 @@ Thumbs.db
 pdf
 .pdf
 *.pdf
+*/uploads
+src-py/static/uploads/documents/*

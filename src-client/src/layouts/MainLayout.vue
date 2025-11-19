@@ -308,7 +308,6 @@ function getDriverMenu(): MenuCategory[] {
         icon: 'dashboard',
         children: [
             { title: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
-            { title: 'Mapa em Tempo Real', icon: 'public', to: '/live-map' },
         ],
     };
     if (sector === 'frete') {
@@ -323,8 +322,8 @@ function getDriverMenu(): MenuCategory[] {
             { title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' },
             { title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' },
             { title: 'Minhas Multas', icon: 'receipt_long', to: '/fines' },
-            { title: 'Manutenções', icon: 'build', to: '/maintenance' },
-            { title: 'Documentos', icon: 'folder_shared', to: '/documents' }
+            { title: 'Meus Chamados', icon: 'build', to: '/maintenance' },
+            { title: 'Meus Documentos', icon: 'folder_shared', to: '/documents' }
             
         ],
     };
