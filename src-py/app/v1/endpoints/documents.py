@@ -42,7 +42,6 @@ async def create_document(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """Cria um novo documento, incluindo o upload do arquivo."""
-    # --- CORREÇÃO: Adicionado UserRole.ADMIN ---
     if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -72,12 +71,19 @@ async def read_documents(
     expiring_in_days: int = None,
     current_user: User = Depends(deps.get_current_active_user),
 ):
+    # --- LÓGICA DE PERMISSÃO DE VISUALIZAÇÃO ---
+    driver_id_filter = None
+    if current_user.role == UserRole.DRIVER:
+        # Motorista vê apenas os seus próprios documentos
+        driver_id_filter = current_user.id
+    
     documents = await crud.document.get_multi_by_org(
         db=db,
         organization_id=current_user.organization_id,
         skip=skip,
         limit=limit,
-        expiring_in_days=expiring_in_days
+        expiring_in_days=expiring_in_days,
+        driver_id=driver_id_filter # Passa o filtro
     )
     return documents
 
@@ -89,7 +95,6 @@ async def delete_document(
     doc_id: int,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    # --- CORREÇÃO: Adicionado UserRole.ADMIN ---
     if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

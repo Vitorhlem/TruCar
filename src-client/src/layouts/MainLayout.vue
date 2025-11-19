@@ -324,6 +324,8 @@ function getDriverMenu(): MenuCategory[] {
             { title: 'Abastecimentos', icon: 'local_gas_station', to: '/fuel-logs' },
             { title: 'Minhas Multas', icon: 'receipt_long', to: '/fines' },
             { title: 'Manutenções', icon: 'build', to: '/maintenance' },
+            { title: 'Documentos', icon: 'folder_shared', to: '/documents' }
+            
         ],
     };
     menu.push(operations);

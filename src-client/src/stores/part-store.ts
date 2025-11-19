@@ -148,8 +148,18 @@ export const usePartStore = defineStore('part', {
         await api.delete(`/parts/${id}`);
         Notify.create({ type: 'positive', message: 'Peça removida com sucesso.' });
         await this.fetchParts();
-      } catch {
-        Notify.create({ type: 'negative', message: 'Erro ao remover a peça.' });
+      } catch (error) {
+        // --- CORREÇÃO AQUI ---
+        // Capturamos a mensagem específica do 409 enviada pelo backend
+        const message = isAxiosError(error) && error.response?.data?.detail 
+          ? error.response.data.detail 
+          : 'Erro ao remover a peça.';
+          
+        Notify.create({ 
+          type: 'negative', 
+          message: message as string,
+          timeout: 5000 // Tempo maior para ler a mensagem longa
+        });
       } finally {
         this.isLoading = false;
       }

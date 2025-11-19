@@ -1,13 +1,13 @@
 <template>
   <q-page padding>
     <div class="q-pa-md">
-      <!-- Cabeçalho da Página -->
       <div class="flex items-center justify-between q-mb-md">
         <div>
           <h1 class="text-h4 text-weight-bold q-my-none">Gestão de Documentos</h1>
           <div class="text-subtitle1 text-grey-7">Centralize e controle os vencimentos de CNHs, CRLVs e mais.</div>
         </div>
         <q-btn
+          v-if="isManager"
           color="primary"
           icon="add"
           label="Adicionar Documento"
@@ -16,7 +16,6 @@
         />
       </div>
 
-      <!-- Tabela de Documentos -->
       <q-table
         :rows="documentStore.documents"
         :columns="columns"
@@ -27,7 +26,6 @@
         card-class="dashboard-card"
         :rows-per-page-options="[10, 25, 50]"
       >
-        <!-- Template para a coluna de Vencimento (com status de cor) -->
         <template v-slot:body-cell-expiry_date="props">
           <q-td :props="props">
             <q-chip
@@ -40,13 +38,12 @@
           </q-td>
         </template>
 
-        <!-- Template para a coluna de Ações -->
         <template v-slot:body-cell-actions="props">
-<q-td :props="props" class="q-gutter-sm">
-<q-btn :href="`${backendBaseUrl}${props.row.file_url}`" target="_blank" dense flat round color="primary" icon="visibility">
- <q-tooltip>Ver Documento</q-tooltip>
-</q-btn>
-            <q-btn dense flat round color="negative" icon="delete" @click="confirmDelete(props.row)">
+          <q-td :props="props" class="q-gutter-sm">
+            <q-btn :href="`${backendBaseUrl}${props.row.file_url}`" target="_blank" dense flat round color="primary" icon="visibility">
+             <q-tooltip>Ver Documento</q-tooltip>
+            </q-btn>
+            <q-btn v-if="isManager" dense flat round color="negative" icon="delete" @click="confirmDelete(props.row)">
               <q-tooltip>Remover</q-tooltip>
             </q-btn>
           </q-td>
@@ -54,7 +51,6 @@
       </q-table>
     </div>
 
-    <!-- Diálogo para Adicionar Novo Documento -->
     <q-dialog v-model="isDialogOpen" >
       <q-card style="width: 600px; max-width: 90vw;">
         <q-card-section class="row items-center q-pb-none">
@@ -155,18 +151,26 @@ import { useQuasar, type QTableProps } from 'quasar';
 import { useDocumentStore, type DocumentCreatePayload } from 'stores/document-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useUserStore } from 'stores/user-store';
+import { useAuthStore } from 'stores/auth-store'; // <--- NOVO IMPORT
 import type { DocumentPublic } from 'src/models/document-models';
 import type { User } from 'src/models/auth-models';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { api } from 'boot/axios'; // <--- ADICIONE ESTA LINHA
-
+import { api } from 'boot/axios';
 
 const $q = useQuasar();
 const baseUrl = api.defaults.baseURL || '';
 const backendBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+
 const documentStore = useDocumentStore();
 const vehicleStore = useVehicleStore();
 const userStore = useUserStore();
+const authStore = useAuthStore(); // <--- STORE DE AUTH
+
+// --- Verificação de Permissão ---
+const isManager = computed(() => {
+  const role = authStore.user?.role;
+  return role === 'admin' || role === 'cliente_ativo' || role === 'cliente_demo';
+});
 
 // --- Lógica da Tabela ---
 const columns: QTableProps['columns'] = [
@@ -277,8 +281,12 @@ function confirmDelete(document: DocumentPublic) {
 // --- Ciclo de Vida ---
 onMounted(() => {
   void documentStore.fetchDocuments();
-  void vehicleStore.fetchAllVehicles(); // Busca veículos para o formulário
-  void userStore.fetchAllUsers();     // Busca motoristas para o formulário
+  
+  // --- CORREÇÃO: Só busca dados de formulário se for gestor ---
+  if (isManager.value) {
+    void vehicleStore.fetchAllVehicles();
+    void userStore.fetchAllUsers(); // Isso prevenia o erro 403
+  }
 });
 
 </script>
@@ -294,4 +302,3 @@ onMounted(() => {
   }
 }
 </style>
-

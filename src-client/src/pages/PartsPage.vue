@@ -188,7 +188,6 @@ const lifespanLabel = computed(() => {
   return `Vida Útil em ${unit} (Opcional)`;
 });
 
-// --- FORMDATA ATUALIZADO ---
 const initialFormData: PartCreatePayload = {
   name: '',
   category: 'Peça' as PartCategory,
@@ -208,7 +207,6 @@ const formData = ref({ ...initialFormData });
 
 const columns: QTableProps['columns'] = [
   { name: 'photo_url', label: 'Foto', field: 'photo_url', align: 'center' },
-  // { name: 'serial_number', label: 'Nº de Série', field: 'serial_number', align: 'left' }, // Removido, pois agora é por item
   { name: 'name', label: 'Item (Template)', field: 'name', align: 'left', sortable: true },
   { name: 'category', label: 'Categoria', field: 'category', align: 'left', sortable: true },
   { name: 'value', label: 'Custo Unitário', field: 'value', align: 'right', sortable: true },
@@ -218,7 +216,6 @@ const columns: QTableProps['columns'] = [
 ];
 
 function getImageUrl(path: string | null): string {
-  // ... (sem mudança)
   if (!path) return '';
   const baseUrl = api.defaults.baseURL || '';
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
@@ -231,14 +228,12 @@ watch(searchQuery, () => {
 });
 
 function getStockColor(current: number, min: number): string {
-  // ... (sem mudança)
   if (current <= 0) return 'negative';
   if (current <= min) return 'warning';
   return 'positive';
 }
 
 function getCategoryIcon(category: PartCategory): string {
-  // ... (sem mudança)
   const iconMap: Record<PartCategory, string> = {
     'Peça': 'settings', 'Fluído': 'opacity', 'Consumível': 'inbox', 'Outro': 'category', 'Pneu': 'album',
   };
@@ -258,7 +253,7 @@ function openDialog(part: Part | null = null) {
     formData.value = {
       ...initialFormData,
       ...part,
-      initial_quantity: 0, // Não podemos adicionar estoque inicial na edição
+      initial_quantity: 0, 
     };
   } else {
     resetForm();
@@ -286,13 +281,12 @@ async function handleSubmit() {
     payload.invoice_file = invoiceFile.value;
   }
   
-  // Remove 'stock' pois não é enviado
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   delete (payload as any).stock; 
   
   const success = isEditing.value && editingPart.value
     ? await partStore.updatePart(editingPart.value.id, payload)
-    : await partStore.createPart(payload); // <--- 'payload' ainda tem 'stock' na sua definição de tipo
+    : await partStore.createPart(payload);
   
   if (success) {
     isDialogOpen.value = false;
@@ -300,18 +294,32 @@ async function handleSubmit() {
   }
 }
 
+// --- FUNÇÃO ATUALIZADA PARA TRATAR O ERRO E ALERTAR O USUÁRIO ---
 function confirmDelete(part: Part) {
-  // ... (sem mudança)
+  // 1. Verificação Preventiva no Frontend
+  if (part.stock > 0) {
+     $q.dialog({
+      title: 'Ação Bloqueada',
+      message: `O item "${part.name}" ainda possui ${part.stock} unidades em estoque. Para excluí-lo, você deve primeiro remover ou dar baixa em todos os itens físicos associados através da opção "Gerenciar Itens".`,
+      persistent: true,
+      ok: { label: 'Entendi', color: 'primary' }
+    });
+    return;
+  }
+
+  // 2. Diálogo de Confirmação Padrão (para casos de estoque 0, mas com possível histórico)
   $q.dialog({
     title: 'Confirmar Exclusão',
-    message: `Tem certeza que deseja remover o "template" "${part.name}"? Todos os ${part.stock} itens associados e seu histórico serão perdidos.`,
+    message: `Tem certeza que deseja remover o modelo "${part.name}"? Esta ação é irreversível. \n\n(Nota: Se houver histórico de movimentações antigas, a exclusão será bloqueada pelo sistema para segurança).`,
     cancel: true,
     persistent: false,
-    ok: { label: 'Excluir', color: 'negative', unelevated: true },
+    ok: { label: 'Tentar Excluir', color: 'negative', unelevated: true },
   }).onOk(() => {
+    // CORREÇÃO: Removemos 'async/await' e usamos 'void' para satisfazer o ESLint
     void partStore.deletePart(part.id);
   });
 }
+// --- FIM DA ATUALIZAÇÃO ---
 
 onMounted(() => {
   void partStore.fetchParts();

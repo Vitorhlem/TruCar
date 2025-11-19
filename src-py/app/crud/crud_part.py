@@ -1,11 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, cast, Integer, update as sa_update
+from sqlalchemy import select, func, or_, cast, Integer, update as sa_update, delete # <-- 1. Import 'delete'
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 import logging
 import datetime 
 
-# Imports necessários para a correção
 from app.models.vehicle_component_model import VehicleComponent
 from app.models.vehicle_cost_model import VehicleCost, CostType
 from app.models.inventory_transaction_model import InventoryTransaction
@@ -30,9 +29,6 @@ def log_transaction(
         related_vehicle_id=related_vehicle_id
     )
     return log_entry
-
-
-# --- (Funções create_inventory_items, get_item_by_id, get_all_items_paginated, get_item_with_details permanecem iguais) ---
 
 async def create_inventory_items(
     db: AsyncSession, *, part_id: int, organization_id: int, quantity: int, user_id: int, notes: Optional[str] = None
@@ -91,10 +87,6 @@ async def get_all_items_paginated(
     vehicle_id: Optional[int] = None,
     search: Optional[str] = None
 ):
-    """
-    Busca todos os InventoryItems de forma paginada, com filtros.
-    """
-    
     stmt = select(InventoryItem).where(
         InventoryItem.organization_id == organization_id
     ).options(
@@ -118,35 +110,26 @@ async def get_all_items_paginated(
     
     if search:
         search_term_text = f"%{search.lower()}%"
-        
         stmt = stmt.join(Part, Part.id == InventoryItem.part_id)
         count_stmt = count_stmt.join(Part, Part.id == InventoryItem.part_id)
-        
-        search_filters = [
-            Part.name.ilike(search_term_text) 
-        ]
-        
+        search_filters = [Part.name.ilike(search_term_text)]
         try:
             search_id = int(search)
             search_filters.append(InventoryItem.id == search_id)
             search_filters.append(InventoryItem.item_identifier == search_id)
         except ValueError:
             pass 
-
         stmt = stmt.where(or_(*search_filters))
         count_stmt = count_stmt.where(or_(*search_filters))
 
     total = (await db.execute(count_stmt)).scalar_one_or_none() or 0
-    
     items = (await db.execute(
         stmt.order_by(InventoryItem.part_id, InventoryItem.item_identifier)
             .offset(skip).limit(limit)
     )).scalars().all()
-    
     return {"total": total, "items": items}
 
 async def get_item_with_details(db: AsyncSession, *, item_id: int, organization_id: int) -> Optional[InventoryItem]:
-    """Busca um item serializado e seu histórico completo."""
     stmt = select(InventoryItem).where(
         InventoryItem.id == item_id, 
         InventoryItem.organization_id == organization_id
@@ -162,20 +145,15 @@ async def get_item_with_details(db: AsyncSession, *, item_id: int, organization_
     result = await db.execute(stmt)
     return result.scalars().first()
 
-# ---
-# --- FUNÇÃO CENTRAL CORRIGIDA
-# ---
 async def change_item_status(
     db: AsyncSession, *, item: InventoryItem, new_status: InventoryItemStatus, 
     user_id: int, vehicle_id: Optional[int] = None, notes: Optional[str] = None
 ) -> InventoryItem:
     
-    # Validação de transição
     current_status = item.status
     if current_status == new_status:
         return item
         
-    # --- LÓGICA DE VALIDAÇÃO ATUALIZADA (mais robusta) ---
     if new_status == InventoryItemStatus.EM_USO:
         if current_status != InventoryItemStatus.DISPONIVEL:
             raise ValueError(f"Não é possível instalar o item pois ele não está 'Disponível' (status atual: {current_status}).")
@@ -189,16 +167,12 @@ async def change_item_status(
     elif new_status == InventoryItemStatus.DISPONIVEL:
          if current_status not in [InventoryItemStatus.EM_USO, InventoryItemStatus.FIM_DE_VIDA]:
                raise ValueError(f"Item não pode ser retornado ao estoque (status atual: {current_status}).")
-    # --- FIM DA VALIDAÇÃO ---
 
-
-    # Mapeamento do tipo de transação para o log
     transaction_type_map = {
         InventoryItemStatus.EM_USO: TransactionType.INSTALACAO,
         InventoryItemStatus.FIM_DE_VIDA: TransactionType.FIM_DE_VIDA,
-        InventoryItemStatus.DISPONIVEL: TransactionType.ENTRADA # Usado para retorno ao estoque
+        InventoryItemStatus.DISPONIVEL: TransactionType.ENTRADA 
     }
-    
     transaction_type = transaction_type_map.get(new_status)
     
     if current_status == InventoryItemStatus.EM_USO:
@@ -210,7 +184,6 @@ async def change_item_status(
     if not transaction_type:
          raise ValueError("Tipo de transação inválido para mudança de status.")
 
-    # Atualiza o item
     item.status = new_status
     
     if new_status == InventoryItemStatus.EM_USO:
@@ -220,7 +193,6 @@ async def change_item_status(
         item.installed_on_vehicle_id = None
         item.installed_at = None
     
-    # Cria o registro de log
     log_entry = log_transaction( 
         db=db, item_id=item.id, part_id=item.part_id, user_id=user_id,
         transaction_type=transaction_type,
@@ -231,20 +203,12 @@ async def change_item_status(
     db.add(item)
     db.add(log_entry) 
     
-    # Carrega a 'part' (template) para obter o valor
     part_template = item.part 
     if not part_template:
         part_template = await db.get(Part, item.part_id)
 
-    # --- LÓGICA DE CRIAÇÃO / DESATIVAÇÃO DO COMPONENTE E CUSTO (CORRIGIDA) ---
-    
     if new_status == InventoryItemStatus.EM_USO and vehicle_id:
-        # --- LÓGICA DE INSTALAÇÃO ---
-        
-        # 1. Flush para obter o ID do log_entry
         await db.flush() 
-        
-        # 2. Verificar se é re-instalação (procura componente inativo PARA ESTE ITEM)
         stmt_find_old = select(VehicleComponent).join(
             InventoryTransaction, VehicleComponent.inventory_transaction_id == InventoryTransaction.id
         ).where(
@@ -257,18 +221,11 @@ async def change_item_status(
         existing_inactive_component = result.scalars().first()
 
         if existing_inactive_component:
-            # --- É UMA RE-INSTALAÇÃO (Ex: Reversão de Peça A) ---
             existing_inactive_component.is_active = True
             existing_inactive_component.uninstallation_date = None
-            # Atualiza o ID da transação para a *nova* transação de instalação
             existing_inactive_component.inventory_transaction_id = log_entry.id
             db.add(existing_inactive_component)
-            
-            # *** NÃO ADICIONA CUSTO ***
-            # O custo original já foi pago e nunca foi estornado (porque foi FIM_DE_VIDA).
-        
         else:
-            # --- É UMA INSTALAÇÃO NOVA ---
             new_component = VehicleComponent(
                 vehicle_id=vehicle_id,
                 part_id=part_template.id,
@@ -278,11 +235,10 @@ async def change_item_status(
             )
             db.add(new_component)
             
-            # Adiciona Custo POSITIVO (Débito)
             if part_template.value and part_template.value > 0:
                 new_cost = VehicleCost(
                     description=f"Instalação: {part_template.name} (Cód. Item: {item.item_identifier})",
-                    amount=part_template.value, # Valor positivo
+                    amount=part_template.value, 
                     date=datetime.date.today(), 
                     cost_type=CostType.PECAS_COMPONENTES, 
                     vehicle_id=vehicle_id,
@@ -291,9 +247,6 @@ async def change_item_status(
                 db.add(new_cost)
 
     elif current_status == InventoryItemStatus.EM_USO:
-        # --- LÓGICA DE DESINSTALAÇÃO ---
-        
-        # 1. Encontra a transação de instalação
         install_transaction_stmt = select(InventoryTransaction.id).where(
             InventoryTransaction.item_id == item.id,
             or_(
@@ -305,7 +258,6 @@ async def change_item_status(
         install_transaction_id = (await db.execute(install_transaction_stmt)).scalar_one_or_none()
         
         if install_transaction_id:
-            # 2. Desativa o VehicleComponent
             update_component_stmt = sa_update(VehicleComponent).where(
                 VehicleComponent.inventory_transaction_id == install_transaction_id,
                 VehicleComponent.is_active == True
@@ -315,35 +267,23 @@ async def change_item_status(
             )
             await db.execute(update_component_stmt)
         
-        # --- LÓGICA DE CUSTO (Crédito/Estorno) ---
         if new_status == InventoryItemStatus.DISPONIVEL:
-            # Só estorna o custo se voltar ao estoque (Engano / Reversão de Peça B)
             if part_template and part_template.value and part_template.value > 0:
-                
                 cost_vehicle_id = vehicle_id or item.installed_on_vehicle_id
-                
                 if cost_vehicle_id:
                     description = f"Retorno Estoque (Estorno): {part_template.name} (Cód. Item: {item.item_identifier})"
-
                     new_cost = VehicleCost(
                         description=description,
-                        amount= -part_template.value, # <-- Valor negativo (Crédito)
+                        amount= -part_template.value, 
                         date=datetime.date.today(), 
                         cost_type=CostType.PECAS_COMPONENTES, 
                         vehicle_id=cost_vehicle_id,
                         organization_id=item.organization_id
                     )
                     db.add(new_cost)
-        
-        # Se o new_status for FIM_DE_VIDA, NENHUM estorno é criado.
-        # O custo da instalação original permanece no veículo, o que está correto.
-            
-    # --- FIM DA LÓGICA DO COMPONENTE E CUSTO ---
 
     await db.flush() 
     return item
-
-# --- (Funções get_simple, get_part_with_stock, get_multi_by_org, get_items_for_part, create, update, remove permanecem iguais) ---
 
 async def get_simple(db: AsyncSession, *, part_id: int, organization_id: int) -> Optional[Part]:
     stmt = select(Part).where(Part.id == part_id, Part.organization_id == organization_id)
@@ -359,11 +299,9 @@ async def get_part_with_stock(db: AsyncSession, *, part_id: int, organization_id
         )
     )
     part = (await db.execute(stmt)).scalars().first()
-    
     if part:
         part.stock = sum(1 for item in part.items if item.status == InventoryItemStatus.DISPONIVEL)
     return part
-
 
 async def get_multi_by_org(
     db: AsyncSession,
@@ -373,7 +311,6 @@ async def get_multi_by_org(
     skip: int = 0,
     limit: int = 100
 ) -> List[Part]:
-    
     subquery = (
         select(
             InventoryItem.part_id,
@@ -400,7 +337,6 @@ async def get_multi_by_org(
         )
     
     stmt = stmt.order_by(Part.name).offset(skip).limit(limit)
-    
     result_rows = (await db.execute(stmt)).all()
 
     parts_with_stock = []
@@ -419,16 +355,13 @@ async def get_items_for_part(
     stmt = select(InventoryItem).where(InventoryItem.part_id == part_id)
     if status:
         stmt = stmt.where(InventoryItem.status == status)
-
     stmt = stmt.options(selectinload(InventoryItem.part))
-
     items = (await db.execute(stmt.order_by(InventoryItem.item_identifier))).scalars().all()
     return items
 
 async def create(db: AsyncSession, *, part_in: PartCreate, organization_id: int, user_id: int, photo_url: Optional[str] = None, invoice_url: Optional[str] = None) -> Part:
     initial_quantity = part_in.initial_quantity
     part_data = part_in.model_dump(exclude={"initial_quantity"})
-
     db_obj = Part(
         **part_data,
         photo_url=photo_url,
@@ -437,7 +370,6 @@ async def create(db: AsyncSession, *, part_in: PartCreate, organization_id: int,
     )
     db.add(db_obj)
     await db.flush() 
-
     if initial_quantity and initial_quantity > 0:
         await create_inventory_items(
             db=db,
@@ -447,29 +379,72 @@ async def create(db: AsyncSession, *, part_in: PartCreate, organization_id: int,
             user_id=user_id,
             notes=f"Carga inicial de {initial_quantity} itens no sistema."
         )
-    
     return db_obj
 
 async def update(db: AsyncSession, *, db_obj: Part, obj_in: PartUpdate, photo_url: Optional[str], invoice_url: Optional[str]) -> Part:
     update_data = obj_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_obj, field, value)
-    
     db_obj.photo_url = photo_url
     db_obj.invoice_url = invoice_url 
-    
     db.add(db_obj)
     await db.flush()
     return db_obj
 
 async def remove(db: AsyncSession, *, id: int, organization_id: int) -> Optional[Part]:
+    """
+    Remove uma peça (Template).
+    Executa limpeza PROFUNDA (Cascade Manual) para remover:
+    1. Componentes de veículos (VehicleComponent) ligados ao histórico.
+    2. Histórico de transações (InventoryTransaction).
+    3. Itens de estoque (InventoryItem), mesmo os descartados.
+    4. O registro da Peça (Part).
+    """
     db_obj = await get_simple(db, part_id=id, organization_id=organization_id)
-    if db_obj:
-        await db.delete(db_obj)
+    if not db_obj:
+        return None
+
+    # --- INÍCIO DA LIMPEZA EM CASCATA MANUAL ---
+    
+    # 1. Encontrar todos os IDs de itens pertencentes a esta peça
+    stmt_items = select(InventoryItem.id).where(InventoryItem.part_id == id)
+    item_ids = (await db.execute(stmt_items)).scalars().all()
+
+    if item_ids:
+        # 2. Encontrar todas as Transações ligadas a esses itens
+        stmt_tx = select(InventoryTransaction.id).where(InventoryTransaction.item_id.in_(item_ids))
+        tx_ids = (await db.execute(stmt_tx)).scalars().all()
+
+        if tx_ids:
+            # 3. Deletar Componentes de Veículo ligados a essas transações
+            # Necessário pois VehicleComponent tem FK para InventoryTransaction
+            await db.execute(
+                delete(VehicleComponent).where(VehicleComponent.inventory_transaction_id.in_(tx_ids))
+            )
+            
+            # 4. Deletar as Transações
+            await db.execute(
+                delete(InventoryTransaction).where(InventoryTransaction.id.in_(tx_ids))
+            )
+        
+        # 5. Deletar os Itens (agora que estão livres de transações)
+        await db.execute(
+            delete(InventoryItem).where(InventoryItem.id.in_(item_ids))
+        )
+    
+    # 6. Limpeza de segurança: Deletar quaisquer transações que apontem diretamente para o part_id
+    # (Mesmo que item_id seja mandatório, garante que nada sobre)
+    await db.execute(
+        delete(InventoryTransaction).where(InventoryTransaction.part_id == id)
+    )
+
+    # --- FIM DA LIMPEZA ---
+
+    # 7. Finalmente, deletar a peça
+    await db.delete(db_obj)
     return db_obj
 
 async def count(db: AsyncSession, *, organization_id: int) -> int:
-    """Conta o número total de modelos de peças (Part) da organização."""
     stmt = select(func.count(Part.id)).where(Part.organization_id == organization_id)
     result = await db.execute(stmt)
     return result.scalar_one()
