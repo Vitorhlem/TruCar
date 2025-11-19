@@ -79,8 +79,7 @@ def send_new_request_email_background(manager_emails: List[str], request: Mainte
     """
     send_email(to_emails=manager_emails, subject=subject, message_html=message_html)
 
-@router.post("/", response_model=MaintenanceRequestPublic, status_code=status.HTTP_201_CREATED,
-            dependencies=[Depends(deps.check_demo_limit("maintenances"))])
+@router.post("/", response_model=MaintenanceRequestPublic, status_code=status.HTTP_201_CREATED)
 async def create_maintenance_request(
     *,
     db: AsyncSession = Depends(deps.get_db),
@@ -88,15 +87,20 @@ async def create_maintenance_request(
     request_in: MaintenanceRequestCreate,
     current_user: User = Depends(deps.get_current_active_user)
 ):
+    """Cria um chamado de manutenção."""
+    
+    # --- LÓGICA DE LIMITE MANUAL ---
+    if current_user.role == UserRole.CLIENTE_DEMO:
+        await deps.check_demo_limit_manual(db, current_user, "maintenances")
+    # -------------------------------
+
     try:
         request = await crud.maintenance.create_request(
             db=db, request_in=request_in, reporter_id=current_user.id, organization_id=current_user.organization_id
         )
         
         if current_user.role == UserRole.CLIENTE_DEMO:
-            # --- CORREÇÃO 2: Usar a instância importada ---
-            await demo_usage_crud.increment_usage(db, organization_id=current_user.organization_id, resource_type="maintenances")
-            # ----------------------------------------------
+            await crud.demo_usage.increment_usage(db, organization_id=current_user.organization_id, resource_type="maintenances")
         
         message = f"Nova solicitação de manutenção para {request.vehicle.brand} {request.vehicle.model} aberta por {current_user.full_name}."
         background_tasks.add_task(

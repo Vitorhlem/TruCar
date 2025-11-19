@@ -122,3 +122,22 @@ def check_demo_limit(resource_type: str):
                         detail=f"Limite total de {limit} {resource_type.replace('_', ' ')} atingido para a conta demonstração. Exclua itens ou migre para um plano pago.",
                     )
     return dependency
+
+async def check_demo_limit_manual(db: AsyncSession, user: User, resource: str):
+    """
+    Verifica manualmente se o usuário excedeu o limite de recursos da conta Demo.
+    Lança exceção se o limite for atingido.
+    """
+    if user.role != UserRole.CLIENTE_DEMO:
+        return # Apenas contas Demo têm limites estritos
+
+    # Lógica de verificação...
+    # Exemplo simplificado:
+    current_usage = await crud.demo_usage.get_usage(db, organization_id=user.organization_id, resource_type=resource)
+    limit = 10 # Valor padrão ou buscado da organização
+    
+    if current_usage >= limit:
+         raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Limite de {resource} atingido para a conta de demonstração."
+        )

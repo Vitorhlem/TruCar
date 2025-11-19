@@ -16,6 +16,7 @@
         >
           <q-tooltip>Buscar novos abastecimentos do provedor do cartão</q-tooltip>
         </q-btn>
+        
         <q-btn
           @click="openCreateDialog"
           color="primary"
@@ -62,7 +63,7 @@
         
         <template v-slot:body-cell-actions="props">
           <q-td :props="props">
-            <div v-if="isManager" class="q-gutter-x-sm">
+            <div v-if="canManage" class="q-gutter-x-sm">
               <q-btn
                 icon="edit"
                 color="info"
@@ -162,15 +163,15 @@ const formData = ref<FuelLogCreate>({
   total_cost: 0,
 });
 
-// Mapeia os veículos para o q-select
 const vehicleOptions = computed(() => vehicleStore.vehicles.map(v => ({
   label: `${v.brand} ${v.model} (${v.license_plate || v.identifier})`,
   value: v.id
 })));
 
-const isManager = computed(() => {
+// CORREÇÃO: Verifica se NÃO É MOTORISTA. Se for gestor ou qualquer outra coisa, permite editar.
+const canManage = computed(() => {
   if (!authStore.user) return false;
-  return ['cliente_ativo', 'cliente_demo'].includes(authStore.user.role);
+  return authStore.user.role !== 'driver';
 });
 
 const columns: QTableProps['columns'] = [
@@ -194,12 +195,7 @@ function getVerificationStatusProps(status: FuelLog['verification_status']) {
   }
 }
 
-/**
- * CORREÇÃO: Preenchimento automático inteligente
- * Verifica se o setor usa 'Horas' para priorizar o horímetro, senão usa km.
- */
 function handleVehicleSelect(vehicleId: number) {
-  // Só preenche automaticamente se for um registro NOVO (não sobrescreve edição)
   if (!vehicleId || editingLogId.value) return;
 
   const selectedVehicle = vehicleStore.vehicles.find(v => v.id === vehicleId);
@@ -208,14 +204,11 @@ function handleVehicleSelect(vehicleId: number) {
     const unit = terminologyStore.distanceUnit.toLowerCase();
     
     if (unit.includes('horas')) {
-        // Se for Agro/Horas: Tenta engine_hours, se for nulo assume 0
         formData.value.odometer = selectedVehicle.current_engine_hours || 0;
     } else {
-        // Se for Padrão/KM: Tenta current_km
         formData.value.odometer = selectedVehicle.current_km || 0;
     }
     
-    // Feedback visual sutil (opcional)
     $q.notify({
        message: `Leitura atual carregada: ${formData.value.odometer} ${terminologyStore.distanceUnit}`,
        color: 'primary',
@@ -276,8 +269,6 @@ function onDeleteLog(logId: number) {
 
 onMounted(() => {
   void fuelLogStore.fetchFuelLogs();
-  // CORREÇÃO: Carregar TODOS os veículos (rowsPerPage: 0) para garantir que o select funcione corretamente
-  // independentemente de quantos veículos existam.
   void vehicleStore.fetchAllVehicles({ rowsPerPage: 0 });
 });
 </script>
