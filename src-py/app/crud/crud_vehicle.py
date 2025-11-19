@@ -1,9 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, func
+from sqlalchemy import update as sql_update # <--- CORREÇÃO 1: Alias para evitar conflito com a função update abaixo
 from typing import List
 
 from app.models.vehicle_model import Vehicle
+from app.models.part_model import InventoryItem # <--- CORREÇÃO 2: Import correto do Modelo (está em part_model)
 from app.schemas.telemetry_schema import TelemetryPayload
 from app.schemas.vehicle_schema import VehicleCreate, VehicleUpdate
 
@@ -58,10 +60,7 @@ async def count_by_org(db: AsyncSession, *, organization_id: int, search: str | 
     return result.scalar_one()
 
 async def count(db: AsyncSession, *, organization_id: int) -> int:
-    """Implementa o método 'count' genérico para uso em APIs como demo-stats.
-    Esta função NÃO passa 'search'.
-    """
-    # Chama count_by_org apenas com os argumentos necessários
+    """Implementa o método 'count' genérico."""
     return await count_by_org(db, organization_id=organization_id)
 
 async def update_vehicle_from_telemetry(db: AsyncSession, *, payload: TelemetryPayload) -> Vehicle | None:
@@ -105,7 +104,14 @@ async def update(db: AsyncSession, *, db_vehicle: Vehicle, vehicle_in: VehicleUp
     return db_vehicle
 
 async def remove(db: AsyncSession, *, db_vehicle: Vehicle) -> Vehicle:
-    """Deleta um veículo do banco de dados."""
+    """Deleta um veículo, desvinculando itens do inventário antes."""
+    
+    # 1. Desvincular itens instalados (Setar installed_on_vehicle_id = NULL)
+    # CORREÇÃO: Usamos 'sql_update' para chamar o SQLAlchemy, não a nossa função local
+    stmt = sql_update(InventoryItem).where(InventoryItem.installed_on_vehicle_id == db_vehicle.id).values(installed_on_vehicle_id=None)
+    await db.execute(stmt)
+    
+    # 2. Agora é seguro deletar o veículo
     await db.delete(db_vehicle)
     await db.commit()
     return db_vehicle

@@ -10,8 +10,8 @@ from app.models.user_model import User, UserRole
 
 router = APIRouter()
 
-# --- CORREÇÃO: Rota alterada de "/" para "" (Remove barra final) ---
-@router.get("", response_model=List[UserPublic])
+
+@router.get("/", response_model=List[UserPublic])
 async def read_users(
     db: AsyncSession = Depends(deps.get_db),
     skip: int = 0,
@@ -24,8 +24,8 @@ async def read_users(
     )
     return users
 
-# --- CORREÇÃO: Rota alterada de "/" para "" (Remove barra final) ---
-@router.post("", response_model=UserPublic, status_code=status.HTTP_201_CREATED,
+
+@router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED,
             dependencies=[Depends(deps.check_demo_limit("users"))])
 async def create_user(
     *,
@@ -34,7 +34,6 @@ async def create_user(
     current_user: User = Depends(deps.get_current_active_manager),
 ):
     """Cria um novo utilizador (motorista) DENTRO da organização do gestor logado."""
-    # Verifica se o e-mail já existe globalmente para evitar conflitos
     user = await crud.user.get_user_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
@@ -42,7 +41,6 @@ async def create_user(
             detail="O e-mail fornecido já está registado no sistema.",
         )
     
-    # Admin e Gestores criam usuários na sua organização
     new_user = await crud.user.create(
         db=db, user_in=user_in, 
         organization_id=current_user.organization_id,
@@ -97,7 +95,7 @@ async def read_user_by_id(
     user_id: int,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Busca os dados de um único utilizador."""
+    """Busca os dados de um único utilizador da organização do gestor."""
     user = await crud.user.get(
         db, id=user_id, organization_id=current_user.organization_id
     )
@@ -116,7 +114,7 @@ async def update_user(
     user_in: UserUpdate,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Atualiza um utilizador da organização."""
+    """Atualiza um utilizador da organização do gestor."""
     user_to_update = await crud.user.get(
         db, id=user_id, organization_id=current_user.organization_id
     )
@@ -144,7 +142,7 @@ async def delete_user(
     user_id: int,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Exclui um utilizador da organização."""
+    """Exclui um utilizador da organização do gestor."""
     if user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -157,8 +155,14 @@ async def delete_user(
     if not user_to_delete:
         raise HTTPException(status_code=404, detail="Utilizador não encontrado.")
     
-    deleted_user = await crud.user.remove(db=db, db_user=user_to_delete)
-    return deleted_user
+    # --- CORREÇÃO AQUI ---
+    # Validamos e convertemos para o schema Pydantic ANTES de deletar.
+    # Isso garante que temos os dados na memória antes que o SQLAlchemy expire o objeto.
+    user_response = UserPublic.model_validate(user_to_delete)
+    
+    await crud.user.remove(db=db, db_user=user_to_delete)
+    
+    return user_response
 
 @router.get("/{user_id}/stats", response_model=UserStats)
 async def read_user_stats(
@@ -168,9 +172,10 @@ async def read_user_stats(
 ):
     """
     Retorna as estatísticas de um utilizador.
+    - Gestores podem ver as estatísticas de qualquer utilizador na sua organização.
+    - Motoristas podem ver apenas as suas próprias estatísticas.
     """
-    # Garante que ADMIN tenha permissão
-    is_manager = current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]
+    is_manager = current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]
     is_driver_requesting_own_stats = (current_user.role == UserRole.DRIVER and current_user.id == user_id)
 
     if not is_manager and not is_driver_requesting_own_stats:
@@ -179,14 +184,16 @@ async def read_user_stats(
             detail="Você não tem permissão para ver estas estatísticas."
         )
 
+    # Garante que o usuário solicitado pertence à mesma organização
     target_user = await crud.user.get(db, id=user_id)
     if not target_user or target_user.organization_id != current_user.organization_id:
-        raise HTTPException(status_code=404, detail="Utilizador não encontrado.")
+        raise HTTPException(status_code=404, detail="Utilizador não encontrado para gerar estatísticas.")
 
     stats = await crud.user.get_user_stats(
         db, user_id=user_id, organization_id=current_user.organization_id
     )
     if not stats:
-        raise HTTPException(status_code=404, detail="Dados insuficientes para gerar estatísticas.")
+        # Esta verificação é redundante devido à anterior, mas mantida por segurança
+        raise HTTPException(status_code=404, detail="Utilizador não encontrado para gerar estatísticas.")
     
     return stats
