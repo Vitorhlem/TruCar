@@ -168,7 +168,6 @@ import { useJourneyStore } from 'stores/journey-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useImplementStore } from 'stores/implement-store';
 import { useFreightOrderStore } from 'stores/freight-order-store';
-// --- ADICIONADO: Importar a demoStore ---
 import { useDemoStore } from 'stores/demo-store';
 import { JourneyType, type Journey, type JourneyCreate, type JourneyUpdate } from 'src/models/journey-models';
 import type { FreightOrder } from 'src/models/freight-order-models';
@@ -183,39 +182,24 @@ const journeyStore = useJourneyStore();
 const vehicleStore = useVehicleStore();
 const implementStore = useImplementStore();
 const freightOrderStore = useFreightOrderStore();
-// --- ADICIONADO: Inicializar a demoStore ---
 const demoStore = useDemoStore();
 const { isCepLoading, fetchAddressByCep } = useCepApi();
 
 const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
 
-// --- ATUALIZADO: Função renomeada para não conflitar ---
 function showHistoryUpgradeDialog() {
   $q.dialog({
     title: 'Desbloqueie o Potencial Máximo do TruCar',
     message: 'Para aceder ao histórico completo e outras funcionalidades premium, entre em contato com nossa equipe comercial.',
-    ok: {
-      label: 'Entendido',
-      color: 'primary',
-      unelevated: true
-    },
+    ok: { label: 'Entendido', color: 'primary', unelevated: true },
     persistent: false
   });
 }
 
-// --- ADICIONADO: Lógica de bloqueio de limite de Jornadas ---
 const isJourneyLimitReached = computed(() => {
-  if (!authStore.isDemo) {
-    return false;
-  }
-  // Usamos 'freight_order_limit' como o limite para jornadas/fretes
+  if (!authStore.isDemo) { return false; }
   const limit = authStore.user?.organization?.freight_order_limit;
-  
-  if (limit === undefined || limit === null || limit < 0) {
-    return false;
-  }
-  
-  // Usamos a contagem da demoStore, que é atualizada (conforme MainLayout)
+  if (limit === undefined || limit === null || limit < 0) { return false; }
   const currentCount = demoStore.stats?.journey_count ?? 0;
   return currentCount >= limit;
 });
@@ -228,8 +212,6 @@ function showLimitUpgradeDialog() {
     persistent: false
   });
 }
-// --- FIM DA LÓGICA DE BLOQUEIO ---
-
 
 const isSubmitting = ref(false);
 const isStartDialogOpen = ref(false);
@@ -243,20 +225,13 @@ const isDriverDialogOpen = ref(false);
 const selectedOrderForAction = ref<FreightOrder | null>(null);
 
 function openClaimDialog(order: FreightOrder) {
-  if (isJourneyLimitReached.value) {
-    showLimitUpgradeDialog();
-    return;
-  }
+  if (isJourneyLimitReached.value) { showLimitUpgradeDialog(); return; }
   selectedOrderForAction.value = order;
   isClaimDialogOpen.value = true;
 }
 
 function onClaimDialogClose() {
-  if (authStore.isDemo) {
-    // Atualiza as estatísticas da demo, pois um frete pode ter sido reivindicado
-    void demoStore.fetchDemoStats();
-  }
-  // Atualiza a lista de "Minhas Tarefas"
+  if (authStore.isDemo) { void demoStore.fetchDemoStats(); }
   void freightOrderStore.fetchMyPendingOrders();
 }
 
@@ -273,7 +248,7 @@ const vehicleOptions = computed(() => vehicleStore.availableVehicles.map(v => ({
 const implementOptions = computed(() => implementStore.availableImplements.map(i => ({ label: `${i.name} (${i.brand} ${i.model})`, value: i.id })));
 
 const columns = computed<QTableColumn[]>(() => {
-  const baseColumns: QTableColumn[] = [
+  const cols: QTableColumn[] = [
     { name: 'status', label: 'Status', field: (row: Journey) => row.is_active ? 'Ativa' : 'Finalizada', align: 'left', sortable: true },
     { name: 'vehicle', label: terminologyStore.vehicleNoun, field: (row: Journey) => `${row.vehicle?.brand || ''} ${row.vehicle?.model || ''}`, align: 'left', sortable: true },
     { name: 'driver', label: 'Motorista', field: (row: Journey) => row.driver?.full_name || '', align: 'left', sortable: true },
@@ -285,12 +260,18 @@ const columns = computed<QTableColumn[]>(() => {
         return '---';
       }, sortable: true
     },
-    { name: 'implement', label: 'Implemento', align: 'left', field: (row: Journey) => row.implement ? `${row.implement.name} (${row.implement.model})` : '---', sortable: true },
   ];
-  if (authStore.isManager) {
-    baseColumns.push({ name: 'actions', label: 'Ações', field: 'actions', align: 'right' });
+
+  // --- CORREÇÃO: Só adiciona a coluna 'implement' se o setor for Agronegócio ---
+  if (authStore.userSector === 'agronegocio') {
+    cols.push({ name: 'implement', label: 'Implemento', align: 'left', field: (row: Journey) => row.implement ? `${row.implement.name} (${row.implement.model})` : '---', sortable: true });
   }
-  return baseColumns;
+  // --------------------------------------------------------------------------
+
+  if (authStore.isManager) {
+    cols.push({ name: 'actions', label: 'Ações', field: 'actions', align: 'right' });
+  }
+  return cols;
 });
 
 watch(() => startForm.value.vehicle_id, (newVehicleId) => {
@@ -303,13 +284,7 @@ watch(() => startForm.value.vehicle_id, (newVehicleId) => {
 });
 
 async function openStartDialog() {
-  // --- ATUALIZADO: Verificação de limite para Jornadas (Setor Agronegócio/Serviços) ---
-  if (isJourneyLimitReached.value) {
-    showLimitUpgradeDialog();
-    return;
-  }
-  // --- FIM DA VERIFICAÇÃO ---
-
+  if (isJourneyLimitReached.value) { showLimitUpgradeDialog(); return; }
   const promisesToFetch = [vehicleStore.fetchAllVehicles()];
   if (authStore.userSector === 'agronegocio') promisesToFetch.push(implementStore.fetchAvailableImplements());
   await Promise.all(promisesToFetch);
@@ -341,7 +316,6 @@ function openEndDialog(journey?: Journey) {
 async function handleStartJourney() {
   isSubmitting.value = true;
   try {
-    // Monta o endereço completo para o campo `destination_address` para compatibilidade
     if (startForm.value.destination_street) {
         startForm.value.destination_address = [
             startForm.value.destination_street,
@@ -355,11 +329,7 @@ async function handleStartJourney() {
     await journeyStore.startJourney(startForm.value as JourneyCreate);
     $q.notify({ type: 'positive', message: terminologyStore.journeyStartSuccessMessage });
     isStartDialogOpen.value = false;
-    // --- ADICIONADO: Atualiza as estatísticas da demo após criar uma jornada ---
-    if (isDemo.value) {
-      void demoStore.fetchDemoStats();
-    }
-    // --- FIM DA ADIÇÃO ---
+    if (isDemo.value) { void demoStore.fetchDemoStats(); }
   } catch (error) {
     let message = 'Erro ao iniciar operação.';
     if (isAxiosError(error) && error.response?.data?.detail) { message = error.response.data.detail as string; }
@@ -416,10 +386,8 @@ onMounted(() => {
   } else {
     void journeyStore.fetchAllJourneys();
   }
-  // --- ADICIONADO: Garante que a demoStore tenha os dados mais recentes ao carregar a página ---
   if (isDemo.value) {
     void demoStore.fetchDemoStats();
   }
-  // --- FIM DA ADIÇÃO ---
 });
 </script>

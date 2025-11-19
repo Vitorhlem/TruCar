@@ -72,7 +72,16 @@
 
           <div v-if="visibleWidgets.financialKpis" class="row q-col-gutter-md q-mb-lg">
              <div class="col-12 col-sm-6 col-lg-4">
-                <MetricCard title="Custo por KM Rodado" :value="efficiencyKpis?.cost_per_km ?? 0" unit="R$/km" icon="paid" color="deep-purple" trend="+2.5%" trend-color="negative" tooltip="Baseado nos últimos 30 dias" />
+                <MetricCard 
+                  :title="`Custo por ${terminologyStore.distanceUnit} Rodado`" 
+                  :value="efficiencyKpis?.cost_per_km ?? 0" 
+                  :unit="`R$/${terminologyStore.distanceUnit}`" 
+                  icon="paid" 
+                  color="deep-purple" 
+                  trend="+2.5%" 
+                  trend-color="negative" 
+                  tooltip="Baseado nos últimos 30 dias" 
+                />
              </div>
              <div class="col-12 col-sm-6 col-lg-4">
                 <MetricCard title="Gasto Total Combustível" :value="fuelCostTotal" unit="R$" icon="local_gas_station" color="orange-9" :formatter="(v) => `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`" />
@@ -97,7 +106,7 @@
               </div>
               <div v-if="visibleWidgets.activityChart">
                 <PremiumWidget title="Volume de Atividade" icon="show_chart" :description="`Histórico de ${terminologyStore.distanceUnit} rodados por dia.`">
-                   <ApexChart 
+                    <ApexChart 
                     v-if="(lineChart.series[0]?.data.length || 0) > 0"
                     type="area" 
                     height="300" 
@@ -114,7 +123,7 @@
                       <q-item-section avatar><q-icon name="engineering" color="grey-7" /></q-item-section>
                       <q-item-section>
                         <q-item-label class="text-weight-bold">{{ maint.vehicle_info }}</q-item-label>
-                        <q-item-label caption class="text-negative"><q-icon name="event_busy" size="xs"/> Vence em {{ maint.due_date ? new Date(maint.due_date).toLocaleDateString() : `${maint.due_km} km` }}</q-item-label>
+                        <q-item-label caption class="text-negative"><q-icon name="event_busy" size="xs"/> Vence em {{ maint.due_date ? new Date(maint.due_date).toLocaleDateString() : `${maint.due_km} ${terminologyStore.distanceUnit}` }}</q-item-label>
                       </q-item-section>
                       <q-item-section side><q-btn outline dense size="sm" color="primary" label="Agendar" @click="scheduleMaintenance(maint.vehicle_id)" /></q-item-section>
                     </q-item>
@@ -290,7 +299,7 @@
                 <q-card-section class="row text-center">
                    <div class="col-4">
                       <div class="text-h5 text-weight-bold text-primary">{{ driverMetrics?.distance.toFixed(0) || 0 }}</div>
-                      <div class="text-caption text-grey">km Percorridos</div>
+                      <div class="text-caption text-grey">{{ terminologyStore.distanceUnit }} Percorridos</div>
                    </div>
                    <div class="col-4">
                       <div class="text-h5 text-weight-bold text-teal">{{ driverMetrics?.hours.toFixed(1) || 0 }}h</div>
@@ -298,7 +307,7 @@
                    </div>
                    <div class="col-4">
                       <div class="text-h5 text-weight-bold text-orange">{{ driverMetrics?.fuel_efficiency.toFixed(1) || 0 }}</div>
-                      <div class="text-caption text-grey">Média (km/l)</div>
+                      <div class="text-caption text-grey">Média ({{ terminologyStore.fuelUnit }})</div>
                    </div>
                 </q-card-section>
              </q-card>
@@ -449,7 +458,6 @@ const costAnalysisChart = computed(() => {
         }
       }
     },
-    // Adapta as cores das labels para Dark Mode
     xaxis: { categories: data.map((item: CostByCategory) => item.cost_type), labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' } } },
     yaxis: { labels: { style: { colors: $q.dark.isActive ? '#FFFFFF' : '#000000' }, formatter: (val: number) => `R$ ${val.toLocaleString('pt-BR')}` } },
     plotOptions: { bar: { horizontal: false, columnWidth: '55%', distributed: true, borderRadius: 4 } },
@@ -464,6 +472,7 @@ const costAnalysisChart = computed(() => {
 
 const lineChart = computed(() => {
   const data = managerData.value?.km_per_day_last_30_days || [];
+  // CORREÇÃO: Unidade dinâmica no gráfico
   const series = [{ name: `${terminologyStore.distanceUnit} Rodados`, data: data.map((item: KmPerDay) => item.total_km) }];
   
   const options = {
@@ -503,8 +512,8 @@ const fleetStatusChart = computed(() => {
     colors: [colors.getPaletteColor('positive'), colors.getPaletteColor('warning'), colors.getPaletteColor('negative')],
     chart: { 
         type: 'donut',
-        background: 'transparent', // Fundo transparente essencial
-        foreColor: textColor // Cor global do texto
+        background: 'transparent',
+        foreColor: textColor 
     },
     stroke: {
         show: true,
@@ -580,8 +589,6 @@ function scheduleMaintenanceGeneral() {
 .dashboard-page {
   background-color: #f5f7fa; 
   .body--dark & {
-    // Se você tiver variáveis globais de tema, use-as. 
-    // Caso contrário, use uma cor fixa escura.
     background-color: #121212; 
   }
 }
@@ -603,14 +610,13 @@ function scheduleMaintenanceGeneral() {
   
   // Ajuste para o modo escuro
   .body--dark & {
-    background: #1d1d1d; // Cor de fundo para cards em modo escuro
+    background: #1d1d1d; 
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: none;
     color: #fff;
   }
 }
 
-// Ajuste específico para banners em modo escuro
 .body--dark .body--dark-bg-adjust {
     background: #1d1d1d !important;
     color: #fff !important;
