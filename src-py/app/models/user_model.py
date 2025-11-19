@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import (Column, Integer, String, Boolean, ForeignKey, Enum as SAEnum, DateTime)
+from sqlalchemy import (Column, Integer, String, Boolean, ForeignKey, Enum as SAEnum, DateTime, UniqueConstraint)
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from app.db.base_class import Base
@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from .organization_model import Organization
 
 def generate_employee_id():
-    """Gera um ID de funcionário único e legível, ex: TRC-a1b2c3d4"""
     unique_part = uuid.uuid4().hex[:8]
     return f"TRC-{unique_part}"
 
@@ -42,7 +41,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     
-    employee_id: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False, default=generate_employee_id)
+    employee_id: Mapped[str] = mapped_column(String(50), index=True, nullable=False, default=generate_employee_id)
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean(), default=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
@@ -86,5 +85,10 @@ class User(Base):
     
     @property
     def is_superuser(self) -> bool:
-        # Agora é superusuário se estiver na lista de e-mails OU se tiver o papel de ADMIN
-        return self.email in settings.SUPERUSER_EMAILS or self.role == UserRole.ADMIN
+        return self.email in settings.SUPERUSER_EMAILS
+
+    # --- CORREÇÃO FINAL: Unicidade Composta ---
+    __table_args__ = (
+        # A matrícula (employee_id) pode se repetir em empresas diferentes, mas não na mesma
+        UniqueConstraint('employee_id', 'organization_id', name='_user_employee_org_uc'),
+    )

@@ -1,6 +1,6 @@
 # ARQUIVO: backend/app/models/client_model.py
 
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -21,3 +21,6 @@ class Client(Base):
     
     # Relacionamento com as Ordens de Frete
     freight_orders = relationship("FreightOrder", back_populates="client", cascade="all, delete-orphan")
+    __table_args__ = (
+        UniqueConstraint('name', 'organization_id', name='_client_name_org_uc'),
+    )

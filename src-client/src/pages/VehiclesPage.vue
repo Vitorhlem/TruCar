@@ -72,7 +72,7 @@
             </div>
             <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption text-grey-8 q-mt-xs">
               <span>Próx. Revisão</span>
-              <span class="text-weight-bold ellipsis text-right" style="max-width: 60%;">
+              <span class="text-weight-bold text-black ellipsis text-right" style="max-width: 60%;">
                 {{ vehicle.next_maintenance_km ? `${vehicle.next_maintenance_km.toLocaleString('pt-BR')} ${terminologyStore.distanceUnit}` : '' }}
                 {{ vehicle.next_maintenance_km && vehicle.next_maintenance_date ? ' ou ' : '' }}
                 {{ vehicle.next_maintenance_date ? (new Date(vehicle.next_maintenance_date + 'T00:00:00')).toLocaleDateString('pt-BR') : '' }}
@@ -189,12 +189,10 @@ function showUpgradeDialog() {
 }
 
 // --- NAVEGAÇÃO INTELIGENTE ---
-// Esta função controla o clique no card
 function handleCardClick(vehicle: Vehicle) {
   if (authStore.isManager) {
     goToVehicleDetails(vehicle);
   } 
-  // Se for motorista, não faz nada (ou poderia mostrar um modal simples de info)
 }
 
 function goToVehicleDetails(vehicle: Vehicle, tab = 'details') {
@@ -207,9 +205,10 @@ function goToVehicleDetails(vehicle: Vehicle, tab = 'details') {
 
 function resetForm() {
   editingVehicleId.value = null;
+  // Inicializa identifier como null em vez de string vazia
   formData.value = {
     brand: '', model: '', year: new Date().getFullYear(),
-    license_plate: '', identifier: '', photo_url: null, status: VehicleStatus.AVAILABLE,
+    license_plate: '', identifier: null, photo_url: null, status: VehicleStatus.AVAILABLE,
     current_km: 0, current_engine_hours: 0,
     next_maintenance_date: null, next_maintenance_km: null, maintenance_notes: '',
     telemetry_device_id: null,
@@ -266,10 +265,25 @@ async function onFormSubmit() {
       payload.next_maintenance_date = payload.next_maintenance_date.split('/').reverse().join('-');
     }
 
+    // Lógica específica para Agro
     if (authStore.userSector === 'agronegocio' && payload.license_plate) {
       payload.identifier = payload.license_plate;
-      delete payload.license_plate;
+      payload.license_plate = null; // Garante que a placa seja null se não for usada
     }
+
+    // --- CORREÇÃO AQUI: Limpeza de campos únicos ---
+    // Se o identificador estiver vazio ou for string vazia, converte para NULL/undefined
+    // para não violar a UniqueConstraint (vários veículos com identifier="" na mesma org)
+    if (payload.identifier === '' || !payload.identifier) {
+        delete payload.identifier; // ou payload.identifier = null;
+    }
+    if (payload.license_plate === '' || !payload.license_plate) {
+        delete payload.license_plate; // ou payload.license_plate = null;
+    }
+    if (payload.telemetry_device_id === '' || !payload.telemetry_device_id) {
+        delete payload.telemetry_device_id;
+    }
+    // ------------------------------------------------
 
     const currentFetchParams = {
       page: pagination.value.page,
@@ -371,7 +385,6 @@ function promptToDelete(vehicle: Vehicle) {
 .vehicle-card {
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   
-  /* Só mostra cursor pointer se for interativo */
   &.vehicle-card-interactive {
      cursor: pointer;
      &:hover {

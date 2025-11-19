@@ -1,7 +1,8 @@
 import enum
 from typing import TYPE_CHECKING, List, Optional
 from datetime import date
-from sqlalchemy import Column, Integer, String, Date, Text, Float, ForeignKey, Enum as SAEnum
+# Adicione UniqueConstraint aos imports
+from sqlalchemy import Column, Integer, String, Date, Text, Float, ForeignKey, Enum as SAEnum, UniqueConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from app.db.base_class import Base
@@ -28,12 +29,15 @@ class VehicleStatus(str, enum.Enum):
 class Vehicle(Base):
     __tablename__ = "vehicles"
     
-    # --- COLUNAS ATUALIZADAS PARA A SINTAXE MODERNA ---
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     brand: Mapped[str] = mapped_column(String(50), nullable=False)
     model: Mapped[str] = mapped_column(String(50), nullable=False)
-    license_plate: Mapped[Optional[str]] = mapped_column(String(20), unique=True, nullable=True)
+    
+    # --- CORREÇÃO: Removido unique=True global ---
+    license_plate: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     identifier: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    # ---------------------------------------------
+    
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     photo_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     status: Mapped[VehicleStatus] = mapped_column(SAEnum(VehicleStatus), nullable=False, default=VehicleStatus.AVAILABLE)
@@ -41,7 +45,10 @@ class Vehicle(Base):
     current_engine_hours: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0)
     axle_configuration: Mapped[Optional[str]] = mapped_column(String(30), nullable=True) 
 
-    telemetry_device_id: Mapped[Optional[str]] = mapped_column(String(100), unique=True, index=True, nullable=True)
+    # --- CORREÇÃO: Removido unique=True global ---
+    telemetry_device_id: Mapped[Optional[str]] = mapped_column(String(100), index=True, nullable=True)
+    # ---------------------------------------------
+    
     last_latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     last_longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
@@ -51,7 +58,7 @@ class Vehicle(Base):
     
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), nullable=False)
     
-    # --- RELAÇÕES ATUALIZADAS PARA A NOVA SINTAXE ---
+    # Relações (Mantidas)
     organization: Mapped["Organization"] = relationship("Organization", back_populates="vehicles")
     journeys: Mapped[List["Journey"]] = relationship("Journey", back_populates="vehicle", cascade="all, delete-orphan")
     fuel_logs: Mapped[List["FuelLog"]] = relationship("FuelLog", back_populates="vehicle", cascade="all, delete-orphan")
@@ -64,3 +71,14 @@ class Vehicle(Base):
     inventory_transactions: Mapped[List["InventoryTransaction"]] = relationship("InventoryTransaction", back_populates="related_vehicle")
     tires: Mapped[List["VehicleTire"]] = relationship("VehicleTire", back_populates="vehicle", cascade="all, delete-orphan")
     fines: Mapped[List["Fine"]] = relationship("Fine", back_populates="vehicle", cascade="all, delete-orphan")
+
+    # --- CORREÇÃO FINAL: Unicidade Composta ---
+    __table_args__ = (
+        # A placa só precisa ser única DENTRO da mesma organização
+        UniqueConstraint('license_plate', 'organization_id', name='_vehicle_license_org_uc'),
+        # O identificador (ex: Frota 01) também
+        UniqueConstraint('identifier', 'organization_id', name='_vehicle_identifier_org_uc'),
+        # Dispositivos de telemetria geralmente são únicos globalmente (físicos), 
+        # mas se você quiser permitir reuso em orgs diferentes, use assim:
+        UniqueConstraint('telemetry_device_id', 'organization_id', name='_vehicle_telemetry_org_uc'),
+    )
