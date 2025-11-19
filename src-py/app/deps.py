@@ -53,7 +53,7 @@ async def get_current_active_user(
 async def get_current_active_manager(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
-    # --- CORREÇÃO: ADMIN ADICIONADO AQUI ---
+    # Permite ADMIN, CLIENTE_ATIVO e CLIENTE_DEMO
     if current_user.role not in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -92,9 +92,12 @@ RESOURCE_TO_CRUD_MAP = {
 def check_demo_limit(resource_type: str):
     async def dependency(
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_active_manager),
+        # --- CORREÇÃO AQUI ---
+        # Antes era: Depends(get_current_active_manager)
+        # Isso bloqueava motoristas. Agora usamos 'get_current_active_user'.
+        current_user: User = Depends(get_current_active_user),
     ):
-        # ADMIN e CLIENTE_ATIVO não têm limites, retornam imediatamente
+        # Se não for conta DEMO (ex: é Driver, Admin, ou Cliente Ativo), ignora a verificação
         if current_user.role != UserRole.CLIENTE_DEMO:
             return
             

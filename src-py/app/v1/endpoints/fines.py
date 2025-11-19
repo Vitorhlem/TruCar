@@ -1,26 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import List
-import logging # <-- Adicionado para logs
-import json # <-- Importar json para tratar exceções
+import logging
+import json
 
 from app import crud, deps
 from app.db.session import SessionLocal
 from app.models.user_model import User, UserRole
+from app.models.fine_model import Fine
 from app.models.notification_model import NotificationType
 from app.schemas.fine_schema import FineCreate, FineUpdate, FinePublic
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
 
-# --- LOG DE INICIALIZAÇÃO ---
-# Este log DEVE aparecer no console QUANDO O SERVIDOR INICIAR.
-# Se ele não aparecer, o Uvicorn não está recarregando seus arquivos.
-# --- FIM DO LOG DE INICIALIZAÇÃO ---
-
-
 router = APIRouter()
-
 
 async def create_notification_background(
     message: str,
@@ -58,12 +54,11 @@ async def create_fine(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """Cria uma nova multa e notifica os gestores em segundo plano."""
-    if current_user.role == UserRole.DRIVER and fine_in.driver_id != current_user.id:
-        logger.warning(f"Tentativa FORBIDDEN de criar multa para outro driver. User: {current_user.id}, Tentativa: {fine_in.driver_id}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Você só pode registrar multas para si mesmo."
-        )
+    
+    # CORREÇÃO 1: Em vez de erro 403, nós forçamos o ID correto.
+    # Isso previne falhas se o frontend não enviar o ID.
+    if current_user.role == UserRole.DRIVER:
+        fine_in.driver_id = current_user.id
           
     try:
         fine = await crud.fine.create(db=db, fine_in=fine_in, organization_id=current_user.organization_id)
@@ -73,9 +68,10 @@ async def create_fine(
 
         message = f"Nova multa de R${fine.value:.2f} registrada para o veículo."
         
+        # CORREÇÃO 2: Capturar ID antes do commit para evitar erro de Greenlet
         await db.flush()
-        await db.refresh(fine)
-
+        fine_id = fine.id 
+        
         background_tasks.add_task(
             create_notification_background,
             message=message,
@@ -83,14 +79,27 @@ async def create_fine(
             organization_id=current_user.organization_id,
             send_to_managers=True,
             related_entity_type="fine",
-            related_entity_id=fine.id,
+            related_entity_id=fine_id,
             related_vehicle_id=fine.vehicle_id
         )
         
         await db.commit()
-        await db.refresh(fine, ["vehicle", "driver", "cost"])
         
-        return fine
+        # CORREÇÃO 3: Recarregar o objeto com todas as relações para evitar erro 500
+        stmt = (
+            select(Fine)
+            .where(Fine.id == fine_id)
+            .options(
+                selectinload(Fine.vehicle),
+                selectinload(Fine.cost),
+                selectinload(Fine.driver).selectinload(User.organization) # Carrega org do motorista
+            )
+        )
+        result = await db.execute(stmt)
+        fine_loaded = result.scalars().first()
+        
+        return fine_loaded
+        
     except Exception as e:
         logger.error(f"Erro ao criar multa: {e}", exc_info=True)
         await db.rollback()
@@ -105,11 +114,10 @@ async def read_fines(
 ):
     """
     Lista as multas.
-    - Gestores veem todas as multas da organização.
-    - Motoristas veem apenas as suas próprias multas.
     """
     try:
-        if current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
+        # CORREÇÃO 4: Adicionado ADMIN na lista de quem pode ver tudo
+        if current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
             fines = await crud.fine.get_multi_by_org(
                 db, organization_id=current_user.organization_id, skip=skip, limit=limit
             )
@@ -130,35 +138,42 @@ async def update_fine(
     *,
     db: AsyncSession = Depends(deps.get_db),
     fine_id: int,
-    request: Request, # <-- 3. Remover 'fine_in: FineUpdate' e adicionar 'request: Request'
+    request: Request,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
     """Atualiza uma multa existente e seu custo associado (Apenas Gestores)."""
     
-    # --- 4. LER O JSON MANUALMENTE ---
     try:
         payload_dict = await request.json()
     except json.JSONDecodeError:
         logger.error(f"Erro ao ATUALIZAR multa ID {fine_id}: Payload não é um JSON válido.")
         raise HTTPException(status_code=400, detail="Payload JSON inválido.")
     
-    # --- FIM DA LEITURA MANUAL ---
-
     try:
         db_fine = await crud.fine.get(db, fine_id=fine_id, organization_id=current_user.organization_id)
         if not db_fine:
-            logger.error(f"Tentativa de update falhou: Multa ID {fine_id} não encontrada para a org {current_user.organization_id}")
             raise HTTPException(status_code=404, detail="Multa não encontrada.")
         
-        
-        # 5. Passar o dicionário 'payload_dict' para o CRUD
-        fine = await crud.fine.update(db=db, db_fine=db_fine, fine_in_dict=payload_dict)
+        await crud.fine.update(db=db, db_fine=db_fine, fine_in_dict=payload_dict)
         
         await db.commit()
         
-        await db.refresh(fine, ["vehicle", "driver", "cost"])
+        # Mesma lógica de recarregamento seguro usada no create
+        stmt = (
+            select(Fine)
+            .where(Fine.id == fine_id)
+            .options(
+                selectinload(Fine.vehicle),
+                selectinload(Fine.cost),
+                selectinload(Fine.driver).selectinload(User.organization)
+            )
+        )
+        result = await db.execute(stmt)
+        fine_loaded = result.scalars().first()
         
-        return fine
+        return fine_loaded
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logger.error(f"Erro ao ATUALIZAR multa ID {fine_id}: {e}", exc_info=True)
         await db.rollback()
@@ -175,7 +190,6 @@ async def delete_fine(
     try:
         db_fine = await crud.fine.get(db, fine_id=fine_id, organization_id=current_user.organization_id)
         if not db_fine:
-            logger.error(f"Tentativa de delete falhou: Multa ID {fine_id} não encontrada para a org {current_user.organization_id}")
             raise HTTPException(status_code=404, detail="Multa não encontrada.")
         
         await crud.fine.remove(db=db, db_fine=db_fine)
@@ -183,6 +197,8 @@ async def delete_fine(
         await db.commit()
         
         return
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logger.error(f"Erro ao DELETAR multa ID {fine_id}: {e}", exc_info=True)
         await db.rollback()

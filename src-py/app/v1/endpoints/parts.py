@@ -7,18 +7,16 @@ from pathlib import Path
 from pydantic import BaseModel
 import logging
 import aiofiles
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError # <-- Importante para tratar o erro
 from app import crud, deps
 from app.models.user_model import User
 from app.models.part_model import PartCategory, InventoryItemStatus
 from app.models.notification_model import NotificationType
-# --- 1. ATUALIZAR IMPORTS ---
 from app.schemas.part_schema import (
     PartPublic, PartCreate, PartUpdate, 
     InventoryItemPublic, PartListPublic, InventoryItemDetails,
     InventoryItemPage, InventoryItemRow 
 )
-# --- FIM DA ATUALIZAÇÃO ---
 from app.schemas.inventory_transaction_schema import TransactionPublic
 from app.crud import crud_part 
 from app.models.inventory_transaction_model import TransactionType
@@ -184,15 +182,28 @@ async def delete_part(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_manager)
 ):
+    """
+    Deleta uma peça (template).
+    Falha se existirem itens de estoque ou histórico vinculados.
+    """
     db_part = await crud_part.get_simple(db, part_id=part_id, organization_id=current_user.organization_id)
     if not db_part:
         raise HTTPException(status_code=404, detail="Peça não encontrada.")
+    
     try:
         await crud_part.remove(db=db, id=part_id, organization_id=current_user.organization_id)
         await db.commit()
+    except IntegrityError:
+        # --- CORREÇÃO PRINCIPAL DO ERRO 500 ---
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, 
+            detail="Não é possível excluir esta peça pois ela possui itens no estoque ou histórico de movimentações. Remova os itens individualmente primeiro."
+        )
     except Exception as e: 
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao deletar peça: {e}")
+        logging.error(f"Erro ao deletar peça ID {part_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro interno ao deletar peça.")
 
 class AddItemsPayload(BaseModel):
     quantity: int
@@ -254,7 +265,6 @@ async def set_inventory_item_status(
              raise HTTPException(status_code=400, detail=f"Item não pode ser descartado pois seu status é '{current_status}'. Somente itens 'Disponível' ou 'Em Uso' podem ser descartados.")
     
     elif current_status != InventoryItemStatus.DISPONIVEL:
-        # Bloqueio padrão para outras transições não mapeadas (ex: Manutenção)
          raise HTTPException(status_code=400, detail=f"Não é possível alterar o status do item pois ele não está 'Disponível' (status atual: {current_status}).")
     try:
         updated_item = await crud_part.change_item_status(
@@ -264,8 +274,6 @@ async def set_inventory_item_status(
         part = await crud_part.get_part_with_stock(db, part_id=item.part_id, organization_id=current_user.organization_id)
         if part and part.stock < part.minimum_stock:
             message = f"Estoque baixo para a peça '{part.name}'. Quantidade atual: {part.stock}."
-            # CORREÇÃO: Chamando create_notification diretamente com await e passando 'db'
-            # Removemos o background_tasks.add_task para evitar o erro de argumento e sessão fechada
             await crud.notification.create_notification(
                 db,
                 message=message,
@@ -287,23 +295,18 @@ async def set_inventory_item_status(
         logging.error(f"Erro ao mudar status do item: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao mudar status do item: {e}")
 
-# --- 2. NOVO ENDPOINT DE DETALHES DO ITEM ---
 @router.get("/items/{item_id}", response_model=InventoryItemDetails)
 async def read_item_details(
     item_id: int,
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """
-    Obtém os detalhes completos e o histórico de um item de inventário individual.
-    """
     item = await crud_part.get_item_with_details(
         db, item_id=item_id, organization_id=current_user.organization_id
     )
     if not item:
         raise HTTPException(status_code=404, detail="Item de inventário não encontrado.")
     return item
-# --- FIM DO NOVO ENDPOINT ---
 
 @router.get("/inventory/items/", response_model=InventoryItemPage)
 async def read_all_inventory_items(
@@ -316,10 +319,6 @@ async def read_all_inventory_items(
     vehicle_id: Optional[int] = None,
     search: Optional[str] = None
 ):
-    """
-    Obtém uma lista paginada de todos os itens de inventário individuais
-    com filtros para a página mestre de rastreabilidade.
-    """
     result = await crud_part.get_all_items_paginated(
         db=db,
         organization_id=current_user.organization_id,

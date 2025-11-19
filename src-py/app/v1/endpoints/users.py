@@ -155,9 +155,7 @@ async def delete_user(
     if not user_to_delete:
         raise HTTPException(status_code=404, detail="Utilizador não encontrado.")
     
-    # --- CORREÇÃO AQUI ---
     # Validamos e convertemos para o schema Pydantic ANTES de deletar.
-    # Isso garante que temos os dados na memória antes que o SQLAlchemy expire o objeto.
     user_response = UserPublic.model_validate(user_to_delete)
     
     await crud.user.remove(db=db, db_user=user_to_delete)
@@ -175,7 +173,8 @@ async def read_user_stats(
     - Gestores podem ver as estatísticas de qualquer utilizador na sua organização.
     - Motoristas podem ver apenas as suas próprias estatísticas.
     """
-    is_manager = current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]
+    # --- CORREÇÃO AQUI: Adicionado UserRole.ADMIN na lista de permissões ---
+    is_manager = current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]
     is_driver_requesting_own_stats = (current_user.role == UserRole.DRIVER and current_user.id == user_id)
 
     if not is_manager and not is_driver_requesting_own_stats:
@@ -186,6 +185,8 @@ async def read_user_stats(
 
     # Garante que o usuário solicitado pertence à mesma organização
     target_user = await crud.user.get(db, id=user_id)
+    
+    # Se o usuário alvo não existe ou não pertence à mesma organização
     if not target_user or target_user.organization_id != current_user.organization_id:
         raise HTTPException(status_code=404, detail="Utilizador não encontrado para gerar estatísticas.")
 
@@ -193,7 +194,6 @@ async def read_user_stats(
         db, user_id=user_id, organization_id=current_user.organization_id
     )
     if not stats:
-        # Esta verificação é redundante devido à anterior, mas mantida por segurança
         raise HTTPException(status_code=404, detail="Utilizador não encontrado para gerar estatísticas.")
     
     return stats
