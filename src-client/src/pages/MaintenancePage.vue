@@ -99,14 +99,14 @@
             <MaintenanceRequestCard :request="req" @click="openDetailsDialog(req)" />
           </div>
         </div>
-        <div v-else class="text-center q-pa-xl text-grey-2">
+        <div v-else class="text-center q-pa-xl">
           <q-icon name="check_circle_outline" size="4em" />
           <p class="q-mt-md">Nenhum chamado aberto no momento.</p>
         </div>
       </q-tab-panel>
 
       <q-tab-panel name="closed">
-        <div v-if="closedRequests.length === 0 && !maintenanceStore.isLoading" class="text-center q-pa-xl text-grey-7">
+        <div v-if="closedRequests.length === 0 && !maintenanceStore.isLoading" class="text-center q-pa-xl ">
           <q-icon name="inbox" size="4em" />
           <p class="q-mt-md">Nenhum chamado finalizado no histórico.</p>
         </div>
