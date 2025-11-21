@@ -49,7 +49,6 @@ export const useVehicleCostStore = defineStore('vehicleCost', {
       try {
         const payload = { ...costData, vehicle_id: vehicleId };
         await api.post('/vehicle_costs/', payload);
-        Notify.create({ type: 'positive', message: 'Custo adicionado com sucesso!' });
         
         // Atualiza a lista de custos do veículo
         await this.fetchCostsByVehicle(vehicleId);

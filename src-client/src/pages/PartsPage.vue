@@ -1,11 +1,76 @@
 <template>
   <q-page padding>
+    
+    <div v-if="isDemo" class="q-mb-lg animate-fade">
+      <div class="row">
+        <div class="col-12">
+          <q-card flat bordered class="">
+            <q-card-section>
+              <div class="row items-center justify-between no-wrap">
+                <div class="col">
+                  <div class="text-subtitle2 text-uppercase text-grey-8">Capacidade do Inventário</div>
+                  <div class="text-h4 text-primary text-weight-bold q-mt-sm">
+                    {{ demoUsageCount }} <span class="text-h6 text-grey-6">/ {{ demoUsageLimitLabel }} Itens</span>
+                  </div>
+                  <div class="text-caption text-grey-7 q-mt-sm">
+                    <q-icon name="info" />
+                    Você cadastrou {{ usagePercentage }}% dos modelos de peças permitidos no plano Demo.
+                  </div>
+                </div>
+                <div class="col-auto q-ml-md">
+                  <q-circular-progress
+                    show-value
+                    font-size="16px"
+                    :value="usagePercentage"
+                    size="70px"
+                    :thickness="0.22"
+                    :color="usageColor"
+                    track-color="grey-3"
+                  >
+                    {{ usagePercentage }}%
+                  </q-circular-progress>
+                </div>
+              </div>
+              <q-linear-progress :value="usagePercentage / 100" class="q-mt-md" :color="usageColor" rounded />
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+    </div>
+
     <div class="flex items-center justify-between q-mb-md">
       <div>
         <h1 class="text-h4 text-weight-bold q-my-none">Inventário</h1>
         <div class="text-subtitle1 text-grey-7">Controle o seu estoque de peças, fluídos e consumíveis.</div>
       </div>
-      <q-btn color="primary" icon="add" label="Adicionar Novo Item" unelevated @click="openDialog()" />
+      
+      <div class="d-inline-block relative-position">
+        <q-btn 
+          color="primary" 
+          icon="add" 
+          label="Adicionar Novo Item" 
+          unelevated 
+          @click="openDialog()"
+          :disable="isLimitReached"
+        />
+        
+        <q-tooltip 
+          v-if="isLimitReached" 
+          class="bg-negative text-body2 shadow-4" 
+          anchor="bottom middle" 
+          self="top middle"
+          :offset="[10, 10]"
+        >
+          <div class="row items-center no-wrap">
+              <q-icon name="lock" size="sm" class="q-mr-sm" />
+              <div>
+                  <div class="text-weight-bold">Capacidade Atingida</div>
+                  <div class="text-caption">O plano Demo permite até {{ demoUsageLimitLabel }} cadastros.</div>
+                  <div class="text-caption q-mt-xs text-yellow-2 cursor-pointer" @click="showComparisonDialog = true">Clique para saber mais</div>
+              </div>
+          </div>
+        </q-tooltip>
+      </div>
     </div>
 
     <q-card flat bordered>
@@ -85,6 +150,52 @@
       </q-table>
     </q-card>
 
+    <q-dialog v-model="showComparisonDialog">
+      <q-card style="width: 700px; max-width: 95vw;">
+        <q-card-section class="bg-primary text-white q-py-lg">
+          <div class="text-h5 text-weight-bold text-center">Controle Total do Estoque</div>
+          <div class="text-subtitle1 text-center text-blue-2">Veja as vantagens do upgrade</div>
+        </q-card-section>
+
+        <q-card-section class="q-pa-none">
+          <q-markup-table flat separator="horizontal">
+            <thead>
+              <tr class="bg-grey-1 text-uppercase text-grey-7">
+                <th class="text-left q-pa-md">Funcionalidade</th>
+                <th class="text-center text-weight-bold q-pa-md bg-amber-1 text-amber-9">Plano Demo</th>
+                <th class="text-center text-weight-bold q-pa-md text-primary">Plano PRO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="inventory_2" color="grey-6" size="xs" /> Cadastro de Itens</td>
+                <td class="text-center bg-amber-1 text-amber-10">Até {{ demoUsageLimitLabel }}</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Ilimitado</td>
+              </tr>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="qr_code" color="grey-6" size="xs" /> Rastreio por Serial</td>
+                <td class="text-center bg-amber-1 text-amber-10">Limitado</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Completo</td>
+              </tr>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="history" color="grey-6" size="xs" /> Histórico de Movimentação</td>
+                <td class="text-center bg-amber-1 text-amber-10">7 dias</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Vitalício</td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+        </q-card-section>
+
+        <q-card-actions align="center" class="q-pa-lg bg-grey-1">
+          <div class="text-center full-width">
+            <div class="text-grey-7 q-mb-md">Precisa gerenciar um almoxarifado maior?</div>
+            <q-btn color="primary" label="Falar com Consultor" size="lg" unelevated icon="whatsapp" class="full-width" />
+            <q-btn flat color="grey-7" label="Continuar no Demo" class="q-mt-sm" v-close-popup />
+          </div>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <q-dialog v-model="isDialogOpen" >
       <q-card style="width: 700px; max-width: 90vw;">
         <q-form @submit.prevent="handleSubmit">
@@ -139,7 +250,7 @@
               <q-input outlined v-model.number="formData.minimum_stock" type="number" label="Estoque Mínimo *" :rules="[val => val >= 0 || 'Valor inválido']" />
             </div>
             <div class="col-12">
-               <q-input outlined v-model="formData.notes" type="textarea" label="Notas (Opcional)" autogrow />
+                <q-input outlined v-model="formData.notes" type="textarea" label="Notas (Opcional)" autogrow />
             </div>
           </q-card-section>
           
@@ -161,6 +272,8 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useQuasar, type QTableProps } from 'quasar';
 import { usePartStore, type PartCreatePayload } from 'stores/part-store';
 import { useTerminologyStore } from 'stores/terminology-store';
+import { useDemoStore } from 'stores/demo-store';
+import { useAuthStore } from 'stores/auth-store';
 import type { Part, PartCategory } from 'src/models/part-models';
 import ManageStockDialog from 'components/ManageStockDialog.vue';
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
@@ -169,6 +282,8 @@ import api from 'src/services/api';
 const $q = useQuasar();
 const partStore = usePartStore();
 const terminologyStore = useTerminologyStore();
+const authStore = useAuthStore();
+const demoStore = useDemoStore();
 
 const isDialogOpen = ref(false);
 const isStockDialogOpen = ref(false);
@@ -180,6 +295,39 @@ const isEditing = computed(() => !!editingPart.value);
 const searchQuery = ref('');
 const photoFile = ref<File | null>(null);
 const invoiceFile = ref<File | null>(null);
+
+const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
+
+// --- LÓGICA DEMO E LIMITES (ATUALIZADA PARA 15) ---
+const showComparisonDialog = ref(false);
+
+const demoUsageCount = computed(() => demoStore.stats?.part_count ?? 0);
+// Prioriza o limite vindo do backend (Store), senão usa o fallback de 15 (conforme config.py)
+const demoUsageLimit = computed(() => demoStore.stats?.part_limit ?? authStore.user?.organization?.part_limit ?? 15);
+const demoUsageLimitLabel = computed(() => {
+    const limit = demoUsageLimit.value;
+    return (limit === undefined || limit === null || limit < 0) ? 'Ilimitado' : limit.toString();
+});
+
+const isLimitReached = computed(() => {
+  if (!isDemo.value) return false;
+  const limit = demoUsageLimit.value;
+  if (limit === undefined || limit === null || limit < 0) return false;
+  return demoUsageCount.value >= limit;
+});
+
+const usagePercentage = computed(() => {
+  if (!isDemo.value || demoUsageLimit.value <= 0) return 0;
+  const pct = Math.round((demoUsageCount.value / demoUsageLimit.value) * 100);
+  return Math.min(pct, 100);
+});
+
+const usageColor = computed(() => {
+  if (usagePercentage.value >= 100) return 'negative';
+  if (usagePercentage.value >= 80) return 'warning';
+  return 'primary';
+});
+// --- FIM LÓGICA DEMO ---
 
 const categoryOptions: PartCategory[] = ["Peça", "Pneu", "Fluído", "Consumível", "Outro"];
 
@@ -256,6 +404,11 @@ function openDialog(part: Part | null = null) {
       initial_quantity: 0, 
     };
   } else {
+    // Bloqueio ao tentar abrir o diálogo de criação se o limite foi atingido
+    if (isLimitReached.value) {
+        showComparisonDialog.value = true;
+        return;
+    }
     resetForm();
   }
   isDialogOpen.value = true;
@@ -291,12 +444,14 @@ async function handleSubmit() {
   if (success) {
     isDialogOpen.value = false;
     resetForm();
+    // Atualiza stats após criação bem sucedida
+    if (authStore.isDemo && !isEditing.value) {
+        void demoStore.fetchDemoStats(true);
+    }
   }
 }
 
-// --- FUNÇÃO ATUALIZADA PARA TRATAR O ERRO E ALERTAR O USUÁRIO ---
 function confirmDelete(part: Part) {
-  // 1. Verificação Preventiva no Frontend
   if (part.stock > 0) {
      $q.dialog({
       title: 'Ação Bloqueada',
@@ -307,21 +462,24 @@ function confirmDelete(part: Part) {
     return;
   }
 
-  // 2. Diálogo de Confirmação Padrão (para casos de estoque 0, mas com possível histórico)
   $q.dialog({
     title: 'Confirmar Exclusão',
-    message: `Tem certeza que deseja remover o modelo "${part.name}"? Esta ação é irreversível. \n\n(Nota: Se houver histórico de movimentações antigas, a exclusão será bloqueada pelo sistema para segurança).`,
+    message: `Tem certeza que deseja remover o modelo "${part.name}"? Esta ação é irreversível.`,
     cancel: true,
     persistent: false,
     ok: { label: 'Tentar Excluir', color: 'negative', unelevated: true },
-  }).onOk(() => {
-    // CORREÇÃO: Removemos 'async/await' e usamos 'void' para satisfazer o ESLint
-    void partStore.deletePart(part.id);
-  });
+}).onOk(() => {
+    void (async () => {
+        await journeyStore.deleteJourney(journey.id);
+        if (isDemo.value) { await demoStore.fetchDemoStats(true); }
+    })();
+});
 }
-// --- FIM DA ATUALIZAÇÃO ---
 
 onMounted(() => {
   void partStore.fetchParts();
+  if (authStore.isDemo) {
+    void demoStore.fetchDemoStats();
+  }
 });
 </script>

@@ -44,8 +44,7 @@ async def create_notification_background(
         logger.error(f"ERRO na tarefa de background de notificação: {e}", exc_info=True)
 
 
-@router.post("/", response_model=FinePublic, status_code=status.HTTP_201_CREATED,
-            dependencies=[Depends(deps.check_demo_limit("fines"))])
+@router.post("/", response_model=FinePublic, status_code=status.HTTP_201_CREATED)
 async def create_fine(
     *,
     db: AsyncSession = Depends(deps.get_db),
@@ -55,20 +54,18 @@ async def create_fine(
 ):
     """Cria uma nova multa e notifica os gestores em segundo plano."""
     
-    # CORREÇÃO 1: Em vez de erro 403, nós forçamos o ID correto.
-    # Isso previne falhas se o frontend não enviar o ID.
     if current_user.role == UserRole.DRIVER:
         fine_in.driver_id = current_user.id
           
     try:
         fine = await crud.fine.create(db=db, fine_in=fine_in, organization_id=current_user.organization_id)
         
+        # Mantém o contador para estatísticas, mas SEM BLOQUEIO
         if current_user.role == UserRole.CLIENTE_DEMO:
             await crud.demo_usage.increment_usage(db, organization_id=current_user.organization_id, resource_type="fines")
 
         message = f"Nova multa de R${fine.value:.2f} registrada para o veículo."
         
-        # CORREÇÃO 2: Capturar ID antes do commit para evitar erro de Greenlet
         await db.flush()
         fine_id = fine.id 
         
@@ -85,20 +82,24 @@ async def create_fine(
         
         await db.commit()
         
-        # CORREÇÃO 3: Recarregar o objeto com todas as relações para evitar erro 500
         stmt = (
             select(Fine)
             .where(Fine.id == fine_id)
             .options(
                 selectinload(Fine.vehicle),
                 selectinload(Fine.cost),
-                selectinload(Fine.driver).selectinload(User.organization) # Carrega org do motorista
+                selectinload(Fine.driver).selectinload(User.organization)
             )
         )
         result = await db.execute(stmt)
         fine_loaded = result.scalars().first()
         
         return fine_loaded
+        
+    except Exception as e:
+        logger.error(f"Erro ao criar multa: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro interno ao salvar a multa.")
         
     except Exception as e:
         logger.error(f"Erro ao criar multa: {e}", exc_info=True)

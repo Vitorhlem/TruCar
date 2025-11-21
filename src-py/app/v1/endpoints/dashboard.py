@@ -243,43 +243,87 @@ class DemoStatsResponse(BaseModel):
     reports: DemoResourceLimit
     fines: DemoResourceLimit
     documents: DemoResourceLimit
+    journeys: DemoResourceLimit  
     freight_orders: DemoResourceLimit
-    maintenance_requests: DemoResourceLimit  # CORRIGIDO: de 'maintenances'
+    maintenance_requests: DemoResourceLimit 
     fuel_logs: DemoResourceLimit
+    vehicle_costs: DemoResourceLimit
 
 @router.get("/demo-stats", response_model=DemoStatsResponse, summary="Obtém todos os limites e usos da conta demo")
 async def read_demo_stats_rebuilt(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    if current_user.role != UserRole.CLIENTE_DEMO:
+    # Lógica de permissão expandida:
+    # Permite CLIENTE_DEMO OU Motoristas que pertencem a uma organização Demo
+    is_allowed = False
+    if current_user.role == UserRole.CLIENTE_DEMO:
+        is_allowed = True
+    elif current_user.role == UserRole.DRIVER:
+        # Verifica se a organização é demo (tem algum gestor demo)
+        stmt = select(User).where(
+            User.organization_id == current_user.organization_id,
+            User.role == UserRole.CLIENTE_DEMO
+        ).limit(1)
+        result = await db.execute(stmt)
+        if result.scalars().first():
+            is_allowed = True
+            
+    if not is_allowed:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Esta rota é apenas para contas de demonstração.")
 
     org_id = current_user.organization_id
     
+    # Contagens de recursos estáticos
     vehicle_count = await crud.vehicle.count(db, organization_id=org_id)
     user_count = await crud.user.count(db, organization_id=org_id)
     part_count = await crud.part.count(db, organization_id=org_id)
     client_count = await crud.client.count(db, organization_id=org_id)
 
+    # --- CONTAGEM REAL DOS ITENS PRINCIPAIS ---
+    journey_count_real = await crud.journey.count_journeys_in_current_month(db, organization_id=org_id)
+    maintenance_count_real = await crud.maintenance.count_requests_in_current_month(db, organization_id=org_id)
+    cost_count_real = await crud.vehicle_cost.count_costs_in_current_month(db, organization_id=org_id)
+
+    # Uso mensal via tabela auxiliar para outros recursos
     monthly_usage: Dict[str, int] = {}
-    # --- CORREÇÃO 2: Usar settings.DEMO_MONTHLY_LIMITS ---
     for resource_type in settings.DEMO_MONTHLY_LIMITS.keys():
         usage = await crud_demo_usage_instance.get_or_create_usage(
             db, organization_id=org_id, resource_type=resource_type
         )
         monthly_usage[resource_type] = usage.usage_count
 
-    # --- CORREÇÃO 3: Usar settings em todo o retorno ---
     return DemoStatsResponse(
-        vehicles=DemoResourceLimit(current=vehicle_count, limit=settings.DEMO_TOTAL_LIMITS.get("vehicles", 0)),
-        users=DemoResourceLimit(current=user_count, limit=settings.DEMO_TOTAL_LIMITS.get("users", 0)),
-        parts=DemoResourceLimit(current=part_count, limit=settings.DEMO_TOTAL_LIMITS.get("parts", 0)),
-        clients=DemoResourceLimit(current=client_count, limit=settings.DEMO_TOTAL_LIMITS.get("clients", 0)),
-        reports=DemoResourceLimit(current=monthly_usage.get("reports", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("reports", 0)),
-        fines=DemoResourceLimit(current=monthly_usage.get("fines", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("fines", 0)),
-        documents=DemoResourceLimit(current=monthly_usage.get("documents", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("documents", 0)),
-        freight_orders=DemoResourceLimit(current=monthly_usage.get("freight_orders", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("freight_orders", 0)),
-        maintenance_requests=DemoResourceLimit(current=monthly_usage.get("maintenance_requests", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("maintenance_requests", 0)),
-        fuel_logs=DemoResourceLimit(current=monthly_usage.get("fuel_logs", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("fuel_logs", 0)),
+        vehicles=DemoResourceLimit(current=vehicle_count, limit=settings.DEMO_TOTAL_LIMITS.get("vehicles", 3)),
+        users=DemoResourceLimit(current=user_count, limit=settings.DEMO_TOTAL_LIMITS.get("users", 3)),
+        parts=DemoResourceLimit(current=part_count, limit=settings.DEMO_TOTAL_LIMITS.get("parts", 50)),
+        clients=DemoResourceLimit(current=client_count, limit=settings.DEMO_TOTAL_LIMITS.get("clients", 5)),
+        
+        freight_orders=DemoResourceLimit(
+            current=monthly_usage.get("freight_orders", 0), 
+            limit=settings.DEMO_MONTHLY_LIMITS.get("freight_orders", 10)
+        ),
+
+        # Jornadas: Usa a contagem REAL calculada acima
+        journeys=DemoResourceLimit(
+            current=journey_count_real,
+            limit=settings.DEMO_MONTHLY_LIMITS.get("journeys", 10)
+        ),
+
+        # Manutenções: Usa a contagem REAL calculada acima
+        maintenance_requests=DemoResourceLimit(
+            current=maintenance_count_real, 
+            limit=settings.DEMO_MONTHLY_LIMITS.get("maintenance_requests", 5)
+        ),
+        
+        reports=DemoResourceLimit(current=monthly_usage.get("reports", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("reports", 5)),
+        fines=DemoResourceLimit(current=monthly_usage.get("fines", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("fines", 5)),
+        documents=DemoResourceLimit(current=monthly_usage.get("documents", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("documents", 5)),
+        fuel_logs=DemoResourceLimit(current=monthly_usage.get("fuel_logs", 0), limit=settings.DEMO_MONTHLY_LIMITS.get("fuel_logs", 10)),
+        
+        # Custos: Usa a contagem REAL calculada acima
+        vehicle_costs=DemoResourceLimit(
+            current=cost_count_real, 
+            limit=settings.DEMO_MONTHLY_LIMITS.get("vehicle_costs", 15)
+        ),
     )

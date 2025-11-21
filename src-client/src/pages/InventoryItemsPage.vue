@@ -1,12 +1,26 @@
 <template>
   <q-page padding>
+    
+
     <h1 class="text-h4 text-weight-bold q-my-md">Rastreabilidade de Itens</h1>
     <div class="text-subtitle1 text-grey-7 q-mb-md">
       Pesquise e audite todos os itens individuais do seu inventário.
     </div>
 
-    <q-card flat bordered class="q-mb-md">
-      <q-card-section class="row q-gutter-md items-center">
+    <q-card flat bordered class="q-mb-md relative-position">
+      <div v-if="isDemo" class="absolute-full z-top flex flex-center" style="background: rgba(255,255,255,0.6); cursor: not-allowed;">
+        <q-btn 
+          color="primary" 
+          round 
+          icon="lock" 
+          size="md"
+          @click="showFilterUpgradeDialog"
+        >
+          <q-tooltip class="bg-primary text-body2">Desbloquear Filtros Inteligentes</q-tooltip>
+        </q-btn>
+      </div>
+
+      <q-card-section class="row q-gutter-md items-center" :class="{ 'blur-content': isDemo }">
         <q-input
           v-model="filters.search"
           label="Buscar por nome da peça..."
@@ -14,6 +28,7 @@
           class="col-12 col-sm-4"
           style="min-width: 200px;"
           clearable
+          :disable="isDemo" 
           @keyup.enter="refreshTable"
         />
         <q-select
@@ -25,9 +40,10 @@
           class="col-12 col-sm-3"
           style="min-width: 180px;"
           clearable
+          :disable="isDemo"
         />
-        <q-btn label="Buscar" color="primary" unelevated @click="refreshTable" />
-        <q-btn label="Limpar" flat @click="resetFilters" />
+        <q-btn label="Buscar" color="primary" unelevated @click="refreshTable" :disable="isDemo" />
+        <q-btn label="Limpar" flat @click="resetFilters" :disable="isDemo" />
       </q-card-section>
     </q-card>
 
@@ -80,13 +96,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
+import { useQuasar } from 'quasar'; // Importar Quasar
 import { usePartStore } from 'stores/part-store';
-import { InventoryItemStatus } from 'src/models/inventory-item-models'; // <-- ADICIONE ESTA IMPORTAÇÃO
+import { useAuthStore } from 'stores/auth-store'; // Importar AuthStore
+import { InventoryItemStatus } from 'src/models/inventory-item-models';
 import type { QTableProps } from 'quasar';
 
-
+const $q = useQuasar();
 const partStore = usePartStore();
+const authStore = useAuthStore();
+
+// --- LÓGICA DEMO ---
+const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
+
+function showFilterUpgradeDialog() {
+  $q.dialog({
+    title: 'Busca Avançada Bloqueada',
+    message: 'No plano Demo, você pode visualizar seus itens, mas a busca inteligente e filtros por status são exclusivos do Plano PRO. Ganhe agilidade no almoxarifado fazendo o upgrade.',
+    ok: { label: 'Ver Planos', color: 'primary', unelevated: true },
+    cancel: true
+  });
+}
+// -------------------
 
 // Filtros
 const filters = ref({
@@ -102,16 +134,14 @@ const statusOptions: { label: string, value: InventoryItemStatus }[] = [
   { label: 'Fim de Vida', value: InventoryItemStatus.FIM_DE_VIDA },
 ];
 
-// Paginação (controlada pelo servidor)
 const pagination = ref({
   page: 1,
   rowsPerPage: 10,
-  rowsNumber: 0, // Total de itens (virá da API)
-  sortBy: 'part_id', // Ordenação padrão
+  rowsNumber: 0, 
+  sortBy: 'part_id',
   descending: false,
 });
 
-// Colunas da Tabela
 const columns: QTableProps['columns'] = [
   { name: 'item_identifier', label: 'Cód. Item', field: 'item_identifier', align: 'left', sortable: true },
   { name: 'part_name', label: 'Nome da Peça', field: (row) => row.part.name, align: 'left', sortable: true },
@@ -121,7 +151,6 @@ const columns: QTableProps['columns'] = [
   { name: 'actions', label: 'Ações', field: 'id', align: 'center' },
 ];
 
-// Função para carregar os dados
 async function fetchTableData() {
   await partStore.fetchMasterItems({
     page: pagination.value.page,
@@ -130,13 +159,10 @@ async function fetchTableData() {
     partId: filters.value.partId,
     vehicleId: filters.value.vehicleId,
     search: filters.value.search,
-    // TODO: Adicionar ordenação (sortBy, descending) se o backend suportar
   });
-  // Atualiza o total da paginação com o valor da store
   pagination.value.rowsNumber = partStore.masterListTotal;
 }
 
-// Chamado quando a paginação/ordenação da tabela muda
 const onTableRequest: QTableProps['onRequest'] = (props) => {
   pagination.value.page = props.pagination.page;
   pagination.value.rowsPerPage = props.pagination.rowsPerPage;
@@ -145,26 +171,26 @@ const onTableRequest: QTableProps['onRequest'] = (props) => {
   void fetchTableData();
 };
 
-// Chamado pelos botões de filtro
 function refreshTable() {
-  pagination.value.page = 1; // Reseta para a primeira página
+  if (isDemo.value) return; // Impede refresh via filtros se for demo (redundância de segurança)
+  pagination.value.page = 1;
   void fetchTableData();
 }
 
 function resetFilters() {
+  if (isDemo.value) return;
   filters.value = { search: null, status: null, partId: null, vehicleId: null };
   refreshTable();
 }
 
-// Observa mudanças nos filtros e atualiza a tabela
-watch(filters, refreshTable, { deep: true });
+watch(filters, () => {
+  if (!isDemo.value) refreshTable();
+}, { deep: true });
 
-// Carregamento inicial
 onMounted(() => {
   void fetchTableData();
 });
 
-// Função utilitária para cor do status
 function statusColor(status: InventoryItemStatus): string {
   const map: Record<InventoryItemStatus, string> = {
     'Disponível': 'positive',
@@ -174,3 +200,11 @@ function statusColor(status: InventoryItemStatus): string {
   return map[status] || 'grey';
 }
 </script>
+
+<style scoped>
+.blur-content {
+  filter: blur(2px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+</style>

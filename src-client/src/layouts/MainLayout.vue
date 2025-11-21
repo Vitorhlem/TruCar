@@ -58,35 +58,6 @@
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" class="lt-md" />
         <q-space />
 
-        <q-chip
-          v-if="isDemo"
-          clickable @click="showUpgradeDialog"
-          color="amber" text-color="black"
-          icon="workspace_premium" label="Plano Demo"
-          class="q-mr-sm cursor-pointer" size="sm"
-        >
-          <q-tooltip class="bg-black text-body2" :offset="[10, 10]">
-            <div>
-              <div class="text-weight-bold">Limites do Plano de Demonstração</div>
-              <q-list dense>
-                <q-item class="q-pl-none">
-                  <q-item-section avatar style="min-width: 30px"><q-icon name="local_shipping" /></q-item-section>
-                  <q-item-section>Veículos: {{ stats?.vehicle_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.vehicle_limit) }}</q-item-section>
-                </q-item>
-                <q-item class="q-pl-none">
-                  <q-item-section avatar style="min-width: 30px"><q-icon name="engineering" /></q-item-section>
-                  <q-item-section>Motoristas: {{ stats?.driver_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.driver_limit) }}</q-item-section>
-                </q-item>
-                <q-item class="q-pl-none">
-                  <q-item-section avatar style="min-width: 30px"><q-icon name="route" /></q-item-section>
-                  <q-item-section>Jornadas este mês: {{ stats?.journey_count ?? 0 }} / {{ formatLimit(authStore.user?.organization?.freight_order_limit) }}</q-item-section>
-                </q-item>
-              </q-list>
-              <div>Clique para saber mais sobre o plano completo.</div>
-            </div>
-          </q-tooltip>
-        </q-chip>
-
         <q-btn flat round dense icon="settings" to="/settings" class="q-mr-xs toolbar-icon-btn">
           <q-tooltip>Configurações</q-tooltip>
         </q-btn>
@@ -172,8 +143,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'stores/auth-store';
 import { useNotificationStore } from 'stores/notification-store';
 import { useTerminologyStore } from 'stores/terminology-store';
@@ -185,13 +154,10 @@ import type { Notification } from 'src/models/notification-models';
 // --- Inicialização ---
 const leftDrawerOpen = ref(false);
 const router = useRouter();
-const $q = useQuasar();
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const terminologyStore = useTerminologyStore();
 const demoStore = useDemoStore();
-
-const { stats } = storeToRefs(demoStore);
 
 let pollTimer: number;
 
@@ -222,26 +188,7 @@ function handleLogout() {
 
 const isDemo = computed(() => authStore.isDemo);
 
-function showUpgradeDialog() {
-  $q.dialog({
-    title: 'Desbloqueie o Potencial Máximo do TruCar',
-    message: 'Para liberar recursos avançados como relatórios detalhados e cadastro ilimitado de veículos e motoristas, entre em contato com nossa equipe comercial.',
-    ok: { label: 'Entendido', color: 'primary', unelevated: true },
-    persistent: false
-  });
-}
-
 // --- Formatadores ---
-function formatLimit(limit: number | undefined | null): string {
-  if (limit === undefined || limit === null) {
-    return '--';
-  }
-  if (limit < 0) {
-    return 'Ilimitado';
-  }
-  return limit.toString();
-}
-
 function formatNotificationDate(date: string) {
   return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
 }
@@ -277,14 +224,11 @@ async function handleNotificationClick(notification: Notification) {
   else if (notification.notification_type === 'low_stock') {
       void router.push('/parts');
   }
-  // --- ADICIONADO: Tratamento para jornadas ---
   else if (['journey_started', 'journey_ended'].includes(notification.notification_type)) {
       void router.push('/journeys');
   }
-  // ------------------------------------------
   else {
       console.log('Notificação sem rota específica:', notification.notification_type);
-      // Fallback opcional: void router.push('/dashboard');
   }
 }
 
@@ -524,4 +468,4 @@ onUnmounted(() => { clearInterval(pollTimer); });
   opacity: 0;
   transform: translateY(10px);
 }
-</style>  
+</style>

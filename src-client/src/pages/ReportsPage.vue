@@ -2,10 +2,11 @@
   <q-page padding>
     <h1 class="text-h4 text-weight-bold q-my-md">Central de Relatórios</h1>
 
+
+
     <q-card flat bordered>
       <q-card-section>
         <div class="row q-col-gutter-md items-center">
-          <!-- Filtro 1: Tipo de Relatório -->
           <div class="col-12 col-md-4">
             <q-select
               outlined
@@ -15,10 +16,24 @@
               emit-value
               map-options
               dense
-            />
+              option-disable="disable" 
+            >
+              <template v-slot:option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.label }}</q-item-label>
+                    <q-item-label caption v-if="scope.opt.disable" class="text-negative">
+                      <q-icon name="lock" size="xs" /> Exclusivo Plano PRO
+                    </q-item-label>
+                  </q-item-section>
+                  <q-tooltip v-if="scope.opt.disable" anchor="center right" self="center left" :offset="[10, 10]">
+                    Este relatório detalhado está bloqueado no modo demonstração.
+                  </q-tooltip>
+                </q-item>
+              </template>
+            </q-select>
           </div>
 
-          <!-- Filtro 2: Veículo (Condicional) -->
           <div v-if="filters.reportType === 'vehicle_consolidated'" class="col-12 col-md-4">
             <q-select
               outlined
@@ -38,7 +53,6 @@
             </q-select>
           </div>
 
-          <!-- Filtro 3: Período -->
           <div v-if="filters.reportType" class="col-12 col-md-4">
             <q-input
               outlined
@@ -55,7 +69,6 @@
           </div>
         </div>
 
-        <!-- ***** NOVA SEÇÃO: Seleção de Dados do Veículo ***** -->
         <div v-if="filters.reportType === 'vehicle_consolidated'" class="q-mt-md">
           <div class="text-subtitle1 q-mb-sm">4. Selecione as seções para incluir:</div>
           <div class="row q-col-gutter-sm">
@@ -90,7 +103,6 @@
         </div>
       </q-card-section>
 
-      <!-- Botão Gerar -->
       <q-card-actions class=" q-pa-md" align="right">
         <q-btn
           @click="generateReport"
@@ -105,7 +117,6 @@
       </q-card-actions>
     </q-card>
 
-    <!-- Área de Exibição dos Relatórios -->
     <div v-if="reportStore.isLoading" class="flex flex-center q-mt-xl">
       <q-spinner-dots color="primary" size="3em" />
       <div class="q-ml-md text-grey">Gerando dados...</div>
@@ -136,6 +147,7 @@ import { useQuasar } from 'quasar';
 import { format } from 'date-fns';
 import { useReportStore } from 'stores/report-store';
 import { useVehicleStore } from 'stores/vehicle-store';
+import { useAuthStore } from 'stores/auth-store'; // Importar AuthStore
 import type { Vehicle } from 'src/models/vehicle-models';
 
 import VehicleReportDisplay from 'components/reports/VehicleReportDisplay.vue';
@@ -145,6 +157,9 @@ import FleetManagementReportDisplay from 'components/reports/FleetManagementRepo
 const $q = useQuasar();
 const reportStore = useReportStore();
 const vehicleStore = useVehicleStore();
+const authStore = useAuthStore();
+
+const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
 
 const filters = ref({
   reportType: null as 'vehicle_consolidated' | 'driver_performance' | 'fleet_management' | null,
@@ -152,7 +167,6 @@ const filters = ref({
   dateRange: null as { from: string, to: string } | null,
 });
 
-// --- NOVO REF PARA AS SEÇÕES ---
 const vehicleReportSections = ref({
   performance_summary: true,
   financial_summary: true,
@@ -171,11 +185,16 @@ watch(() => filters.value.reportType, () => {
   reportStore.clearReports();
 });
 
-const reportOptions = [
-  { label: 'Relatório Consolidado de Veículo', value: 'vehicle_consolidated' },
+// --- LÓGICA DE BLOQUEIO DO OPÇÃO ---
+const reportOptions = computed(() => [
+  { 
+    label: 'Relatório Consolidado de Veículo', 
+    value: 'vehicle_consolidated',
+    disable: isDemo.value // Bloqueia se for demo
+  },
   { label: 'Relatório de Desempenho de Motoristas', value: 'driver_performance' },
   { label: 'Relatório Gerencial da Frota', value: 'fleet_management' },
-];
+]);
 
 const vehicleOptions = ref<{ label: string, value: number }[]>([]);
 
@@ -212,7 +231,6 @@ function filterVehicles(val: string, update: (callback: () => void) => void) {
   });
 }
 
-// --- FUNÇÃO ATUALIZADA ---
 async function generateReport() {
   if (!isFormValid.value || !filters.value.dateRange) {
     $q.notify({ type: 'warning', message: 'Por favor, preencha todos os filtros obrigatórios.' });
@@ -222,7 +240,6 @@ async function generateReport() {
   const { from, to } = filters.value.dateRange;
 
   if (filters.value.reportType === 'vehicle_consolidated' && filters.value.vehicleId) {
-    // Passa as seções selecionadas para a store
     await reportStore.generateVehicleConsolidatedReport(
       filters.value.vehicleId,
       from,

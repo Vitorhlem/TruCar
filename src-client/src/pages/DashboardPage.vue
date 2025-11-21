@@ -48,6 +48,83 @@
           </div>
         </div>
 
+        <div v-if="isDemo" class="q-mb-lg animate-fade">
+          <q-card class="bg-gradient-dark text-white no-shadow border-glass">
+            <q-card-section>
+              <div class="row items-center justify-between q-mb-md">
+                <div class="flex items-center">
+                  <q-icon name="speed" size="md" class="q-mr-sm text-yellow-4" />
+                  <div>
+                    <div class="text-h6 text-weight-bold">Status da Licença Demo</div>
+                    <div class="text-caption text-grey-4">Monitoramento de consumo de recursos gratuitos</div>
+                  </div>
+                </div>
+                <q-btn 
+                  color="yellow-9" 
+                  text-color="grey-10" 
+                  label="Seja PRO" 
+                  icon="upgrade" 
+                  unelevated 
+                  size="sm"
+                  class="text-weight-bold"
+                  @click="showUpgradeDialog = true"
+                />
+              </div>
+
+              <div class="row q-col-gutter-md">
+                <div class="col-6 col-sm-3">
+                  <div class="limit-card">
+                    <div class="row justify-between items-center">
+                      <span class="text-caption text-grey-4">Veículos</span>
+                      <q-icon name="local_shipping" color="yellow-4" />
+                    </div>
+                    <div class="text-h5 text-weight-bold q-my-xs">
+                      {{ demoStats?.vehicle_count || 0 }} <span class="text-caption text-grey-5">/ {{ demoStats?.vehicle_limit || 3 }}</span>
+                    </div>
+                    <q-linear-progress :value="calculateProgress(demoStats?.vehicle_count, demoStats?.vehicle_limit)" color="yellow-4" track-color="grey-8" rounded />
+                  </div>
+                </div>
+                <div class="col-6 col-sm-3">
+                  <div class="limit-card">
+                    <div class="row justify-between items-center">
+                      <span class="text-caption text-grey-4">Motoristas</span>
+                      <q-icon name="engineering" color="light-blue-4" />
+                    </div>
+                    <div class="text-h5 text-weight-bold q-my-xs">
+                      {{ demoStats?.driver_count || 0 }} <span class="text-caption text-grey-5">/ {{ demoStats?.driver_limit || 3 }}</span>
+                    </div>
+                    <q-linear-progress :value="calculateProgress(demoStats?.driver_count, demoStats?.driver_limit)" color="light-blue-4" track-color="grey-8" rounded />
+                  </div>
+                </div>
+                <div class="col-6 col-sm-3">
+                  <div class="limit-card">
+                    <div class="row justify-between items-center">
+                      <span class="text-caption text-grey-4">Manutenções</span>
+                      <q-icon name="build" color="red-4" />
+                    </div>
+                    <div class="text-h5 text-weight-bold q-my-xs">
+                      {{ demoStats?.maintenance_count || 0 }} <span class="text-caption text-grey-5">/ {{ demoStats?.maintenance_limit || 5 }}</span>
+                    </div>
+                    <q-linear-progress :value="calculateProgress(demoStats?.maintenance_count, demoStats?.maintenance_limit)" color="red-4" track-color="grey-8" rounded />
+                  </div>
+                </div>
+                <div class="col-6 col-sm-3">
+                  <div class="limit-card">
+                    <div class="row justify-between items-center">
+                      <span class="text-caption text-grey-4">Inventário</span>
+                      <q-icon name="inventory_2" color="green-4" />
+                    </div>
+                    <div class="text-h5 text-weight-bold q-my-xs">
+                      {{ demoStats?.part_count || 0 }} <span class="text-caption text-grey-5">/ {{ demoStats?.part_limit || 50 }}</span>
+                    </div>
+                    <q-linear-progress :value="calculateProgress(demoStats?.part_count, demoStats?.part_limit)" color="green-4" track-color="grey-8" rounded />
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
         <div v-if="dashboardStore.isLoading" class="row q-col-gutter-md">
            <div class="col-12 col-md-3" v-for="n in 4" :key="n"><q-skeleton type="rect" height="120px" class="rounded-borders" /></div>
            <div class="col-12 col-md-8"><q-skeleton type="rect" height="400px" class="rounded-borders" /></div>
@@ -189,7 +266,7 @@
         </div>
       </template>
 
-      <template v-else-if="isDriver">
+      <template v-else-if="isDriver && !dashboardStore.isLoading">
         
         <div class="q-mb-lg">
           <h1 class="text-h5 text-weight-bold q-my-none">
@@ -298,15 +375,15 @@
                 <q-separator />
                 <q-card-section class="row text-center">
                    <div class="col-4">
-                      <div class="text-h5 text-weight-bold text-primary">{{ driverMetrics?.distance.toFixed(0) || 0 }}</div>
+                      <div class="text-h5 text-weight-bold text-primary">{{ (driverMetrics?.distance || 0).toFixed(0) }}</div>
                       <div class="text-caption text-grey">{{ terminologyStore.distanceUnit }} Percorridos</div>
                    </div>
                    <div class="col-4">
-                      <div class="text-h5 text-weight-bold text-teal">{{ driverMetrics?.hours.toFixed(1) || 0 }}h</div>
+                      <div class="text-h5 text-weight-bold text-teal">{{ (driverMetrics?.hours || 0).toFixed(1) }}h</div>
                       <div class="text-caption text-grey">Em Operação</div>
                    </div>
                    <div class="col-4">
-                      <div class="text-h5 text-weight-bold text-orange">{{ driverMetrics?.fuel_efficiency.toFixed(1) || 0 }}</div>
+                      <div class="text-h5 text-weight-bold text-orange">{{ (driverMetrics?.fuel_efficiency || 0).toFixed(1) }}</div>
                       <div class="text-caption text-grey">Média ({{ terminologyStore.fuelUnit }})</div>
                    </div>
                 </q-card-section>
@@ -328,7 +405,7 @@
 
       </template>
 
-      <template v-else-if="dashboardStore.isLoading">
+      <template v-else>
         <div class="flex flex-center" style="height: 80vh"><q-spinner-dots color="primary" size="4em"/></div>
       </template>
 
@@ -354,6 +431,28 @@
       </q-card>
     </q-dialog>
     
+    <q-dialog v-model="showUpgradeDialog">
+      <q-card style="width: 700px; max-width: 95vw;">
+        <q-card-section class="bg-primary text-white q-py-lg">
+          <div class="text-h5 text-weight-bold text-center">Desbloqueie o Poder do TruCar</div>
+          <div class="text-subtitle1 text-center text-blue-2">Remova limites e acesse recursos exclusivos</div>
+        </q-card-section>
+        <q-card-section class="q-pa-lg">
+          <div class="text-h6 q-mb-md">O Plano PRO inclui:</div>
+          <q-list>
+            <q-item><q-item-section avatar><q-icon name="check_circle" color="positive"/></q-item-section><q-item-section>Frota e Motoristas Ilimitados</q-item-section></q-item>
+            <q-item><q-item-section avatar><q-icon name="check_circle" color="positive"/></q-item-section><q-item-section>Histórico Vitalício de Dados</q-item-section></q-item>
+            <q-item><q-item-section avatar><q-icon name="check_circle" color="positive"/></q-item-section><q-item-section>Relatórios Financeiros Avançados (TCO, ROI)</q-item-section></q-item>
+            <q-item><q-item-section avatar><q-icon name="check_circle" color="positive"/></q-item-section><q-item-section>Gestão de Estoque Profissional</q-item-section></q-item>
+          </q-list>
+        </q-card-section>
+        <q-card-actions align="center" class="q-pa-md">
+          <q-btn label="Falar com Consultor" color="primary" size="lg" icon="whatsapp" unelevated class="full-width" />
+          <q-btn label="Voltar ao Demo" flat color="grey" class="q-mt-sm" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <CreateRequestDialog 
       v-model="showCreateMaintenanceDialog"
       :pre-selected-vehicle-id="selectedVehicleIdForMaintenance"
@@ -371,6 +470,7 @@ import { useQuasar, colors } from 'quasar';
 import { useDashboardStore } from 'stores/dashboard-store';
 import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
+import { useDemoStore } from 'stores/demo-store';
 import type { KmPerDay, CostByCategory } from 'src/models/report-models';
 import ApexChart from 'vue3-apexcharts';
 
@@ -382,12 +482,26 @@ import CreateRequestDialog from 'components/maintenance/CreateRequestDialog.vue'
 
 const dashboardStore = useDashboardStore();
 const authStore = useAuthStore();
+const demoStore = useDemoStore();
 const terminologyStore = useTerminologyStore();
 const $q = useQuasar();
 const router = useRouter();
 
 const isManager = computed(() => authStore.isManager);
 const isDriver = computed(() => authStore.isDriver);
+const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
+
+const showUpgradeDialog = ref(false);
+
+// --- LÓGICA DEMO STATS ---
+const demoStats = computed(() => demoStore.stats);
+
+function calculateProgress(current: number | undefined, limit: number | undefined): number {
+    if (!current || !limit || limit <= 0) return 0;
+    const val = current / limit;
+    return Math.min(val, 1);
+}
+// -------------------------
 
 const selectedPeriod = ref({ label: 'Últimos 30 dias', value: 'last_30_days' });
 const periodOptions = [
@@ -396,7 +510,6 @@ const periodOptions = [
   { label: 'Este Mês', value: 'this_month' },
 ];
 
-// === ESTADO ===
 const showCustomizationDialog = ref(false);
 const showCreateMaintenanceDialog = ref(false); 
 const selectedVehicleIdForMaintenance = ref<number | null>(null);
@@ -472,7 +585,6 @@ const costAnalysisChart = computed(() => {
 
 const lineChart = computed(() => {
   const data = managerData.value?.km_per_day_last_30_days || [];
-  // CORREÇÃO: Unidade dinâmica no gráfico
   const series = [{ name: `${terminologyStore.distanceUnit} Rodados`, data: data.map((item: KmPerDay) => item.total_km) }];
   
   const options = {
@@ -559,6 +671,10 @@ onMounted(async () => {
   } else if (isDriver.value) {
     await dashboardStore.fetchDriverDashboard();
   }
+  
+  if (isDemo.value) {
+    void demoStore.fetchDemoStats();
+  }
 });
 
 onUnmounted(() => {
@@ -568,6 +684,9 @@ onUnmounted(() => {
 function refreshData() {
   if (isManager.value) {
     void dashboardStore.fetchManagerDashboard(selectedPeriod.value.value);
+    if (isDemo.value) {
+        void demoStore.fetchDemoStats(true);
+    }
     $q.notify({ message: 'Dashboard atualizado', color: 'positive', icon: 'check', timeout: 1000 });
   }
 }
@@ -635,6 +754,19 @@ function scheduleMaintenanceGeneral() {
 }
 .bg-gradient-primary {
   background: linear-gradient(135deg, var(--q-primary) 0%, darken($primary, 15%) 100%);
+}
+.bg-gradient-dark {
+  background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
+}
+.border-glass {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.limit-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
 }
 .hover-bg:hover {
   background-color: rgba(0,0,0,0.03);

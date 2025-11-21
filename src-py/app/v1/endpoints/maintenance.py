@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import List, Optional
 from datetime import datetime
 import uuid
 import shutil
 from app import crud, deps
+from app.core.config import settings # <-- Import Settings
 from app.core.email_utils import send_email
 from app.models.user_model import User, UserRole
 from app.schemas.maintenance_schema import (
@@ -89,9 +91,37 @@ async def create_maintenance_request(
 ):
     """Cria um chamado de manutenção."""
     
-    # --- LÓGICA DE LIMITE MANUAL ---
+    # --- LÓGICA DE LIMITE DEMO (PARA GESTOR E MOTORISTA) ---
+    is_demo_org = False
+
     if current_user.role == UserRole.CLIENTE_DEMO:
-        await deps.check_demo_limit_manual(db, current_user, "maintenances")
+        is_demo_org = True
+    elif current_user.role == UserRole.DRIVER:
+        # Se for motorista, verifica se a organização pertence a um Cliente Demo
+        # Buscamos se existe algum usuário com role CLIENTE_DEMO nesta organização
+        stmt = select(User).where(
+            User.organization_id == current_user.organization_id,
+            User.role == UserRole.CLIENTE_DEMO
+        ).limit(1)
+        result = await db.execute(stmt)
+        if result.scalars().first():
+            is_demo_org = True
+
+    if is_demo_org:
+        limit = settings.DEMO_MONTHLY_LIMITS.get("maintenance_requests", 5)
+        current_count = await crud.maintenance.count_requests_in_current_month(
+            db, organization_id=current_user.organization_id
+        )
+        if current_count >= limit:
+            # Mensagem personalizada dependendo de quem está tentando criar
+            detail_msg = f"Limite mensal de {limit} chamados atingido nesta conta Demo."
+            if current_user.role == UserRole.DRIVER:
+                detail_msg = f"A frota atingiu o limite mensal de {limit} chamados. Contate seu gestor."
+            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=detail_msg
+            )
     # -------------------------------
 
     try:
@@ -99,7 +129,8 @@ async def create_maintenance_request(
             db=db, request_in=request_in, reporter_id=current_user.id, organization_id=current_user.organization_id
         )
         
-        if current_user.role == UserRole.CLIENTE_DEMO:
+        # Mantém o contador para estatísticas
+        if is_demo_org:
             await crud.demo_usage.increment_usage(db, organization_id=current_user.organization_id, resource_type="maintenances")
         
         message = f"Nova solicitação de manutenção para {request.vehicle.brand} {request.vehicle.model} aberta por {current_user.full_name}."
@@ -113,7 +144,6 @@ async def create_maintenance_request(
         return request
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    
     
 @router.post("/{request_id}/services", response_model=MaintenanceServiceItemPublic)
 async def add_service_item(

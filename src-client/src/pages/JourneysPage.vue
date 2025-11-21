@@ -1,75 +1,59 @@
 <template>
   <q-page padding>
 
+    <div v-if="isDemo" class="q-mb-lg animate-fade">
+      <q-banner class=" rounded-borders border-left-primary">
+        <template v-slot:avatar>
+          <q-icon name="history_edu" color="primary" />
+        </template>
+        <div class="text-subtitle1 text-weight-bold">Criação de Jornadas Ilimitada</div>
+        <div class="text-body2">
+          Você pode registrar quantas operações quiser. No entanto, o histórico detalhado exibe apenas os <strong>5 últimos registros</strong>. O restante é arquivado com segurança.
+        </div>
+        <template v-slot:action>
+          <q-btn flat label="Desbloquear Histórico Completo" color="primary" @click="showComparisonDialog = true" />
+        </template>
+      </q-banner>
+    </div>
+
     <div v-if="authStore.userSector === 'frete'" class="row q-col-gutter-lg">
       <div class="col-12 col-md-6">
-        <div class="flex items-center justify-between q-mb-sm">
-          <h1 class="text-h5 text-weight-bold q-my-none">Mural de Fretes Abertos</h1>
-          <q-btn flat round dense icon="refresh" :loading="freightOrderStore.isLoading" @click="refreshFreightData" />
         </div>
-        <q-card flat bordered>
-          <q-list separator>
-            <q-item v-if="freightOrderStore.isLoading && freightOrderStore.openOrders.length === 0" class="q-pa-md"><q-item-section><q-skeleton type="text" width="80%" /><q-skeleton type="text" width="50%" /></q-item-section></q-item>
-            <q-item v-if="!freightOrderStore.isLoading && freightOrderStore.openOrders.length === 0" class="text-center text-grey-7 q-pa-md">
-              Nenhum frete aberto no momento.
-            </q-item>
-            <q-item v-else v-for="order in freightOrderStore.openOrders" :key="order.id" clickable @click="openClaimDialog(order)">
-              <q-item-section avatar><q-icon name="add_shopping_cart" color="primary" /></q-item-section>
-              <q-item-section>
-                <q-item-label class="text-weight-medium">{{ order.description || 'Frete sem descrição' }}</q-item-label>
-                <q-item-label caption>{{ order.stop_points.length }} paradas. Cliente: {{ order.client.name }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card>
-      </div>
-
       <div class="col-12 col-md-6">
-        <div class="flex items-center justify-between q-mb-sm">
-          <h1 class="text-h5 text-weight-bold q-my-none">Minhas Tarefas</h1>
-          <q-btn flat round dense icon="refresh" :loading="freightOrderStore.isLoading" @click="refreshFreightData" />
         </div>
-        <q-card flat bordered>
-          <q-list separator>
-            <q-item v-if="freightOrderStore.isLoading && freightOrderStore.myPendingOrders.length === 0" class="q-pa-md"><q-item-section><q-skeleton type="text" width="80%" /><q-skeleton type="text" width="50%" /></q-item-section></q-item>
-            <q-item v-if="!freightOrderStore.isLoading && freightOrderStore.myPendingOrders.length === 0" class="text-center text-grey-7 q-pa-md">
-              Você não tem tarefas ativas.
-            </q-item>
-            <q-item v-else v-for="order in freightOrderStore.myPendingOrders" :key="order.id" clickable @click="openDriverDialog(order)" :active="order.status === 'Em Trânsito'" active-class="bg-blue-1 text-primary">
-              <q-item-section avatar><q-icon :name="order.status === 'Em Trânsito' ? 'local_shipping' : 'assignment_turned_in'" /></q-item-section>
-              <q-item-section>
-                <q-item-label class="text-weight-medium">{{ order.description || 'Frete sem descrição' }}</q-item-label>
-                <q-item-label caption>Status: {{ order.status }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card>
-      </div>
     </div>
 
     <div v-else>
       <div class="flex items-center justify-between q-mb-md">
         <h1 class="text-h5 text-weight-bold q-my-none">{{ terminologyStore.journeyPageTitle }}</h1>
-        <q-btn v-if="!journeyStore.currentUserActiveJourney" @click="openStartDialog" color="primary" icon="add_road" :label="terminologyStore.startJourneyButtonLabel" unelevated />
+        <div class="flex items-center q-gutter-x-sm">
+           <q-btn 
+            v-if="!journeyStore.currentUserActiveJourney" 
+            @click="openStartDialog" 
+            color="primary" 
+            icon="add_road" 
+            :label="terminologyStore.startJourneyButtonLabel" 
+            unelevated 
+          />
+        </div>
       </div>
 
-      <q-banner v-if="isDemo" inline-actions rounded class="bg-amber-2 text-black q-mb-lg">
-        <template v-slot:avatar>
-          <q-icon name="history_toggle_off" color="amber-8" />
-        </template>
-        <div class="text-weight-medium">
-          No Plano Demo, o histórico de jornadas é limitado aos últimos 7 dias.
-          <q-btn flat dense color="primary" label="Faça o upgrade" @click="showHistoryUpgradeDialog" class="q-ml-sm" />
-          para aceder a todos os dados.
-        </div>
-      </q-banner>
-      <q-card v-if="journeyStore.currentUserActiveJourney" class="bg-black-9 q-mb-lg" flat bordered>
+      <q-card v-if="journeyStore.currentUserActiveJourney" class="bg-grey-10 text-white q-mb-lg border-l-primary" flat bordered>
         <q-card-section>
-          <div class="text-h6">Você tem uma {{ terminologyStore.journeyNoun.toLowerCase() }} em andamento</div>
-          <div class="text-subtitle2" v-if="journeyStore.currentUserActiveJourney.vehicle">{{ terminologyStore.vehicleNoun }}: {{ journeyStore.currentUserActiveJourney.vehicle.brand }} {{ journeyStore.currentUserActiveJourney.vehicle.model }}</div>
+          <div class="row items-center">
+            <q-icon name="directions_car" size="md" class="q-mr-md text-primary" />
+            <div>
+              <div class="text-h6">Viagem em Andamento</div>
+              <div class="text-subtitle2 text-grey-4" v-if="journeyStore.currentUserActiveJourney.vehicle">
+                {{ terminologyStore.vehicleNoun }}: {{ journeyStore.currentUserActiveJourney.vehicle.brand }} {{ journeyStore.currentUserActiveJourney.vehicle.model }}
+              </div>
+            </div>
+          </div>
         </q-card-section>
-        <q-separator />
-        <q-card-actions align="right"><q-btn @click="openEndDialog()" color="primary" :label="`Finalizar Minha ${terminologyStore.journeyNoun}`" unelevated /></q-card-actions>
+        <q-separator dark />
+        <q-card-actions align="right">
+          <q-btn @click="openEndDialog()" color="primary" :label="`Finalizar Minha ${terminologyStore.journeyNoun}`" unelevated />
+        </q-card-actions>
       </q-card>
       
       <q-card flat bordered>
@@ -80,24 +64,70 @@
           row-key="id"
           :loading="journeyStore.isLoading"
           no-data-label="Nenhuma operação encontrada"
+          :pagination="{ rowsPerPage: 10 }"
+          :row-class="getRowClass"
         >
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
-              <q-btn v-if="props.row.is_active" @click="openEndDialog(props.row)" flat round dense icon="event_busy" color="primary" :title="`Finalizar ${terminologyStore.journeyNoun}`" />
-              <q-btn v-if="authStore.isManager" @click="promptToDeleteJourney(props.row)" flat round dense icon="delete" color="negative" :title="`Excluir ${terminologyStore.journeyNoun}`" />
+              <div v-if="!isRowBlurred(props.rowIndex)">
+                <q-btn v-if="props.row.is_active" @click="openEndDialog(props.row)" flat round dense icon="event_busy" color="primary" :title="`Finalizar ${terminologyStore.journeyNoun}`" />
+                <q-btn v-if="authStore.isManager" @click="promptToDeleteJourney(props.row)" flat round dense icon="delete" color="negative" :title="`Excluir ${terminologyStore.journeyNoun}`" />
+              </div>
+              <div v-else>
+                <q-icon name="lock" color="grey-5" />
+              </div>
             </q-td>
           </template>
         </q-table>
       </q-card>
     </div>
     
-    <q-dialog v-model="isClaimDialogOpen" @hide="onClaimDialogClose">
-    <ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" />
+    <q-dialog v-model="showComparisonDialog">
+      <q-card style="width: 700px; max-width: 95vw;">
+        <q-card-section class="bg-primary text-white q-py-lg">
+          <div class="text-h5 text-weight-bold text-center">Histórico Vitalício</div>
+          <div class="text-subtitle1 text-center text-blue-2">Não perca nenhum dado da sua operação</div>
+        </q-card-section>
+
+        <q-card-section class="q-pa-none">
+          <q-markup-table flat separator="horizontal">
+            <thead>
+              <tr class=" text-uppercase text-grey-7">
+                <th class="text-left text-white q-pa-md">Funcionalidade</th>
+                <th class="text-center text-weight-bold  text-amber-10 q-pa-md ">Plano Demo</th>
+                <th class="text-center text-weight-bold q-pa-md text-primary">Plano PRO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="history" color="grey" size="xs" /> Histórico Visível</td>
+                <td class="text-center  text-amber-10">Últimos 5 registros</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Completo e Vitalício</td>
+              </tr>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="speed" color="" size="xs" /> Limite de Viagens</td>
+                <td class="text-center text-amber-10">Ilimitado</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Ilimitado</td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+        </q-card-section>
+
+        <q-card-actions align="center" class="q-pa-lg ">
+          <div class="text-center full-width">
+            <q-btn color="primary" label="Falar com Consultor" size="lg" unelevated icon="whatsapp" class="full-width" />
+            <q-btn flat color="grey" label="Continuar no Demo" class="q-mt-sm" v-close-popup />
+          </div>
+        </q-card-actions>
+      </q-card>
     </q-dialog>
-    <q-dialog v-model="isClaimDialogOpen"><ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" /></q-dialog>
+
+    <q-dialog v-model="isClaimDialogOpen" @hide="onClaimDialogClose">
+        <ClaimFreightDialog v-if="selectedOrderForAction" :order="selectedOrderForAction" @close="isClaimDialogOpen = false" />
+    </q-dialog>
     <q-dialog v-model="isDriverDialogOpen"><DriverFreightDialog :order="freightOrderStore.activeOrderDetails" @close="isDriverDialogOpen = false" /></q-dialog>
+    
     <q-dialog v-model="isStartDialogOpen">
-      
       <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section><div class="text-h6">Iniciar Nova {{ terminologyStore.journeyNoun }}</div></q-card-section>
         <q-form @submit.prevent="handleStartJourney">
@@ -125,24 +155,23 @@
               <template v-slot:prepend><q-icon name="location_pin" /></template>
             </q-input>
 
-            <div></div>
             <q-input outlined v-model="startForm.destination_street" label="Rua / Logradouro" />
 
-            <div></div>
             <div class="row q-col-gutter-md">
                 <div class="col-8"><q-input outlined v-model="startForm.destination_neighborhood" label="Bairro" /></div>
                 <div class="col-4"><q-input outlined v-model="startForm.destination_number" label="Nº" /></div>
             </div>
-            <div> </div>
+            
             <div class="row q-col-gutter-md">
                 <div class="col-8"><q-input outlined v-model="startForm.destination_city" label="Cidade" /></div>
                 <div class="col-4"><q-input outlined v-model="startForm.destination_state" label="UF" /></div>
-              </div>
-            </q-card-section>
+            </div>
+          </q-card-section>
           <q-card-actions align="right"><q-btn flat label="Cancelar" v-close-popup /><q-btn type="submit" unelevated color="primary" label="Iniciar" :loading="isSubmitting" /></q-card-actions>
         </q-form>
       </q-card>
     </q-dialog>
+
     <q-dialog v-model="isEndDialogOpen">
       <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section><div class="text-h6">Finalizar {{ terminologyStore.journeyNoun }}</div></q-card-section>
@@ -186,32 +215,21 @@ const demoStore = useDemoStore();
 const { isCepLoading, fetchAddressByCep } = useCepApi();
 
 const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
+const showComparisonDialog = ref(false);
 
-function showHistoryUpgradeDialog() {
-  $q.dialog({
-    title: 'Desbloqueie o Potencial Máximo do TruCar',
-    message: 'Para aceder ao histórico completo e outras funcionalidades premium, entre em contato com nossa equipe comercial.',
-    ok: { label: 'Entendido', color: 'primary', unelevated: true },
-    persistent: false
-  });
+// --- FUNÇÕES DE CENSURA DEMO ---
+function isRowBlurred(rowIndex: number) {
+  if (!isDemo.value) return false;
+  return rowIndex >= 5; // Bloqueia a partir do 6º item (índice 5)
 }
 
-const isJourneyLimitReached = computed(() => {
-  if (!authStore.isDemo) { return false; }
-  const limit = authStore.user?.organization?.freight_order_limit;
-  if (limit === undefined || limit === null || limit < 0) { return false; }
-  const currentCount = demoStore.stats?.journey_count ?? 0;
-  return currentCount >= limit;
-});
-
-function showLimitUpgradeDialog() {
-  $q.dialog({
-    title: 'Limite do Plano Demo Atingido',
-    message: `Você atingiu o limite de ${authStore.user?.organization?.freight_order_limit} ${terminologyStore.journeyNounPlural.toLowerCase()} permitidas no plano de demonstração. Para iniciar mais, por favor, entre em contato com nossa equipe comercial para atualizar seu plano.`,
-    ok: { label: 'Entendido', color: 'primary', unelevated: true },
-    persistent: false
-  });
+function getRowClass(row: Journey, rowIndex: number) {
+  if (isRowBlurred(rowIndex)) {
+    return 'demo-blur';
+  }
+  return '';
 }
+// -------------------------------
 
 const isSubmitting = ref(false);
 const isStartDialogOpen = ref(false);
@@ -225,13 +243,12 @@ const isDriverDialogOpen = ref(false);
 const selectedOrderForAction = ref<FreightOrder | null>(null);
 
 function openClaimDialog(order: FreightOrder) {
-  if (isJourneyLimitReached.value) { showLimitUpgradeDialog(); return; }
   selectedOrderForAction.value = order;
   isClaimDialogOpen.value = true;
 }
 
 function onClaimDialogClose() {
-  if (authStore.isDemo) { void demoStore.fetchDemoStats(); }
+  if (authStore.isDemo) { void demoStore.fetchDemoStats(true); }
   void freightOrderStore.fetchMyPendingOrders();
 }
 
@@ -262,11 +279,9 @@ const columns = computed<QTableColumn[]>(() => {
     },
   ];
 
-  // --- CORREÇÃO: Só adiciona a coluna 'implement' se o setor for Agronegócio ---
   if (authStore.userSector === 'agronegocio') {
     cols.push({ name: 'implement', label: 'Implemento', align: 'left', field: (row: Journey) => row.implement ? `${row.implement.name} (${row.implement.model})` : '---', sortable: true });
   }
-  // --------------------------------------------------------------------------
 
   if (authStore.isManager) {
     cols.push({ name: 'actions', label: 'Ações', field: 'actions', align: 'right' });
@@ -284,10 +299,10 @@ watch(() => startForm.value.vehicle_id, (newVehicleId) => {
 });
 
 async function openStartDialog() {
-  if (isJourneyLimitReached.value) { showLimitUpgradeDialog(); return; }
   const promisesToFetch = [vehicleStore.fetchAllVehicles()];
   if (authStore.userSector === 'agronegocio') promisesToFetch.push(implementStore.fetchAvailableImplements());
   await Promise.all(promisesToFetch);
+  
   startForm.value = { 
     vehicle_id: null, 
     trip_type: JourneyType.FREE_ROAM, 
@@ -329,7 +344,7 @@ async function handleStartJourney() {
     await journeyStore.startJourney(startForm.value as JourneyCreate);
     $q.notify({ type: 'positive', message: terminologyStore.journeyStartSuccessMessage });
     isStartDialogOpen.value = false;
-    if (isDemo.value) { void demoStore.fetchDemoStats(); }
+    if (isDemo.value) { void demoStore.fetchDemoStats(true); }
   } catch (error) {
     let message = 'Erro ao iniciar operação.';
     if (isAxiosError(error) && error.response?.data?.detail) { message = error.response.data.detail as string; }
@@ -348,6 +363,7 @@ async function handleEndJourney() {
     isEndDialogOpen.value = false;
     await journeyStore.fetchAllJourneys();
     await vehicleStore.fetchAllVehicles();
+    if (isDemo.value) { void demoStore.fetchDemoStats(true); }
   } catch (error) {
     let message = 'Erro ao finalizar operação.';
     if (isAxiosError(error) && error.response?.data?.detail) { message = error.response.data.detail as string; }
@@ -363,8 +379,9 @@ function promptToDeleteJourney(journey: Journey) {
     title: 'Confirmar Exclusão', message: `Tem certeza que deseja excluir esta ${terminologyStore.journeyNoun.toLowerCase()}?`,
     cancel: true, persistent: false,
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
-  }).onOk(() => {
-    void journeyStore.deleteJourney(journey.id);
+  }).onOk(async () => {
+    await journeyStore.deleteJourney(journey.id);
+    if (isDemo.value) { void demoStore.fetchDemoStats(true); }
   });
 }
 
@@ -391,3 +408,20 @@ onMounted(() => {
   }
 });
 </script>
+
+<style scoped>
+.border-l-primary {
+  border-left: 5px solid var(--q-primary);
+}
+.border-left-primary {
+  border-left: 4px solid var(--q-primary);
+}
+
+/* ESTILO DE CENSURA (BLUR) */
+:deep(.demo-blur) {
+  filter: blur(4px);
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+}
+</style>

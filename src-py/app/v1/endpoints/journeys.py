@@ -47,17 +47,10 @@ async def start_journey(
     journey_in: JourneyCreate,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """Inicia uma nova viagem para o utilizador logado."""
-    if current_user.role == UserRole.CLIENTE_DEMO:
-        monthly_journeys = await crud.journey.count_journeys_in_current_month(
-            db, organization_id=current_user.organization_id
-        )
-        if monthly_journeys >= 10:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="A sua conta de demonstração permite o registo de 10 jornadas por mês. Faça o upgrade para continuar."
-            )
-
+    """Inicia uma nova viagem para o utilizador logado (ILIMITADO PARA DEMO)."""
+    
+    # --- REMOVIDA A VERIFICAÇÃO DE LIMITE MENSAL AQUI ---
+    
     existing_journey = await crud.journey.get_active_journey_by_driver(
         db, driver_id=current_user.id, organization_id=current_user.organization_id
     )
@@ -70,6 +63,10 @@ async def start_journey(
             organization_id=current_user.organization_id
         )
         
+        # Opcional: Ainda podemos incrementar o contador para estatísticas, mas sem bloquear
+        if current_user.role == UserRole.CLIENTE_DEMO:
+             await crud.demo_usage.increment_usage(db, organization_id=current_user.organization_id, resource_type="journeys")
+
         message = f"{current_user.full_name} iniciou uma nova jornada com {journey.vehicle.brand} {journey.vehicle.model}."
         background_tasks.add_task(
             crud.notification.create_notification,

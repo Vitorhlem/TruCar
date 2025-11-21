@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app import crud, deps
-from app.models.user_model import User
+from app.models.user_model import User, UserRole # <--- Import UserRole
+from app.core.config import settings # <--- Import settings
 from app.schemas.vehicle_cost_schema import VehicleCostCreate, VehicleCostPublic
 
 router = APIRouter()
@@ -21,7 +22,6 @@ async def read_vehicle_costs(
     """
     Lista todos os custos associados a um veículo específico.
     """
-    # Primeiro, verificamos se o veículo pertence à organização do utilizador
     vehicle = await crud.vehicle.get(db, vehicle_id=vehicle_id, organization_id=current_user.organization_id)
     if not vehicle:
         raise HTTPException(
@@ -35,6 +35,7 @@ async def read_vehicle_costs(
     return costs
 
 
+# --- MODIFICADO: Verificação manual do limite ---
 @router.post("/", response_model=VehicleCostPublic, status_code=status.HTTP_201_CREATED)
 async def create_vehicle_cost(
     *,
@@ -46,7 +47,19 @@ async def create_vehicle_cost(
     """
     Cria um novo registo de custo para um veículo específico.
     """
-    # Verificamos novamente se o veículo pertence à organização do utilizador
+    # 1. Validação de Limite Demo (Contagem Real)
+    if current_user.role == UserRole.CLIENTE_DEMO:
+        limit = settings.DEMO_MONTHLY_LIMITS.get("vehicle_costs", 15)
+        current_count = await crud.vehicle_cost.count_costs_in_current_month(
+            db, organization_id=current_user.organization_id
+        )
+        if current_count >= limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Você atingiu o limite de {limit} registros de custos este mês no plano Demo."
+            )
+
+    # 2. Validação do Veículo
     vehicle = await crud.vehicle.get(db, vehicle_id=vehicle_id, organization_id=current_user.organization_id)
     if not vehicle:
         raise HTTPException(
@@ -54,6 +67,7 @@ async def create_vehicle_cost(
             detail="Veículo não encontrado nesta organização."
         )
 
+    # 3. Criação do Custo
     cost = await crud.vehicle_cost.create_cost(
         db, obj_in=cost_in, vehicle_id=vehicle_id, organization_id=current_user.organization_id
     )

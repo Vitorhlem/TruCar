@@ -33,6 +33,7 @@ export interface Organization extends OrganizationBase {
   driver_limit: number;
   freight_order_limit: number;
   maintenance_limit: number;
+  part_limit?: number; // <--- Este corrige o erro da PartsPage
   // --- FIM DA ADIÇÃO ---
 }
 

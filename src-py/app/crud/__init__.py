@@ -19,4 +19,4 @@ from . import crud_notification as notification
 from . import crud_report as report
 from . import crud_tire as tire #
 from . import crud_fine as fine # <-- ADICIONE ESTA LINHA
-from . import crud_demo_usage as demo_usage
+from .crud_demo_usage import demo_usage

@@ -1,5 +1,44 @@
 <template>
   <q-page padding>
+    
+    <div v-if="isDemo" class="q-mb-lg animate-fade">
+      <div class="row">
+        <div class="col-12 ">
+          <q-card flat bordered class="full-height">
+            <q-card-section>
+              <div class="row items-center justify-between no-wrap">
+                <div class="col">
+                  <div class="text-subtitle2 text-uppercase">Limite de Veículos</div>
+                  <div class="text-h4 text-primary text-weight-bold q-mt-sm">
+                    {{ demoUsageCount }} <span class="text-h6 text-grey-6">/ {{ demoUsageLimitLabel }}</span>
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <q-circular-progress
+                    show-value
+                    font-size="12px"
+                    :value="usagePercentage"
+                    size="50px"
+                    :thickness="0.22"
+                    :color="usageColor"
+                    track-color="grey-3"
+                    class="q-ma-md"
+                  >
+                    {{ usagePercentage }}%
+                  </q-circular-progress>
+                </div>
+              </div>
+              <q-linear-progress :value="usagePercentage / 100" class="q-mt-md" :color="usageColor" rounded />
+              <div class="text-caption text-grey-7 q-mt-sm">
+                <q-icon name="info" />
+                Você cadastrou {{ usagePercentage }}% da sua frota permitida no plano Demo.
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+    </div>
+
     <div class="flex items-center justify-between q-mb-md">
       <h1 class="text-h5 text-weight-bold q-my-none">{{ terminologyStore.vehiclePageTitle }}</h1>
       <div class="row items-center q-gutter-md">
@@ -10,10 +49,34 @@
         >
           <template v-slot:append><q-icon name="search" /></template>
         </q-input>
-        <q-btn
-          v-if="authStore.isManager" @click="openCreateDialog" color="primary"
-          icon="add" :label="terminologyStore.addVehicleButtonLabel" unelevated
-        />
+        
+        <div v-if="authStore.isManager" class="d-inline-block relative-position">
+          <q-btn
+            @click="openCreateDialog" 
+            color="primary"
+            icon="add" 
+            :label="terminologyStore.addVehicleButtonLabel" 
+            unelevated
+            :disable="isVehicleLimitReached"
+          />
+          
+          <q-tooltip 
+            v-if="isVehicleLimitReached" 
+            class="bg-negative text-body2 shadow-4" 
+            anchor="bottom middle" 
+            self="top middle"
+            :offset="[10, 10]"
+          >
+            <div class="row items-center no-wrap">
+                <q-icon name="lock" size="sm" class="q-mr-sm" />
+                <div>
+                    <div class="text-weight-bold">Limite de Frota Atingido</div>
+                    <div class="text-caption">O plano Demo permite até {{ demoUsageLimitLabel }} veículos.</div>
+                    <div class="text-caption q-mt-xs text-yellow-2 cursor-pointer" @click="showLimitUpgradeDialog">Clique para saber mais</div>
+                </div>
+            </div>
+          </q-tooltip>
+        </div>
       </div>
     </div>
 
@@ -30,7 +93,7 @@
     <div v-else-if="vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card 
-           class="column no-wrap full-height" 
+           class="column no-wrap full-height vehicle-card" 
            :class="{ 'vehicle-card-interactive': authStore.isManager }"
            @click="handleCardClick(vehicle)"
         >
@@ -47,7 +110,7 @@
             <div class="flex items-start no-wrap">
               <div class="col">
                 <div class="text-subtitle1 text-weight-bold ellipsis">{{ vehicle.brand }} {{ vehicle.model }}</div>
-                <div class="text-caption text-grey-8">{{ vehicle.license_plate || vehicle.identifier }} &bull; {{ vehicle.year }}</div>
+                <div class="text-caption">{{ vehicle.license_plate || vehicle.identifier }} &bull; {{ vehicle.year }}</div>
               </div>
               <div v-if="authStore.isManager" class="col-auto no-wrap">
                 <q-icon v-if="vehicle.telemetry_device_id" name="sensors" color="positive" size="20px" class="q-mr-xs">
@@ -66,13 +129,13 @@
           <q-separator />
 
           <q-card-section class="q-py-sm">
-            <div class="flex justify-between items-center text-caption text-grey-8">
+            <div class="flex justify-between items-center text-caption ">
               <span>{{ terminologyStore.distanceUnit.toLowerCase() === 'km' ? 'Odómetro' : 'Horímetro' }}</span>
-              <span class="text-weight-bold text-white-9">{{ formatDistance(terminologyStore.distanceUnit.toLowerCase() === 'km' ? vehicle.current_km : vehicle.current_engine_hours, terminologyStore.distanceUnit as 'km' | 'Horas') }}</span>
+              <span class="text-weight-bold ">{{ formatDistance(terminologyStore.distanceUnit.toLowerCase() === 'km' ? vehicle.current_km : vehicle.current_engine_hours, terminologyStore.distanceUnit as 'km' | 'Horas') }}</span>
             </div>
-            <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption text-grey-8 q-mt-xs">
+            <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption q-mt-xs">
               <span>Próx. Revisão</span>
-              <span class="text-weight-bold text-black ellipsis text-right" style="max-width: 60%;">
+              <span class="text-weight-bold ellipsis text-right" style="max-width: 60%;">
                 {{ vehicle.next_maintenance_km ? `${vehicle.next_maintenance_km.toLocaleString('pt-BR')} ${terminologyStore.distanceUnit}` : '' }}
                 {{ vehicle.next_maintenance_km && vehicle.next_maintenance_date ? ' ou ' : '' }}
                 {{ vehicle.next_maintenance_date ? (new Date(vehicle.next_maintenance_date + 'T00:00:00')).toLocaleDateString('pt-BR') : '' }}
@@ -86,15 +149,74 @@
     <div v-else class="full-width row flex-center text-primary q-gutter-sm q-pa-xl">
       <q-icon name="add_circle_outline" size="3em" />
       <span class="text-h6">Nenhum {{ terminologyStore.vehicleNoun.toLowerCase() }} encontrado</span>
-      <q-btn @click="openCreateDialog" v-if="authStore.isManager" unelevated color="primary" :label="`Adicionar primeiro ${terminologyStore.vehicleNoun.toLowerCase()}`" class="q-ml-lg" />
+      <q-btn 
+        @click="openCreateDialog" 
+        v-if="authStore.isManager" 
+        unelevated 
+        color="primary" 
+        :label="`Adicionar primeiro ${terminologyStore.vehicleNoun.toLowerCase()}`" 
+        class="q-ml-lg"
+        :disable="isVehicleLimitReached"
+      />
     </div>
 
     <div class="flex flex-center q-mt-lg" v-if="pagination.rowsNumber > pagination.rowsPerPage">
       <q-pagination v-model="pagination.page" :max="Math.ceil(pagination.rowsNumber / pagination.rowsPerPage)" @update:model-value="onPageChange" direction-links boundary-links icon-first="skip_previous" icon-last="skip_next" icon-prev="fast_rewind" icon-next="fast_forward" />
     </div>
 
+    <q-dialog v-model="showComparisonDialog">
+      <q-card style="width: 700px; max-width: 95vw;">
+        <q-card-section class="bg-primary text-white q-py-lg">
+          <div class="text-h5 text-weight-bold text-center">Desbloqueie o Potencial Máximo</div>
+          <div class="text-subtitle1 text-center text-blue-2">Veja o que você ganha com o upgrade</div>
+        </q-card-section>
+
+        <q-card-section class="q-pa-none">
+          <q-markup-table flat separator="horizontal">
+            <thead>
+              <tr class="bg-grey-1 text-uppercase text-grey-7">
+                <th class="text-left q-pa-md">Funcionalidade</th>
+                <th class="text-center text-weight-bold q-pa-md bg-amber-1 text-amber-9">Plano Demo (Atual)</th>
+                <th class="text-center text-weight-bold q-pa-md text-primary">Plano PRO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="directions_car" color="grey-6" size="xs" /> Gestão de Veículos</td>
+                <td class="text-center bg-amber-1 text-amber-10">Até {{ demoUsageLimitLabel }} veículos</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Frota Ilimitada</td>
+              </tr>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="history" color="grey-6" size="xs" /> Histórico de Dados</td>
+                <td class="text-center bg-amber-1 text-amber-10">Últimos 7 dias</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Ilimitado (Vitalício)</td>
+              </tr>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="speed" color="grey-6" size="xs" /> Limite de Viagens</td>
+                <td class="text-center bg-amber-1 text-amber-10">10 por mês</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Ilimitado</td>
+              </tr>
+              <tr>
+                <td class="text-weight-medium q-pa-md"><q-icon name="support_agent" color="grey-6" size="xs" /> Suporte Técnico</td>
+                <td class="text-center bg-amber-1 text-amber-10">Comunidade</td>
+                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Prioritário 24/7</td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+        </q-card-section>
+
+        <q-card-actions align="center" class="q-pa-lg bg-grey-1">
+          <div class="text-center full-width">
+            <div class="text-grey-7 q-mb-md">Pronto para escalar sua frota?</div>
+            <q-btn color="primary" label="Falar com Consultor" size="lg" unelevated icon="whatsapp" class="full-width" />
+            <q-btn flat color="grey-7" label="Continuar no Demo por enquanto" class="q-mt-sm" v-close-popup />
+          </div>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <q-dialog v-model="isFormDialogOpen">
-        <q-card style="width: 500px; max-width: 90vw;" :dark="$q.dark.isActive">
+        <q-card style="width: 500px; max-width: 90vw;">
           <q-card-section>
             <div class="text-h6">{{ isEditing ? terminologyStore.editButtonLabel : terminologyStore.newButtonLabel }}</div>
           </q-card-section>
@@ -166,29 +288,42 @@ const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
 const photoFile = ref<File | null>(null);
 
-// --- LÓGICA DE BLOQUEIO DE DEMO ---
-const isVehicleLimitReached = computed(() => {
-  if (!authStore.isDemo) {
-    return false;
-  }
-  const limit = authStore.user?.organization?.vehicle_limit;
-  if (limit === undefined || limit === null || limit < 0) {
-    return false;
-  }
-  const currentCount = demoStore.stats?.vehicle_count ?? 0;
-  return currentCount >= limit;
+const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
+
+// --- LÓGICA DEMO E LIMITES ---
+const showComparisonDialog = ref(false);
+
+const demoUsageCount = computed(() => demoStore.stats?.vehicle_count ?? 0);
+const demoUsageLimit = computed(() => authStore.user?.organization?.vehicle_limit ?? 3); // Padrão 3 se null
+const demoUsageLimitLabel = computed(() => {
+    const limit = authStore.user?.organization?.vehicle_limit;
+    return (limit === undefined || limit === null || limit < 0) ? 'Ilimitado' : limit.toString();
 });
 
-function showUpgradeDialog() {
-  $q.dialog({
-    title: 'Limite do Plano Demo Atingido',
-    message: `Você atingiu o limite de ${authStore.user?.organization?.vehicle_limit} ${terminologyStore.vehicleNounPlural.toLowerCase()} permitidos no plano de demonstração. Para adicionar mais, por favor, entre em contato com nossa equipe comercial para atualizar seu plano.`,
-    ok: { label: 'Entendido', color: 'primary', unelevated: true },
-    persistent: false
-  });
+const isVehicleLimitReached = computed(() => {
+  if (!isDemo.value) return false;
+  const limit = authStore.user?.organization?.vehicle_limit;
+  if (limit === undefined || limit === null || limit < 0) return false;
+  return demoUsageCount.value >= limit;
+});
+
+const usagePercentage = computed(() => {
+  if (!isDemo.value || demoUsageLimit.value <= 0) return 0;
+  const pct = Math.round((demoUsageCount.value / demoUsageLimit.value) * 100);
+  return Math.min(pct, 100);
+});
+
+const usageColor = computed(() => {
+  if (usagePercentage.value >= 100) return 'negative';
+  if (usagePercentage.value >= 80) return 'warning';
+  return 'primary';
+});
+
+function showLimitUpgradeDialog() {
+  showComparisonDialog.value = true;
 }
 
-// --- NAVEGAÇÃO INTELIGENTE ---
+// --- NAVEGAÇÃO E CRUD ---
 function handleCardClick(vehicle: Vehicle) {
   if (authStore.isManager) {
     goToVehicleDetails(vehicle);
@@ -205,7 +340,6 @@ function goToVehicleDetails(vehicle: Vehicle, tab = 'details') {
 
 function resetForm() {
   editingVehicleId.value = null;
-  // Inicializa identifier como null em vez de string vazia
   formData.value = {
     brand: '', model: '', year: new Date().getFullYear(),
     license_plate: '', identifier: null, photo_url: null, status: VehicleStatus.AVAILABLE,
@@ -218,10 +352,9 @@ function resetForm() {
 
 function openCreateDialog() {
   if (isVehicleLimitReached.value) {
-    showUpgradeDialog();
+    showLimitUpgradeDialog();
     return;
   }
-  
   resetForm();
   isFormDialogOpen.value = true;
 }
@@ -265,25 +398,14 @@ async function onFormSubmit() {
       payload.next_maintenance_date = payload.next_maintenance_date.split('/').reverse().join('-');
     }
 
-    // Lógica específica para Agro
     if (authStore.userSector === 'agronegocio' && payload.license_plate) {
       payload.identifier = payload.license_plate;
-      payload.license_plate = null; // Garante que a placa seja null se não for usada
+      payload.license_plate = null; 
     }
 
-    // --- CORREÇÃO AQUI: Limpeza de campos únicos ---
-    // Se o identificador estiver vazio ou for string vazia, converte para NULL/undefined
-    // para não violar a UniqueConstraint (vários veículos com identifier="" na mesma org)
-    if (payload.identifier === '' || !payload.identifier) {
-        delete payload.identifier; // ou payload.identifier = null;
-    }
-    if (payload.license_plate === '' || !payload.license_plate) {
-        delete payload.license_plate; // ou payload.license_plate = null;
-    }
-    if (payload.telemetry_device_id === '' || !payload.telemetry_device_id) {
-        delete payload.telemetry_device_id;
-    }
-    // ------------------------------------------------
+    if (payload.identifier === '' || !payload.identifier) delete payload.identifier;
+    if (payload.license_plate === '' || !payload.license_plate) delete payload.license_plate;
+    if (payload.telemetry_device_id === '' || !payload.telemetry_device_id) delete payload.telemetry_device_id;
 
     const currentFetchParams = {
       page: pagination.value.page,
@@ -296,7 +418,8 @@ async function onFormSubmit() {
     } else {
       await vehicleStore.addNewVehicle(payload as VehicleCreate, currentFetchParams);
       if (authStore.isDemo) {
-        void demoStore.fetchDemoStats();
+        // Força atualização para refletir novo uso imediatamente
+        void demoStore.fetchDemoStats(true);
       }
     }
 
@@ -373,10 +496,14 @@ function promptToDelete(vehicle: Vehicle) {
     message: `Tem a certeza que deseja excluir ${terminologyStore.vehicleNoun.toLowerCase()} ${vehicle.brand} ${vehicle.model}?`,
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
     cancel: { label: 'Cancelar', flat: true },
-  }).onOk(() => {
-    void vehicleStore.deleteVehicle(vehicle.id, {
+  }).onOk(async () => {
+    await vehicleStore.deleteVehicle(vehicle.id, {
       page: pagination.value.page, rowsPerPage: pagination.value.rowsPerPage, search: searchTerm.value,
     });
+    // Se for demo, atualiza os stats após excluir
+    if (authStore.isDemo) {
+      void demoStore.fetchDemoStats(true);
+    }
   });
 }
 </script>

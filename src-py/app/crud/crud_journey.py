@@ -157,7 +157,7 @@ async def get_journey(db: AsyncSession, *, journey_id: int, organization_id: int
 async def get_all_journeys(
     db: AsyncSession, *, 
     organization_id: int, 
-    requester_role: UserRole,  # <-- NOVO PARÂMETRO
+    requester_role: UserRole,
     skip: int = 0, 
     limit: int = 100, 
     driver_id: int | None = None, 
@@ -165,22 +165,17 @@ async def get_all_journeys(
     date_from: date | None = None, 
     date_to: date | None = None
 ) -> List[Journey]:
-    """Busca todas as viagens de uma organização, com filtros e lógica de demo."""
+    """Busca todas as viagens de uma organização."""
     stmt = select(Journey).where(Journey.organization_id == organization_id)
 
-    # --- LÓGICA DE LIMITE DE HISTÓRICO PARA DEMO ---
-    if requester_role == UserRole.CLIENTE_DEMO:
-        # Se for um cliente demo, ignoramos os filtros de data do utilizador
-        # e forçamos o filtro para os últimos 7 dias.
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
-        stmt = stmt.where(Journey.start_time >= seven_days_ago)
-    else:
-        # Apenas aplicamos os filtros de data se não for um cliente demo
-        if date_from:
-            stmt = stmt.where(Journey.start_time >= date_from)
-        if date_to:
-            stmt = stmt.where(Journey.start_time < date_to + timedelta(days=1))
-    # --- FIM DA LÓGICA ---
+    # --- REMOVIDO O FILTRO DE 7 DIAS PARA DEMO ---
+    # Agora o cliente demo recebe todo o histórico, mas o frontend
+    # irá censurar visualmente o que for antigo.
+    
+    if date_from:
+        stmt = stmt.where(Journey.start_time >= date_from)
+    if date_to:
+        stmt = stmt.where(Journey.start_time < date_to + timedelta(days=1))
 
     if driver_id:
         stmt = stmt.where(Journey.driver_id == driver_id)

@@ -28,8 +28,7 @@ async def save_upload_file(upload_file: UploadFile) -> str:
     return f"/static/uploads/documents/{unique_filename}"
 
 
-@router.post("/", response_model=DocumentPublic, status_code=status.HTTP_201_CREATED,
-            dependencies=[Depends(deps.check_demo_limit("documents"))])
+@router.post("/", response_model=DocumentPublic, status_code=status.HTTP_201_CREATED)
 async def create_document(
     *,
     db: AsyncSession = Depends(deps.get_db),

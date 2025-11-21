@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, cast, Integer
+from sqlalchemy import select, or_, cast, Integer, func # <--- ADICIONADO func
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Tuple
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date # <--- ADICIONADO date
 
 # --- IMPORTS NECESSÁRIOS ---
 from app.models.vehicle_component_model import VehicleComponent
@@ -563,9 +563,6 @@ async def update_request_status(
     db_obj.manager_notes = update_data.manager_notes
     db_obj.approver_id = manager_id
     
-    # --- CORREÇÃO FINAL AQUI ---
-    # Atualizar agendamento do veículo ao concluir
-    # Busca o veículo explicitamente para evitar erro de Lazy Loading (MissingGreenlet)
     if update_data.status == MaintenanceStatus.CONCLUIDA:
         vehicle = await db.get(Vehicle, db_obj.vehicle_id)
         
@@ -581,7 +578,6 @@ async def update_request_status(
             
             if changed:
                 db.add(vehicle)
-    # -------------------------------------------------
 
     db.add(db_obj)
     
@@ -623,3 +619,26 @@ async def get_comments_for_request(
     stmt = select(MaintenanceComment).where(MaintenanceComment.request_id == request_id).order_by(MaintenanceComment.created_at.asc()).options(selectinload(MaintenanceComment.user).selectinload(User.organization))
     result = await db.execute(stmt)
     return result.scalars().all()
+
+# --- NOVA FUNÇÃO DE CONTAGEM REAL ---
+async def count_requests_in_current_month(db: AsyncSession, *, organization_id: int) -> int:
+    """Conta quantos chamados de manutenção uma organização criou no mês corrente."""
+    today = date.today()
+    start_of_month = today.replace(day=1)
+    
+    # Lógica para encontrar o primeiro dia do próximo mês
+    if start_of_month.month == 12:
+        start_of_next_month = start_of_month.replace(year=start_of_month.year + 1, month=1)
+    else:
+        start_of_next_month = start_of_month.replace(month=start_of_month.month + 1)
+
+    stmt = (
+        select(func.count(MaintenanceRequest.id))
+        .where(
+            MaintenanceRequest.organization_id == organization_id,
+            MaintenanceRequest.created_at >= start_of_month,
+            MaintenanceRequest.created_at < start_of_next_month
+        )
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one()
