@@ -354,7 +354,7 @@ const dateRangeText = computed(() => {
       const from = format(parseISO(dateRange.value.from), 'dd/MM/yyyy');
       const to = format(parseISO(dateRange.value.to), 'dd/MM/yyyy');
       return `${from} - ${to}`;
-    } catch (e) {
+    } catch {
       return 'Período Inválido';
     }
   }

@@ -1,13 +1,14 @@
 <template>
-  <q-card>
-    <q-toolbar class="bg-primary text-white">
+  <q-card style="width: 900px; max-width: 95vw; display: flex; flex-direction: column; max-height: 85vh;">
+    <q-toolbar class="">
       <q-toolbar-title>Nova Ordem de Frete</q-toolbar-title>
       <q-btn flat round dense icon="close" @click="$emit('close')" />
     </q-toolbar>
 
-    <q-form @submit.prevent="handleSubmit">
-      <q-card-section class="q-gutter-y-lg">
-        <!-- SEÇÃO 1: DADOS GERAIS -->
+    <q-form @submit.prevent="handleSubmit" class="col column no-wrap">
+      
+      <q-card-section class="col scroll q-pa-md q-gutter-y-lg">
+        
         <div class="row q-col-gutter-md">
           <div class="col-12 col-sm-6">
             <q-select
@@ -26,51 +27,81 @@
 
         <q-separator />
 
-        <!-- SEÇÃO 2: PONTOS DE PARADA (DINÂMICO) -->
-        <div class="text-h6">Rota e Paradas</div>
-        <div v-for="(stop, index) in stopPoints" :key="index" class="q-pa-md q-gutter-y-md" bordered>
-          <div class="flex items-center justify-between">
-            <div class="text-subtitle1 text-weight-medium">Parada {{ index + 1 }}</div>
-            <q-btn v-if="stopPoints.length > 1" flat round dense color="negative" icon="delete" @click="removeStopPoint(index)" />
-          </div>
-          <div class="row q-col-gutter-md">
-            <div class="col-12 col-sm-6">
-              <q-select outlined v-model="stop.type" :options="['Coleta', 'Entrega']" label="Tipo *" :rules="[val => !!val || 'Campo obrigatório']" />
-            </div>
-            <div class="col-12 col-sm-6">
-              <q-input outlined v-model="stop.scheduled_time" type="datetime-local" stack-label label="Data/Hora Agendada *" :rules="[val => !!val || 'Campo obrigatório']" />
-            </div>
+        <div>
+          <div class="text-h6 q-mb-md">Rota e Paradas</div>
+          <div v-for="(stop, index) in stopPoints" :key="index" class="q-pa-md border-rounded q-mb-md">
             
-            <!-- CAMPOS DE CEP E ENDEREÇO -->
-            <div class="col-12 col-sm-6">
-                <q-input 
-                  outlined 
-                  v-model="stop.cep" 
-                  label="CEP da Parada" 
-                  mask="#####-###"
-                  unmasked-value
-                  :loading="isCepLoading"
-                  @blur="handleStopCepBlur(index)"
-                />
+            <div class="flex items-center justify-between q-mb-sm">
+              <div class="text-subtitle1 text-weight-bold text-grey-8">
+                <q-icon name="place" color="primary" class="q-mr-xs"/> Parada {{ index + 1 }}
+              </div>
+              <q-btn v-if="stopPoints.length > 1" flat round dense color="negative" icon="delete" @click="removeStopPoint(index)">
+                 <q-tooltip>Remover parada</q-tooltip>
+              </q-btn>
             </div>
-             <div class="col-12 col-sm-6">
-                <q-input outlined v-model="stop.address" label="Endereço da Parada *" :rules="[val => !!val || 'Campo obrigatório']" />
-            </div>
-            <!-- FIM DOS CAMPOS -->
 
-            <div class="col-12">
-              <q-input outlined v-model="stop.cargo_description" label="Descrição da Carga (nesta parada)" />
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-sm-3">
+                <q-select 
+                  outlined dense bg-color=""
+                  v-model="stop.type" 
+                  :options="['Coleta', 'Entrega']" 
+                  label="Tipo *" 
+                  :rules="[val => !!val || 'Obrigatório']" 
+                />
+              </div>
+              <div class="col-12 col-sm-4">
+                <q-input 
+                  outlined dense bg-color=""
+                  v-model="stop.scheduled_time" 
+                  type="datetime-local" 
+                  stack-label 
+                  label="Data/Hora *" 
+                  :rules="[val => !!val || 'Obrigatório']" 
+                />
+              </div>
+              
+              <div class="col-12 col-sm-5">
+                 <q-input 
+                   outlined dense bg-color=""
+                   v-model="stop.cep" 
+                   label="CEP" 
+                   mask="#####-###"
+                   unmasked-value
+                   :loading="isCepLoading"
+                   @blur="handleStopCepBlur(index)"
+                 >
+                    <template v-slot:append><q-icon name="search" /></template>
+                 </q-input>
+              </div>
+
+              <div class="col-12">
+                 <q-input 
+                   outlined dense bg-color=""
+                   v-model="stop.address" 
+                   label="Endereço Completo *" 
+                   :rules="[val => !!val || 'Obrigatório']" 
+                 />
+              </div>
+
+              <div class="col-12">
+                <q-input outlined dense bg-color="" v-model="stop.cargo_description" label="Descrição da Carga (nesta parada)" />
+              </div>
             </div>
           </div>
-          <q-separator v-if="index < stopPoints.length - 1" class="q-mt-md" />
+          
+          <q-btn outline color="primary" icon="add_location_alt" label="Adicionar Parada" @click="addStopPoint" class="full-width" />
         </div>
-        <q-btn outline color="primary" icon="add_location" label="Adicionar Parada" @click="addStopPoint" class="full-width" />
+
       </q-card-section>
       
-      <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="Cancelar" @click="$emit('close')" />
-        <q-btn type="submit" unelevated color="primary" label="Criar Ordem de Frete" :loading="isSubmitting" />
+      <q-separator />
+
+      <q-card-actions align="right" class="col-auto bg- q-pa-md">
+        <q-btn flat label="Cancelar" color="grey-8" @click="$emit('close')" />
+        <q-btn type="submit" unelevated color="primary" label="Criar Ordem de Frete" :loading="isSubmitting" class="q-px-lg" />
       </q-card-actions>
+
     </q-form>
   </q-card>
 </template>
@@ -108,6 +139,7 @@ function addStopPoint() {
 
 function removeStopPoint(index: number) {
   stopPoints.value.splice(index, 1);
+  // Reorganiza a sequência
   stopPoints.value.forEach((stop, i) => {
     stop.sequence_order = i + 1;
   });
@@ -149,3 +181,10 @@ onMounted(() => {
   void clientStore.fetchAllClients();
 });
 </script>
+
+<style scoped>
+.border-rounded {
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+</style>

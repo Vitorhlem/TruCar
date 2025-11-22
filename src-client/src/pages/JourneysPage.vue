@@ -242,20 +242,13 @@ const isClaimDialogOpen = ref(false);
 const isDriverDialogOpen = ref(false);
 const selectedOrderForAction = ref<FreightOrder | null>(null);
 
-function openClaimDialog(order: FreightOrder) {
-  selectedOrderForAction.value = order;
-  isClaimDialogOpen.value = true;
-}
+
 
 function onClaimDialogClose() {
   if (authStore.isDemo) { void demoStore.fetchDemoStats(true); }
   void freightOrderStore.fetchMyPendingOrders();
 }
 
-function openDriverDialog(order: FreightOrder) {
-  void freightOrderStore.fetchOrderDetails(order.id);
-  isDriverDialogOpen.value = true;
-}
 function refreshFreightData() {
   void freightOrderStore.fetchOpenOrders();
   void freightOrderStore.fetchMyPendingOrders();
@@ -376,12 +369,15 @@ async function handleEndJourney() {
 
 function promptToDeleteJourney(journey: Journey) {
   $q.dialog({
-    title: 'Confirmar Exclusão', message: `Tem certeza que deseja excluir esta ${terminologyStore.journeyNoun.toLowerCase()}?`,
+    title: 'Confirmar Exclusão', 
+    message: `Tem certeza que deseja excluir esta ${terminologyStore.journeyNoun.toLowerCase()}?`,
     cancel: true, persistent: false,
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
-  }).onOk(async () => {
-    await journeyStore.deleteJourney(journey.id);
-    if (isDemo.value) { void demoStore.fetchDemoStats(true); }
+  }).onOk(() => { // <--- Função síncrona
+    void (async () => { // <--- Função assíncrona auto-executável (IIFE)
+        await journeyStore.deleteJourney(journey.id);
+        if (isDemo.value) { await demoStore.fetchDemoStats(true); }
+    })();
   });
 }
 

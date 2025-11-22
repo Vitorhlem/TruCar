@@ -468,12 +468,15 @@ function confirmDelete(part: Part) {
     cancel: true,
     persistent: false,
     ok: { label: 'Tentar Excluir', color: 'negative', unelevated: true },
-}).onOk(() => {
+  }).onOk(() => {
+    // CORREÇÃO: Usar partStore e part.id
     void (async () => {
-        await journeyStore.deleteJourney(journey.id);
-        if (isDemo.value) { await demoStore.fetchDemoStats(true); }
+      await partStore.deletePart(part.id);
+      if (authStore.isDemo) { 
+          await demoStore.fetchDemoStats(true); 
+      }
     })();
-});
+  });
 }
 
 onMounted(() => {

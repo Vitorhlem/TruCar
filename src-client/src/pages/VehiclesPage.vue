@@ -496,14 +496,15 @@ function promptToDelete(vehicle: Vehicle) {
     message: `Tem a certeza que deseja excluir ${terminologyStore.vehicleNoun.toLowerCase()} ${vehicle.brand} ${vehicle.model}?`,
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
     cancel: { label: 'Cancelar', flat: true },
-  }).onOk(async () => {
-    await vehicleStore.deleteVehicle(vehicle.id, {
-      page: pagination.value.page, rowsPerPage: pagination.value.rowsPerPage, search: searchTerm.value,
-    });
-    // Se for demo, atualiza os stats após excluir
-    if (authStore.isDemo) {
-      void demoStore.fetchDemoStats(true);
-    }
+  }).onOk(() => { // <--- Função síncrona
+    void (async () => { // <--- IIFE
+      await vehicleStore.deleteVehicle(vehicle.id, {
+        page: pagination.value.page, rowsPerPage: pagination.value.rowsPerPage, search: searchTerm.value,
+      });
+      if (authStore.isDemo) {
+        await demoStore.fetchDemoStats(true);
+      }
+    })();
   });
 }
 </script>

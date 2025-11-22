@@ -13,22 +13,43 @@ from app.models.user_model import User
 from app.schemas.freight_order_schema import FreightOrderCreate, FreightOrderUpdate
 
 
+# --- HELPER PARA RECARREGAR O OBJETO COMPLETO ---
+async def _reload_order_with_relations(db: AsyncSession, order_id: int) -> FreightOrder:
+    stmt = (
+        select(FreightOrder)
+        .where(FreightOrder.id == order_id)
+        .options(
+            selectinload(FreightOrder.client),
+            selectinload(FreightOrder.stop_points),
+            selectinload(FreightOrder.vehicle),
+            selectinload(FreightOrder.driver),
+            selectinload(FreightOrder.journeys)
+        )
+        .execution_options(populate_existing=True)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
+
 async def create_with_stops(db: AsyncSession, *, obj_in: FreightOrderCreate, organization_id: int) -> FreightOrder:
     freight_order_data = obj_in.model_dump(exclude={"stop_points"})
     db_freight_order = FreightOrder(**freight_order_data, organization_id=organization_id, status=FreightStatus.OPEN)
-    
-    for stop_point_data in obj_in.stop_points:
-        db_stop_point = StopPoint(**stop_point_data.model_dump())
-        db_freight_order.stop_points.append(db_stop_point)
-        
     db.add(db_freight_order)
+    
+    await db.flush() 
+
+    for stop_point_data in obj_in.stop_points:
+        db_stop_point = StopPoint(
+            **stop_point_data.model_dump(), 
+            freight_order_id=db_freight_order.id
+        )
+        db.add(db_stop_point)
+        
     await db.commit()
-    await db.refresh(db_freight_order, attribute_names=["client", "stop_points"])
-    return db_freight_order
+    return await _reload_order_with_relations(db, db_freight_order.id)
 
 
 async def get(db: AsyncSession, *, id: int, organization_id: int) -> FreightOrder | None:
-    """Busca uma Ordem de Frete pelo ID, com todos os seus relacionamentos."""
     stmt = (
         select(FreightOrder)
         .where(FreightOrder.id == id, FreightOrder.organization_id == organization_id)
@@ -44,7 +65,6 @@ async def get(db: AsyncSession, *, id: int, organization_id: int) -> FreightOrde
     return result.scalars().first()
 
 async def get_multi_by_org(db: AsyncSession, *, organization_id: int, skip: int = 0, limit: int = 100) -> List[FreightOrder]:
-    """Busca uma lista de Ordens de Frete com seus relacionamentos principais."""
     stmt = (
         select(FreightOrder)
         .where(FreightOrder.organization_id == organization_id)
@@ -52,7 +72,7 @@ async def get_multi_by_org(db: AsyncSession, *, organization_id: int, skip: int 
             selectinload(FreightOrder.client),
             selectinload(FreightOrder.vehicle),
             selectinload(FreightOrder.driver),
-            selectinload(FreightOrder.stop_points)
+            selectinload(FreightOrder.stop_points),
         )
         .order_by(FreightOrder.id.desc())
         .offset(skip).limit(limit)
@@ -60,8 +80,8 @@ async def get_multi_by_org(db: AsyncSession, *, organization_id: int, skip: int 
     result = await db.execute(stmt)
     return result.scalars().all()
 
+# --- FUNÇÃO CORRIGIDA PARA EVITAR ERROS EM /OPEN ---
 async def get_multi_by_status(db: AsyncSession, *, organization_id: int, status: FreightStatus) -> List[FreightOrder]:
-    """Busca todas as ordens de frete de uma organização com um status específico."""
     stmt = (
         select(FreightOrder)
         .where(
@@ -70,7 +90,10 @@ async def get_multi_by_status(db: AsyncSession, *, organization_id: int, status:
         )
         .options(
             selectinload(FreightOrder.client),
-            selectinload(FreightOrder.stop_points)
+            selectinload(FreightOrder.stop_points),
+            # Carregamento defensivo de vehicle e driver
+            selectinload(FreightOrder.vehicle),
+            selectinload(FreightOrder.driver)
         )
         .order_by(FreightOrder.scheduled_start_time.asc())
     )
@@ -78,7 +101,6 @@ async def get_multi_by_status(db: AsyncSession, *, organization_id: int, status:
     return result.scalars().all()
 
 async def get_pending_by_driver(db: AsyncSession, *, driver_id: int, organization_id: int) -> List[FreightOrder]:
-    """Busca os fretes ATRIBUÍDOS (CLAIMED) ou EM TRÂNSITO de um motorista."""
     stmt = (
         select(FreightOrder)
         .where(
@@ -97,17 +119,15 @@ async def get_pending_by_driver(db: AsyncSession, *, driver_id: int, organizatio
     return result.scalars().all()
 
 async def update(db: AsyncSession, *, db_obj: FreightOrder, obj_in: FreightOrderUpdate) -> FreightOrder:
-    """Atualiza uma Ordem de Frete (ex: alocação manual de gestor)."""
     update_data = obj_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_obj, field, value)
     db.add(db_obj)
     await db.commit()
-    await db.refresh(db_obj)
-    return db_obj
+    
+    return await _reload_order_with_relations(db, db_obj.id)
     
 async def claim_order(db: AsyncSession, *, order: FreightOrder, driver: User, vehicle: Vehicle) -> FreightOrder:
-    """Atribui uma ordem de frete a um motorista e veículo."""
     if order.status != FreightStatus.OPEN:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este frete não está mais aberto para atribuição.")
     if vehicle.status != VehicleStatus.AVAILABLE:
@@ -122,11 +142,10 @@ async def claim_order(db: AsyncSession, *, order: FreightOrder, driver: User, ve
     db.add(vehicle)
     
     await db.commit()
-    await db.refresh(order, attribute_names=["client", "vehicle", "driver", "stop_points"])
-    return order
+    
+    return await _reload_order_with_relations(db, order.id)
 
 async def start_journey_for_stop(db: AsyncSession, *, order: FreightOrder, stop: StopPoint, vehicle: Vehicle) -> Journey:
-    """Inicia uma nova Journey (trecho) para uma parada de um frete."""
     if order.status == FreightStatus.CLAIMED:
         order.status = FreightStatus.IN_TRANSIT
         db.add(order)
@@ -150,8 +169,6 @@ async def start_journey_for_stop(db: AsyncSession, *, order: FreightOrder, stop:
     return new_journey
 
 async def complete_stop_point(db: AsyncSession, *, order: FreightOrder, stop: StopPoint, journey: Journey, end_mileage: int) -> StopPoint:
-    """Marca uma parada como concluída, finaliza o trecho (Journey) e ATUALIZA o veículo."""
-    
     stop.status = StopPointStatus.COMPLETED
     stop.actual_arrival_time = datetime.utcnow()
     db.add(stop)

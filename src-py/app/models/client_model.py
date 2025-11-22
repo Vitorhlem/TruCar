@@ -13,7 +13,12 @@ class Client(Base):
     contact_person = Column(String(100), nullable=True)
     phone = Column(String(20), nullable=True)
     email = Column(String(255), nullable=True)
-
+    cep = Column(String(20), nullable=True)
+    address_street = Column(String(255), nullable=True)
+    address_number = Column(String(20), nullable=True)
+    address_neighborhood = Column(String(100), nullable=True)
+    address_city = Column(String(100), nullable=True)
+    address_state = Column(String(2), nullable=True)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     
     # Relacionamento de volta para a Organização
@@ -24,3 +29,4 @@ class Client(Base):
     __table_args__ = (
         UniqueConstraint('name', 'organization_id', name='_client_name_org_uc'),
     )
+    

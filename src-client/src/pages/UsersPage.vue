@@ -332,14 +332,15 @@ function promptToDelete(user: User) {
     cancel: { label: 'Cancelar', flat: true },
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
     persistent: false,
-}).onOk(() => {
-  void (async () => {
-    await vehicleStore.deleteVehicle(vehicle.id, {
-      page: pagination.value.page, rowsPerPage: pagination.value.rowsPerPage, search: searchTerm.value,
-    });
-    if (authStore.isDemo) { await demoStore.fetchDemoStats(true); }
-  })();
-});
+  }).onOk(() => {
+    // CORREÇÃO: Usar userStore e user.id
+    void (async () => {
+        await userStore.deleteUser(user.id);
+        if (authStore.isDemo) { 
+            await demoStore.fetchDemoStats(true); 
+        }
+    })();
+  });
 }
 
 onMounted(async () => {

@@ -11,6 +11,7 @@ export interface OrganizationNestedInUser {
   driver_limit: number;
   freight_order_limit: number;
   maintenance_limit: number;
+  part_limit?: number; // <--- Este resolve o erro na PartsPage
   // --- FIM DA ADIÇÃO ---
 }
 // --- FIM DA ATUALIZAÇÃO ---
@@ -45,6 +46,7 @@ export interface OrganizationUpdate {
   driver_limit?: number;
   freight_order_limit?: number;
   maintenance_limit?: number;
+  part_limit?: number; // <--- Este resolve o erro na PartsPage
   // --- FIM DA ADIÇÃO ---
 }
 

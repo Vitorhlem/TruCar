@@ -11,6 +11,7 @@ export interface Organization {
   id: number;
   name: string;
   sector: UserSector;
+  part_limit?: number; // <--- ADICIONE ESTA LINHA AQUI
 }
 
 export interface OrganizationNestedInUser {
@@ -22,6 +23,7 @@ export interface OrganizationNestedInUser {
   driver_limit: number;
   freight_order_limit: number;
   maintenance_limit: number;
+  part_limit?: number; // <--- ADICIONE ESTA LINHA AQUI
   // --- FIM DA ADIÇÃO ---
 }
 

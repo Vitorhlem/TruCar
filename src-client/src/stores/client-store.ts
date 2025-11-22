@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
-import type { Client, ClientCreate } from 'src/models/client-models';
+import type { Client, ClientCreate, ClientUpdate } from 'src/models/client-models';
 
 export const useClientStore = defineStore('client', {
   // 1. As variáveis ('refs') agora vivem dentro do 'state'
@@ -34,5 +34,35 @@ export const useClientStore = defineStore('client', {
         throw error;
       }
     },
+    async updateClient(id: number, payload: ClientUpdate) {
+      this.isLoading = true;
+      try {
+        await api.put(`/clients/${id}`, payload);
+        Notify.create({ type: 'positive', message: 'Cliente atualizado com sucesso!' });
+        await this.fetchAllClients();
+      } catch (error) {
+        console.error(error);
+        Notify.create({ type: 'negative', message: 'Erro ao atualizar cliente.' });
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async deleteClient(id: number) {
+      this.isLoading = true;
+      try {
+        await api.delete(`/clients/${id}`);
+        Notify.create({ type: 'positive', message: 'Cliente excluído com sucesso!' });
+        // Remove localmente para agilizar a UI
+        this.clients = this.clients.filter(c => c.id !== id);
+      } catch (error) {
+        console.error(error);
+        Notify.create({ type: 'negative', message: 'Erro ao excluir cliente.' });
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    }
   },
 });
