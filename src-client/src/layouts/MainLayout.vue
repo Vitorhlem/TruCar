@@ -61,14 +61,14 @@
               </q-item-section>
             </q-item>
             <q-item clickable tag="a" to="/feedback">
-  <q-item-section avatar>
-    <q-icon name="feedback" />
-  </q-item-section>
-  <q-item-section>
-    <q-item-label>Feedback / Suporte</q-item-label>
-    <q-item-label caption>Reportar erros</q-item-label>
-  </q-item-section>
-</q-item>
+              <q-item-section avatar>
+                <q-icon name="feedback" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Feedback / Suporte</q-item-label>
+                <q-item-label caption>Reportar erros</q-item-label>
+              </q-item-section>
+            </q-item>
           </div>
         </q-list>
       </q-scroll-area>
@@ -164,7 +164,7 @@
 
               <div class="column items-center justify-center">
                 <q-avatar size="72px" color="primary" text-color="white" class="q-mb-sm">
-                   {{ getUserInitials(authStore.user?.full_name) }}
+                    {{ getUserInitials(authStore.user?.full_name) }}
                 </q-avatar>
                 <div class="text-subtitle1 q-mt-sm text-center">{{ authStore.user?.full_name }}</div>
                 <div class="text-caption text-grey q-mb-sm">{{ authStore.user?.email }}</div>
@@ -237,11 +237,27 @@ function handleLogout() {
 }
 
 // Helpers de Interface
-function getUserInitials(name: string | undefined) {
+// --- CORREÇÃO DE TYPESCRIPT ---
+function getUserInitials(name: string | undefined): string {
     if (!name) return 'U';
     const parts = name.trim().split(' ');
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    if (parts.length === 0) return 'U';
+    
+    // Usamos verificação explícita em vez de acesso direto ao índice
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    
+    // Se tivermos primeiro e último, retornamos as iniciais
+    if (first && last) {
+        return (first.charAt(0) + last.charAt(0)).toUpperCase();
+    }
+    
+    // Fallback se só tiver o primeiro
+    if (first) {
+        return first.substring(0, 2).toUpperCase();
+    }
+    
+    return 'U';
 }
 
 function firstName(name: string | undefined) {
@@ -284,12 +300,15 @@ async function handleNotificationClick(notification: Notification) {
       'maintenance_request': '/maintenance',
       'document_expiring': '/documents',
       'new_fine_registered': '/fines',
-      'low_stock': '/inventory-items', // Alterado para a página nova
+      'low_stock': '/inventory-items', 
       'journey_started': '/journeys',
       'journey_ended': '/journeys'
   };
   
-  const target = routes[notification.related_entity_type] || routes[notification.notification_type];
+  // CORREÇÃO: Garante que a chave é válida ou usa string vazia
+  const targetKey = notification.related_entity_type || notification.notification_type;
+  const target = routes[targetKey || ''];
+  
   if (target) void router.push(target);
 }
 
@@ -312,7 +331,8 @@ function getDriverMenu(): MenuCategory[] {
         }
     ];
 
-    if (sector === 'frete') {
+    // CORREÇÃO: Verificação de segurança ao acessar menu[0]
+    if (sector === 'frete' && menu.length > 0) {
         menu[0].children.push({ title: 'Cockpit de Viagem', icon: 'airline_seat_recline_normal', to: '/driver-cockpit' });
     }
 
@@ -344,7 +364,8 @@ function getManagerMenu(): MenuCategory[] {
 
   // 2. Operacional (Depende do Setor)
   const ops: MenuItem[] = [];
-  if (['agronegocio', 'servicos'].includes(sector)) {
+  // CORREÇÃO: Verifica se sector não é nulo antes de usar includes
+  if (sector && ['agronegocio', 'servicos'].includes(sector)) {
     ops.push({ title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' });
   }
   if (sector === 'frete') {
@@ -366,7 +387,7 @@ function getManagerMenu(): MenuCategory[] {
   }
   
   assets.push({ title: 'Inventário', icon: 'inventory_2', to: '/parts' });
-  assets.push({ title: 'Rastreabilidade ', icon: 'qr_code', to: '/inventory-items' }); // Link Importante
+  assets.push({ title: 'Rastreabilidade ', icon: 'qr_code', to: '/inventory-items' }); 
   
   menu.push({ label: 'Gestão de Ativos', icon: 'garage', children: assets });
 
@@ -409,7 +430,7 @@ onUnmounted(() => { clearInterval(pollTimer); });
 
 <style lang="scss" scoped>
 .main-layout-container {
-  background-color: #f8fafc; /* Cor de fundo suave */
+  background-color: #f8fafc;
   .body--dark & { background-color: #0f172a; }
 }
 
@@ -429,10 +450,10 @@ onUnmounted(() => { clearInterval(pollTimer); });
     transition: all 0.2s ease;
 
     &--active {
-      background-color: #eff6ff; /* Azul muito suave */
+      background-color: #eff6ff;
       color: $primary;
       font-weight: 600;
-      box-shadow: inset 4px 0 0 0 $primary; /* Borda lateral sutil */
+      box-shadow: inset 4px 0 0 0 $primary;
     }
 
     &:hover:not(.nav-link--active) {

@@ -1,11 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, desc
 from datetime import datetime, timedelta, date
 from typing import List, Optional, Dict, Any
 import logging
 from sqlalchemy.orm import selectinload
-from app.models.inventory_transaction_model import InventoryTransaction
-from app import crud
+
 # --- IMPORTS DE MODELS ---
 from app.models.user_model import User, UserRole
 from app.models.alert_model import Alert, AlertLevel
@@ -22,6 +21,7 @@ from app.models.part_model import Part
 from app.models.fine_model import Fine
 from app.models.document_model import Document
 from app.models.tire_model import VehicleTire as Tire
+from app.models.inventory_transaction_model import InventoryTransaction
 
 # --- IMPORTS DE SCHEMAS ---
 from app.schemas.dashboard_schema import KpiEfficiency, AlertSummary, GoalStatus, VehiclePosition
@@ -38,7 +38,33 @@ from app.schemas.report_schema import (
     VehicleReportSections
 )
 
-# --- FUNÇÃO HELPER ---
+# --- HELPER FUNCTIONS ---
+
+def _calculate_relative_time(timestamp: datetime) -> str:
+    """Helper para calcular string de tempo relativo."""
+    if not timestamp:
+        return ""
+        
+    now = datetime.utcnow() 
+    diff = now - timestamp
+    seconds = diff.total_seconds()
+
+    if seconds < 60:
+        return "agora"
+    elif seconds < 3600:
+        minutes = int(seconds / 60)
+        return f"há {minutes} min"
+    elif seconds < 86400:
+        hours = int(seconds / 3600)
+        return f"há {hours} h"
+    elif seconds < 604800: # 7 dias
+        days = int(seconds / 86400)
+        return f"há {days} d"
+    else:
+        return timestamp.strftime("%d/%m")
+
+# --- RELATÓRIOS E KPI GERAIS ---
+
 async def get_fleet_management_data(
     db: AsyncSession, *, start_date: date, end_date: date, organization_id: int
 ) -> FleetManagementReport:
@@ -49,8 +75,6 @@ async def get_fleet_management_data(
     vehicles_stmt = select(Vehicle).where(Vehicle.organization_id == organization_id)
     vehicles = (await db.execute(vehicles_stmt)).scalars().all()
     
-    vehicle_ids = [v.id for v in vehicles]
-
     # 2. Obter todos os custos e abastecimentos do período
     costs_stmt = select(VehicleCost).where(
         VehicleCost.organization_id == organization_id,
@@ -129,24 +153,7 @@ async def get_fleet_management_data(
     
     return report_data
 
-def _format_relative_time(dt: datetime) -> str:
-    now = datetime.utcnow()
-    delta = now - dt
-    seconds = delta.total_seconds()
-    
-    if seconds < 60:
-        return "agora mesmo"
-    elif seconds < 3600:
-        minutes = int(seconds / 60)
-        return f"há {minutes} minuto{'s' if minutes > 1 else ''}"
-    elif seconds < 86400:
-        hours = int(seconds / 3600)
-        return f"há {hours} hora{'s' if hours > 1 else ''}"
-    else:
-        days = int(seconds / 86400)
-        return f"há {days} dia{'s' if days > 1 else ''}"
-
-# --- FUNÇÕES DE DASHBOARD ---
+# --- DASHBOARD FUNCTIONS ---
 
 async def get_dashboard_kpis(db: AsyncSession, *, organization_id: int) -> dict:
     stmt = select(Vehicle.status, func.count(Vehicle.id)).where(
@@ -170,7 +177,6 @@ async def get_dashboard_kpis(db: AsyncSession, *, organization_id: int) -> dict:
     )
     return kpis_model.model_dump()
 
-
 async def get_costs_by_category_last_30_days(db: AsyncSession, *, organization_id: int, start_date: date | None = None) -> List[CostByCategory]:
     if not start_date:
         start_date = datetime.utcnow().date() - timedelta(days=30)
@@ -191,8 +197,9 @@ async def get_costs_by_category_last_30_days(db: AsyncSession, *, organization_i
     result = await db.execute(stmt)
     return [CostByCategory(cost_type=row.cost_type.value, total_amount=float(row.total_amount or 0)) for row in result.all()]
 
-
 async def get_podium_drivers(db: AsyncSession, *, organization_id: int) -> List[DashboardPodiumDriver]:
+    # Importação interna para evitar erro circular
+    from app import crud
     leaderboard_data = await crud.user.get_leaderboard_data(db, organization_id=organization_id)
     top_drivers_raw = leaderboard_data.get("leaderboard", [])[:3]
     
@@ -206,7 +213,6 @@ async def get_podium_drivers(db: AsyncSession, *, organization_id: int) -> List[
         result.append(driver)
         
     return result
-
 
 async def get_km_per_day_last_30_days(db: AsyncSession, *, organization_id: int, start_date: date | None = None) -> List[KmPerDay]:
     if not start_date:
@@ -239,7 +245,6 @@ async def get_km_per_day_last_30_days(db: AsyncSession, *, organization_id: int,
 
     result = await db.execute(stmt)
     return [KmPerDay(date=row.date, total_km=float(row.total_km or 0)) for row in result.all()]
-
 
 async def get_upcoming_maintenances(db: AsyncSession, *, organization_id: int) -> List[UpcomingMaintenance]:
     today = datetime.utcnow().date()
@@ -278,6 +283,7 @@ async def get_efficiency_kpis(db: AsyncSession, *, organization_id: int, start_d
     total_costs = (await db.execute(costs_stmt)).scalar_one_or_none() or 0
 
     # 2. Calcular Distância Total (Denominador comum)
+    # Reutiliza a função interna, passando os parâmetros necessários
     km_data = await get_km_per_day_last_30_days(db, organization_id=organization_id, start_date=start_date)
     total_distance = sum(item.total_km for item in km_data)
     
@@ -297,7 +303,7 @@ async def get_efficiency_kpis(db: AsyncSession, *, organization_id: int, start_d
     
     fleet_efficiency = 0.0
     if is_agro:
-        # Agro: Litros por Hora (Consumo - quanto menor, melhor, mas medimos a taxa)
+        # Agro: Litros por Hora (Consumo - quanto menor, melhor)
         fleet_efficiency = (total_liters / total_distance) if total_distance > 0 else 0
     else:
         # Transporte: KM por Litro (Rendimento - quanto maior, melhor)
@@ -317,38 +323,91 @@ async def get_efficiency_kpis(db: AsyncSession, *, organization_id: int, start_d
 
     return KpiEfficiency(
         cost_per_km=cost_per_km, 
-        fleet_avg_efficiency=fleet_efficiency, # Adicionado
+        fleet_avg_efficiency=fleet_efficiency, 
         utilization_rate=utilization_rate
     )
 
-async def get_recent_alerts(db: AsyncSession, *, organization_id: int) -> List[AlertSummary]:
-    stmt = (
-        select(Alert, Vehicle.license_plate, Vehicle.identifier, User.full_name)
-        .outerjoin(Vehicle, Alert.vehicle_id == Vehicle.id)
+async def get_recent_alerts(
+    db: AsyncSession, organization_id: int, limit: int = 5
+) -> List[AlertSummary]:
+    """
+    Busca os últimos alertas e os formata para exibição no Dashboard.
+    """
+    query = (
+        select(Alert)
+        .join(Vehicle, Alert.vehicle_id == Vehicle.id)
         .outerjoin(User, Alert.driver_id == User.id)
-        .where(Alert.organization_id == organization_id)
-        .order_by(Alert.timestamp.desc())
-        .limit(5)
+        .options(
+            selectinload(Alert.vehicle),
+            selectinload(Alert.driver)
+        )
+        .where(Vehicle.organization_id == organization_id)
+        .order_by(desc(Alert.timestamp))
+        .limit(limit)
     )
-    result = await db.execute(stmt)
-    alerts = []
-    for row in result.all():
-        alert, license_plate, identifier, full_name = row
+
+    result = await db.execute(query)
+    alerts = result.scalars().all()
+
+    formatted_alerts = []
+    for alert in alerts:
+        # 1. Definição de Ícones e Cores
+        icon = "notifications"
+        color = "grey"
         
-        subtitle = f"Veículo: {license_plate or identifier or 'N/A'}"
-        if full_name:
-            subtitle += f" | Motorista: {full_name}"
+        # CORREÇÃO: Usamos 'level' (do modelo) e convertemos para string uppercase
+        # O Enum pode vir como objeto ou string, garantimos a string aqui
+        lvl = str(alert.level.value).upper() if hasattr(alert.level, 'value') else str(alert.level).upper()
+        
+        # Como não temos campo 'type', analisamos a mensagem para escolher o ícone
+        msg_upper = alert.message.upper()
 
-        alerts.append(AlertSummary(
-            id=alert.id,
-            icon="warning" if alert.level != AlertLevel.INFO else "info",
-            color="negative" if alert.level == AlertLevel.CRITICAL else ("warning" if alert.level == AlertLevel.WARNING else "info"),
-            title=alert.message,
-            subtitle=subtitle,
-            time=_format_relative_time(alert.timestamp)
-        ))
-    return alerts
+        # Lógica de Cores baseada no Nível
+        if lvl in ["CRITICAL", "HIGH"]:
+            color = "negative"
+            icon = "warning"
+        elif lvl in ["WARNING", "MEDIUM"]:
+            color = "warning"
+            icon = "priority_high"
+        elif lvl in ["INFO", "LOW"]:
+            color = "info"
+            icon = "info"
 
+        # Lógica de Ícones baseada na Mensagem
+        if "VELOCIDADE" in msg_upper or "SPEED" in msg_upper:
+            icon = "speed"
+        elif "COMBUSTIVEL" in msg_upper or "FUEL" in msg_upper or "ABASTECIMENTO" in msg_upper:
+            icon = "local_gas_station"
+            if color == "grey": color = "deep-orange"
+        elif "MOTOR" in msg_upper or "ENGINE" in msg_upper:
+            # 'engine_problem' é específico do material icons, fallback para 'build' se não renderizar
+            icon = "car_crash" 
+        elif "GEOFENCE" in msg_upper or "ZONA" in msg_upper or "AREA" in msg_upper:
+            icon = "wrong_location"
+        elif "MANUTEN" in msg_upper or "OLEO" in msg_upper:
+            icon = "build"
+        
+        # 2. Formatação do Tempo Relativo
+        time_str = _calculate_relative_time(alert.timestamp)
+
+        # 3. Construção do Subtítulo
+        vehicle_name = f"{alert.vehicle.brand} {alert.vehicle.model}" if alert.vehicle else "Veículo Removido"
+        driver_name = alert.driver.full_name if alert.driver else "Sem motorista"
+        
+        subtitle = f"{vehicle_name} • {driver_name}"
+
+        formatted_alerts.append(
+            AlertSummary(
+                id=alert.id,
+                icon=icon,
+                color=color,
+                title=alert.message,
+                subtitle=subtitle,
+                time=time_str
+            )
+        )
+
+    return formatted_alerts
 
 async def get_active_goal_with_progress(db: AsyncSession, *, organization_id: int) -> Optional[GoalStatus]:
     today = datetime.utcnow().date()
@@ -377,7 +436,6 @@ async def get_active_goal_with_progress(db: AsyncSession, *, organization_id: in
         unit=active_goal.unit
     )
 
-
 async def get_vehicle_positions(db: AsyncSession, *, organization_id: int) -> List[VehiclePosition]:
     stmt = select(Vehicle).where(
         Vehicle.organization_id == organization_id,
@@ -388,8 +446,6 @@ async def get_vehicle_positions(db: AsyncSession, *, organization_id: int) -> Li
     vehicles = result.scalars().all()
     return [VehiclePosition.from_orm(v) for v in vehicles]
     
-
-# --- FUNÇÃO PRINCIPAL (RELATÓRIO CONSOLIDADO) ---
 async def get_vehicle_consolidated_data(
     db: AsyncSession,
     vehicle_id: int,
@@ -420,7 +476,6 @@ async def get_vehicle_consolidated_data(
 
     fuel_logs_data = []
     if sections.fuel_logs_detailed or sections.performance_summary:
-        # CORREÇÃO AQUI: Adicionado .options(selectinload(FuelLog.user))
         fuel_logs_stmt = select(FuelLog).where(
             FuelLog.vehicle_id == vehicle_id,
             func.date(FuelLog.timestamp).between(start_date, end_date)
@@ -461,7 +516,6 @@ async def get_vehicle_consolidated_data(
 
     journeys_data = []
     if sections.journeys_detailed or sections.performance_summary or sections.financial_summary:
-        # CORREÇÃO AQUI: Adicionado .options(selectinload(Journey.driver))
         journeys_stmt = select(Journey).where(
             Journey.vehicle_id == vehicle_id,
             func.date(Journey.start_time).between(start_date, end_date),
@@ -560,7 +614,6 @@ async def get_vehicle_consolidated_data(
         tires_detailed=tires_data if sections.tires_detailed else None
     )
 
-
 async def get_driver_performance_data(
     db: AsyncSession, *, start_date: date, end_date: date, organization_id: int
 ) -> DriverPerformanceReport:
@@ -577,9 +630,6 @@ async def get_driver_performance_data(
     drivers_performance_data: List[DriverPerformanceEntry] = []
 
     for driver in drivers:
-        # CORREÇÃO AQUI: Removido Journey.distance_km que não existe.
-        # Calculamos a soma da diferença de quilometragem.
-        # COALESCE é usado para tratar valores nulos como 0.
         dist_expr = func.coalesce(Journey.end_mileage, 0) - func.coalesce(Journey.start_mileage, 0)
         
         journeys_stmt = select(func.count(Journey.id), func.sum(dist_expr)).where(
@@ -633,6 +683,8 @@ async def get_driver_performance_data(
     return report_data
 
 async def get_driver_activity_data(db: AsyncSession, driver_id: int, organization_id: int, date_from: date, date_to: date) -> Dict[str, Any]:
+    # Import interno para evitar erro circular
+    from app import crud
     driver = await crud.user.get(db, id=driver_id)
     if not driver or driver.organization_id != organization_id:
         raise ValueError("Motorista não encontrado")
@@ -650,8 +702,7 @@ async def get_driver_activity_data(db: AsyncSession, driver_id: int, organizatio
         "journeys": journeys
     }
 
-
-async def get_dashboard_summary(self, db: AsyncSession, current_user: User, start_date: datetime) -> DashboardSummary:
+async def get_dashboard_summary(db: AsyncSession, current_user: User, start_date: datetime) -> DashboardSummary:
     try:
         total_vehicles_q = select(func.count(Vehicle.id)).where(Vehicle.organization_id == current_user.organization_id)
         total_vehicles_res = await db.execute(total_vehicles_q)

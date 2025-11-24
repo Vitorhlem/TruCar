@@ -50,7 +50,7 @@
               :bg-color="$q.dark.isActive ? 'grey-8' : 'white'"
               :rules="[val => !!val && val.length > 10 || 'A descrição deve ter pelo menos 10 caracteres']"
             >
-               <template v-slot:prepend><q-icon name="description" /></template>
+              <template v-slot:prepend><q-icon name="description" /></template>
             </q-input>
 
             <div>
@@ -65,7 +65,7 @@
                 >
                   <template v-slot:prepend><q-icon name="attach_file" /></template>
                   <template v-slot:append>
-                     <q-icon name="close" @click.stop="clearFile" v-if="screenshotFile" class="cursor-pointer" />
+                      <q-icon name="close" @click.stop="clearFile" v-if="screenshotFile" class="cursor-pointer" />
                   </template>
                 </q-file>
 
@@ -165,7 +165,6 @@ async function onSubmit() {
         formData.append('file', screenshotFile.value);
     }
 
-    // Nota: O Content-Type multipart/form-data é setado automaticamente pelo browser/axios ao usar FormData
     await api.post('/feedback/', formData);
     
     $q.notify({
@@ -175,7 +174,8 @@ async function onSubmit() {
       timeout: 3000
     });
     
-    router.push({ name: 'dashboard' });
+    // Correção do erro ESLint: Promise ignored
+    void router.push('/dashboard');
   } catch (error) {
     console.error(error);
     $q.notify({
