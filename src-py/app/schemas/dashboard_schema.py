@@ -15,6 +15,7 @@ from app.models.report_models import DashboardKPIs, CostByCategory, KmPerDay, Da
 class KpiEfficiency(BaseModel):
     """KPIs focados em eficiência e performance financeira."""
     cost_per_km: float = Field(..., description="Custo médio por quilómetro rodado.")
+    fleet_avg_efficiency: float # Novo (km/l ou l/h)
     utilization_rate: float = Field(..., description="Percentagem de tempo que a frota esteve em uso.")
 
 class VehiclePosition(BaseModel):

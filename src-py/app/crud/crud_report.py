@@ -270,17 +270,40 @@ async def get_upcoming_maintenances(db: AsyncSession, *, organization_id: int) -
 # --- DASHBOARD AVANÇADO ---
 
 async def get_efficiency_kpis(db: AsyncSession, *, organization_id: int, start_date: date) -> KpiEfficiency:
+    # 1. Calcular Custos Totais (Para Custo por KM)
     costs_stmt = select(func.sum(VehicleCost.amount)).where(
         VehicleCost.organization_id == organization_id,
         VehicleCost.date >= start_date
     )
     total_costs = (await db.execute(costs_stmt)).scalar_one_or_none() or 0
 
+    # 2. Calcular Distância Total (Denominador comum)
     km_data = await get_km_per_day_last_30_days(db, organization_id=organization_id, start_date=start_date)
-    total_km = sum(item.total_km for item in km_data)
+    total_distance = sum(item.total_km for item in km_data)
     
-    cost_per_km = (total_costs / total_km) if total_km > 0 else 0
+    # 3. Calcular Litros Totais (Para Eficiência de Combustível)
+    fuel_stmt = select(func.sum(FuelLog.liters)).where(
+        FuelLog.organization_id == organization_id,
+        FuelLog.timestamp >= start_date
+    )
+    total_liters = (await db.execute(fuel_stmt)).scalar_one_or_none() or 0.0
 
+    # --- MÉTRICA 1: Custo Financeiro (R$/km) ---
+    cost_per_km = (total_costs / total_distance) if total_distance > 0 else 0
+
+    # --- MÉTRICA 2: Eficiência Operacional (km/l ou l/h) ---
+    org = await db.get(Organization, organization_id)
+    is_agro = org.sector == 'agronegocio' if org else False
+    
+    fleet_efficiency = 0.0
+    if is_agro:
+        # Agro: Litros por Hora (Consumo - quanto menor, melhor, mas medimos a taxa)
+        fleet_efficiency = (total_liters / total_distance) if total_distance > 0 else 0
+    else:
+        # Transporte: KM por Litro (Rendimento - quanto maior, melhor)
+        fleet_efficiency = (total_distance / total_liters) if total_liters > 0 else 0
+
+    # --- MÉTRICA 3: Taxa de Utilização ---
     total_vehicles_stmt = select(func.count(Vehicle.id)).where(Vehicle.organization_id == organization_id)
     total_vehicles = (await db.execute(total_vehicles_stmt)).scalar_one()
 
@@ -292,8 +315,11 @@ async def get_efficiency_kpis(db: AsyncSession, *, organization_id: int, start_d
 
     utilization_rate = (in_use_vehicles / total_vehicles) * 100 if total_vehicles > 0 else 0
 
-    return KpiEfficiency(cost_per_km=cost_per_km, utilization_rate=utilization_rate)
-
+    return KpiEfficiency(
+        cost_per_km=cost_per_km, 
+        fleet_avg_efficiency=fleet_efficiency, # Adicionado
+        utilization_rate=utilization_rate
+    )
 
 async def get_recent_alerts(db: AsyncSession, *, organization_id: int) -> List[AlertSummary]:
     stmt = (

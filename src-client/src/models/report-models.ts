@@ -75,6 +75,7 @@ export interface DriverPerformanceReport {
 export interface KpiEfficiency {
   cost_per_km: number;
   utilization_rate: number;
+  fleet_avg_efficiency: number;
 }
 
 export interface VehiclePosition {

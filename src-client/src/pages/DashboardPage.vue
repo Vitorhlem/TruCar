@@ -148,23 +148,37 @@
           </div>
 
           <div v-if="visibleWidgets.financialKpis" class="row q-col-gutter-md q-mb-lg">
-             <div class="col-12 col-sm-6 col-lg-4">
+             <div class="col-12 col-sm-6 col-lg-3">
                 <MetricCard 
-                  :title="`Custo por ${terminologyStore.distanceUnit} Rodado`" 
+                  :title="`Custo/${terminologyStore.distanceUnit}`" 
                   :value="efficiencyKpis?.cost_per_km ?? 0" 
                   :unit="`R$/${terminologyStore.distanceUnit}`" 
                   icon="paid" 
                   color="deep-purple" 
                   trend="+2.5%" 
                   trend-color="negative" 
-                  tooltip="Baseado nos últimos 30 dias" 
+                  tooltip="Custo financeiro médio por unidade rodada" 
                 />
              </div>
-             <div class="col-12 col-sm-6 col-lg-4">
-                <MetricCard title="Gasto Total Combustível" :value="fuelCostTotal" unit="R$" icon="local_gas_station" color="orange-9" :formatter="(v) => `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`" />
+
+             <div class="col-12 col-sm-6 col-lg-3">
+                <MetricCard 
+                  title="Eficiência Média" 
+                  :value="efficiencyKpis?.fleet_avg_efficiency ?? 0" 
+                  :unit="terminologyStore.fuelUnit" 
+                  icon="speed" 
+                  color="blue-8" 
+                  :formatter="(v) => v.toFixed(1)"
+                  :tooltip="`Rendimento médio da frota (${terminologyStore.fuelUnit})`" 
+                />
              </div>
-             <div class="col-12 col-sm-6 col-lg-4">
-                <MetricCard title="Taxa de Utilização da Frota" :value="efficiencyKpis?.utilization_rate ?? 0" unit="%" icon="pie_chart" color="teal" :formatter="(v) => `${v.toFixed(1)}%`" tooltip="% de veículos em uso vs total" />
+             
+             <div class="col-12 col-sm-6 col-lg-3">
+                <MetricCard title="Gasto Combustível" :value="fuelCostTotal" unit="R$" icon="local_gas_station" color="orange-9" :formatter="(v) => `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`" />
+             </div>
+
+             <div class="col-12 col-sm-6 col-lg-3">
+                <MetricCard title="Taxa de Utilização" :value="efficiencyKpis?.utilization_rate ?? 0" unit="%" icon="pie_chart" color="teal" :formatter="(v) => `${v.toFixed(1)}%`" tooltip="% de veículos em uso vs total" />
              </div>
           </div>
 
