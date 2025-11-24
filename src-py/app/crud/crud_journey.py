@@ -2,18 +2,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Tuple
-from sqlalchemy import func # <-- ADICIONADO func
+from sqlalchemy import func 
 
 from datetime import datetime, date, timedelta
 
 from app.models.journey_model import Journey
 from app.models.vehicle_model import Vehicle, VehicleStatus
-# A LINHA QUE FALTAVA PARA O EAGER LOADING:
 from app.models.user_model import User, UserRole
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate
 from app.models.implement_model import Implement, ImplementStatus
 
-
+# --- IMPORT NOVO PARA GERAR O ALERTA ---
+from app.models.alert_model import Alert, AlertLevel
 
 # Exceções customizadas para uma arquitetura mais limpa
 class VehicleNotAvailableError(Exception):
@@ -22,7 +22,6 @@ class VehicleNotAvailableError(Exception):
 async def create_journey(
     db: AsyncSession, *, journey_in: JourneyCreate, driver_id: int, organization_id: int
 ) -> Journey:
-    # ... (o resto da sua função create_journey permanece igual)
     if journey_in.implement_id:
         implement = await db.get(Implement, journey_in.implement_id)
         if not implement or implement.organization_id != organization_id:
@@ -72,7 +71,6 @@ async def count_journeys_in_current_month(db: AsyncSession, *, organization_id: 
     today = date.today()
     start_of_month = today.replace(day=1)
     
-    # Lógica para encontrar o primeiro dia do próximo mês
     if start_of_month.month == 12:
         start_of_next_month = start_of_month.replace(year=start_of_month.year + 1, month=1)
     else:
@@ -92,11 +90,9 @@ async def count_journeys_in_current_month(db: AsyncSession, *, organization_id: 
 async def end_journey(
     db: AsyncSession, *, db_journey: Journey, journey_in: JourneyUpdate
 ) -> Tuple[Journey, Vehicle]:
-    """Finaliza uma operação, atualiza o status E o odómetro/horímetro do veículo."""
-    # --- INÍCIO DA CORREÇÃO DEFINITIVA ---
-
+    """Finaliza uma operação, atualiza o status, odómetro E GERA ALERTAS DE MANUTENÇÃO."""
+    
     # 1. ATUALIZAR A JORNADA
-    # Define os valores finais para a operação que está terminando.
     db_journey.end_time = datetime.utcnow()
     db_journey.is_active = False
     if journey_in.end_engine_hours is not None:
@@ -105,25 +101,36 @@ async def end_journey(
         db_journey.end_mileage = journey_in.end_mileage
     
     db.add(db_journey)
-    print(f"Jornada ID {db_journey.id} marcada como finalizada com end_engine_hours = {db_journey.end_engine_hours}")
 
     # 2. ATUALIZAR O VEÍCULO (MAQUINÁRIO)
-    # O horímetro final da operação se torna o NOVO horímetro ATUAL do maquinário.
     updated_vehicle = None
     if db_journey.vehicle_id:
         vehicle = await db.get(Vehicle, db_journey.vehicle_id)
         if vehicle:
-            print(f"Veículo ID {vehicle.id} encontrado. Horímetro ANTES: {vehicle.current_engine_hours}")
             vehicle.status = VehicleStatus.AVAILABLE
             
-            # A lógica principal:
+            # Atualiza Horímetro/KM
             if journey_in.end_engine_hours is not None:
                 vehicle.current_engine_hours = journey_in.end_engine_hours
-                print(f"!!! ATUALIZANDO HORÍMETRO DO VEÍCULO PARA: {vehicle.current_engine_hours} !!!")
-            
             elif journey_in.end_mileage is not None:
                 vehicle.current_km = journey_in.end_mileage
-                print(f"!!! ATUALIZANDO KM DO VEÍCULO PARA: {vehicle.current_km} !!!")
+
+            # --- NOVA LÓGICA: VERIFICAÇÃO DE MANUTENÇÃO ---
+            if vehicle.next_maintenance_km and vehicle.current_km:
+                if vehicle.current_km >= vehicle.next_maintenance_km:
+                    # Verifica se já existe um alerta recente idêntico para não duplicar (opcional, aqui simplificado)
+                    tipo_manutencao = vehicle.maintenance_notes or "Revisão Programada"
+                    
+                    alert = Alert(
+                        message=f"Manutenção Vencida ({tipo_manutencao}): Veículo atingiu {vehicle.current_km}km (Prazo: {vehicle.next_maintenance_km}km)",
+                        level=AlertLevel.WARNING,
+                        organization_id=vehicle.organization_id,
+                        vehicle_id=vehicle.id,
+                        driver_id=db_journey.driver_id
+                    )
+                    db.add(alert)
+                    print(f"ALERTA GERADO: {alert.message}")
+            # ----------------------------------------------
 
             db.add(vehicle)
             updated_vehicle = vehicle
@@ -135,10 +142,7 @@ async def end_journey(
             implement.status = ImplementStatus.AVAILABLE
             db.add(implement)
 
-    # --- FIM DA CORREÇÃO DEFINITIVA ---
-
     await db.commit()
-    print("--- COMMIT REALIZADO COM SUCESSO ---")
     
     await db.refresh(db_journey, ['vehicle', 'driver', 'implement'])
     
@@ -167,10 +171,6 @@ async def get_all_journeys(
 ) -> List[Journey]:
     """Busca todas as viagens de uma organização."""
     stmt = select(Journey).where(Journey.organization_id == organization_id)
-
-    # --- REMOVIDO O FILTRO DE 7 DIAS PARA DEMO ---
-    # Agora o cliente demo recebe todo o histórico, mas o frontend
-    # irá censurar visualmente o que for antigo.
     
     if date_from:
         stmt = stmt.where(Journey.start_time >= date_from)
@@ -195,7 +195,6 @@ async def get_all_journeys(
     return result.scalars().all()
 
 async def get_active_journeys(db: AsyncSession, *, organization_id: int) -> list[Journey]:
-    """Busca todas as operações ativas de uma organização."""
     stmt = (
         select(Journey)
         .where(Journey.organization_id == organization_id, Journey.is_active == True)
@@ -205,7 +204,6 @@ async def get_active_journeys(db: AsyncSession, *, organization_id: int) -> list
     return result.scalars().all()
 
 async def get_active_journey_by_driver(db: AsyncSession, *, driver_id: int, organization_id: int) -> Journey | None:
-    """Busca uma operação ativa para um motorista específico numa organização."""
     stmt = select(Journey).where(
         Journey.driver_id == driver_id,
         Journey.organization_id == organization_id,
@@ -215,7 +213,6 @@ async def get_active_journey_by_driver(db: AsyncSession, *, driver_id: int, orga
     return result.scalars().first()
 
 async def delete_journey(db: AsyncSession, *, journey_to_delete: Journey) -> Journey:
-    """Exclui uma viagem e, se ela estiver ativa, atualiza o status do veículo."""
     vehicle = journey_to_delete.vehicle
     if journey_to_delete.is_active and vehicle:
         vehicle.status = VehicleStatus.AVAILABLE

@@ -21,6 +21,23 @@ async def report_telemetry(
     
     # 2. Lógica de Geração de Alerta (Exemplo: Excesso de Velocidade)
     MAX_SPEED_LIMIT = 110.0
+
+    if vehicle.next_maintenance_km and vehicle.current_km:
+        # Se rodou mais que o previsto
+        if vehicle.current_km >= vehicle.next_maintenance_km:
+            # Verifica se já existe alerta pendente para não spammar (simplificado)
+            # Em produção, você verificaria se o último alerta desse tipo foi há X horas
+            
+            alert_msg = f"Manutenção Vencida: Veículo atingiu {vehicle.current_km:.0f}km (Prazo: {vehicle.next_maintenance_km:.0f}km)"
+            
+            # Criamos o alerta usando o CRUD que criamos
+            await crud.alert.create(db=db, obj_in=AlertCreate(
+                message=alert_msg,
+                level=AlertLevel.WARNING,
+                organization_id=vehicle.organization_id,
+                vehicle_id=vehicle.id,
+                driver_id=vehicle.current_driver_id
+            ))
     
     if payload.speed and payload.speed > MAX_SPEED_LIMIT:
         # Verifica se já existe um alerta recente para não spammar (opcional, simplificado aqui)
