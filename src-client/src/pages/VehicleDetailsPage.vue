@@ -184,9 +184,7 @@
                 no-data-label="Nenhum registro de remoção encontrado."
                 :loading="isHistoryLoading"
               >
-                 <template v-slot:top-right>
-                    <q-btn icon="download" flat round dense color="grey" title="Exportar" />
-                 </template>
+
               </q-table>
             </div>
             <div class="col-12 col-lg-4">

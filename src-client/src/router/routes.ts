@@ -121,6 +121,13 @@ const routes: RouteRecordRaw[] = [
         meta: { roles: ['cliente_ativo', 'cliente_demo'] }
       },
       { 
+       path: 'feedback', 
+       name: 'feedback', 
+       component: () => import('pages/FeedbackPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'cliente_demo', 'cliente_ativo'] } 
+
+      },
+      { 
         path: 'inventory/item/:id', 
         name: 'item-details', 
         component: () => import('pages/ItemDetailsPage.vue'),

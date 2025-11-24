@@ -42,7 +42,7 @@ from app.models.vehicle_cost_model import VehicleCost
 from app.models.vehicle_component_model import VehicleComponent
 from app.models.tire_model import VehicleTire
 from app.models.fine_model import Fine
-
+from app.models.feedback_model import Feedback
 # --- ESTA É A CORREÇÃO DEFINITIVA ---
 # Adiciona o nosso novo modelo à lista de modelos conhecidos.
 from app.models.demo_usage_model import DemoUsage

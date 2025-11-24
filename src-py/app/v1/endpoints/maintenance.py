@@ -6,7 +6,7 @@ from datetime import datetime
 import uuid
 import shutil
 from app import crud, deps
-from app.core.config import settings # <-- Import Settings
+from app.core.config import settings 
 from app.core.email_utils import send_email
 from app.models.user_model import User, UserRole
 from app.schemas.maintenance_schema import (
@@ -17,19 +17,15 @@ from app.schemas.maintenance_schema import (
     MaintenanceServiceItemCreate, MaintenanceServiceItemPublic
 )
 from app.crud.crud_demo_usage import demo_usage as demo_usage_crud
-from app.models.maintenance_model import MaintenanceServiceItem # Importe o novo modelo
-from app.models.vehicle_cost_model import VehicleCost, CostType # Importe para gerar custo
+from app.models.maintenance_model import MaintenanceServiceItem 
+from app.models.vehicle_cost_model import VehicleCost, CostType 
 from app.crud.crud_maintenance import MaintenancePartChange
 from app.models.notification_model import NotificationType
 
 router = APIRouter()
 
 def send_new_request_email_background(manager_emails: List[str], request: MaintenanceRequestPublic):
-    """
-    Função síncrona que será executada em segundo plano para enviar os e-mails.
-    """
     if not manager_emails:
-        print("Nenhum gestor encontrado para enviar notificação por e-mail.")
         return
 
     subject = f"Novo Chamado de Manutenção Aberto - TruCar #{request.id}"
@@ -89,18 +85,18 @@ async def create_maintenance_request(
     request_in: MaintenanceRequestCreate,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """Cria um chamado de manutenção."""
-    
-    # --- LÓGICA DE LIMITE DEMO (PARA GESTOR E MOTORISTA) ---
-    is_demo_org = False
+    # Extrai dados seguros antes de qualquer DB op
+    current_user_id = current_user.id
+    current_user_org_id = current_user.organization_id
+    current_user_role = current_user.role
+    current_user_name = current_user.full_name
 
-    if current_user.role == UserRole.CLIENTE_DEMO:
+    is_demo_org = False
+    if current_user_role == UserRole.CLIENTE_DEMO:
         is_demo_org = True
-    elif current_user.role == UserRole.DRIVER:
-        # Se for motorista, verifica se a organização pertence a um Cliente Demo
-        # Buscamos se existe algum usuário com role CLIENTE_DEMO nesta organização
+    elif current_user_role == UserRole.DRIVER:
         stmt = select(User).where(
-            User.organization_id == current_user.organization_id,
+            User.organization_id == current_user_org_id,
             User.role == UserRole.CLIENTE_DEMO
         ).limit(1)
         result = await db.execute(stmt)
@@ -110,38 +106,39 @@ async def create_maintenance_request(
     if is_demo_org:
         limit = settings.DEMO_MONTHLY_LIMITS.get("maintenance_requests", 5)
         current_count = await crud.maintenance.count_requests_in_current_month(
-            db, organization_id=current_user.organization_id
+            db, organization_id=current_user_org_id
         )
         if current_count >= limit:
-            # Mensagem personalizada dependendo de quem está tentando criar
             detail_msg = f"Limite mensal de {limit} chamados atingido nesta conta Demo."
-            if current_user.role == UserRole.DRIVER:
+            if current_user_role == UserRole.DRIVER:
                 detail_msg = f"A frota atingiu o limite mensal de {limit} chamados. Contate seu gestor."
             
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=detail_msg
             )
-    # -------------------------------
 
     try:
         request = await crud.maintenance.create_request(
-            db=db, request_in=request_in, reporter_id=current_user.id, organization_id=current_user.organization_id
+            db=db, request_in=request_in, reporter_id=current_user_id, organization_id=current_user_org_id
         )
         
-        # Mantém o contador para estatísticas
         if is_demo_org:
-            await crud.demo_usage.increment_usage(db, organization_id=current_user.organization_id, resource_type="maintenances")
+            await crud.demo_usage.increment_usage(db, organization_id=current_user_org_id, resource_type="maintenances")
         
-        message = f"Nova solicitação de manutenção para {request.vehicle.brand} {request.vehicle.model} aberta por {current_user.full_name}."
-        background_tasks.add_task(
-            crud.notification.create_notification,
+        # Converte para Pydantic para garantir segurança na resposta
+        response = MaintenanceRequestPublic.model_validate(request)
+
+        message = f"Nova solicitação de manutenção para {request.vehicle.brand} {request.vehicle.model} aberta por {current_user_name}."
+        
+        await crud.notification.create_notification(
             db=db, message=message, notification_type=NotificationType.MAINTENANCE_REQUEST_NEW,
-            organization_id=current_user.organization_id, send_to_managers=True,
+            organization_id=current_user_org_id, send_to_managers=True,
             related_entity_type="maintenance_request", related_entity_id=request.id,
             related_vehicle_id=request.vehicle_id
         )
-        return request
+        
+        return response
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     
@@ -153,34 +150,31 @@ async def add_service_item(
     service_in: MaintenanceServiceItemCreate,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """Adiciona um item de serviço (mão de obra/terceiros) ao chamado e gera o custo."""
+    current_user_id = current_user.id
+    current_user_org_id = current_user.organization_id
+
     try:
-        # 1. Valida o chamado
-        request = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user.organization_id)
+        request = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user_org_id)
         if not request:
              raise HTTPException(status_code=404, detail="Chamado não encontrado.")
              
-        # 2. Cria o Item de Serviço
         db_service = MaintenanceServiceItem(
             **service_in.model_dump(),
             maintenance_request_id=request_id,
-            added_by_id=current_user.id
+            added_by_id=current_user_id
         )
         db.add(db_service)
         
-        # 3. Gera o Custo Financeiro Automaticamente
-        # O custo é lançado como 'Manutenção'
         new_cost = VehicleCost(
             description=f"Serviço: {service_in.description} (Chamado #{request_id}) - Fornecedor: {service_in.provider_name or 'N/A'}",
             amount=service_in.cost,
             date=datetime.now().date(),
             cost_type=CostType.MANUTENCAO,
             vehicle_id=request.vehicle_id,
-            organization_id=current_user.organization_id
+            organization_id=current_user_org_id
         )
         db.add(new_cost)
         
-        # 4. Commit e Refresh
         await db.commit()
         await db.refresh(db_service)
         
@@ -198,7 +192,6 @@ async def delete_maintenance_request(
     request_id: int,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Deleta uma solicitação de manutenção (apenas para gestores)."""
     request_to_delete = await crud.maintenance.get_request(
         db=db, request_id=request_id, organization_id=current_user.organization_id
     )
@@ -217,7 +210,6 @@ async def read_maintenance_requests(
     search: str | None = None,
     vehicleId: int | None = None,
 ):
-    """Retorna as solicitações de manutenção."""
     requests = await crud.maintenance.get_all_requests(
         db=db, 
         organization_id=current_user.organization_id, 
@@ -239,28 +231,37 @@ async def update_request_status(
     update_data: MaintenanceRequestUpdate,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    db_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user.organization_id)
+    # 1. CAPTURA SEGURA: Extrair dados do usuário ANTES de qualquer DB op
+    current_user_id = current_user.id
+    current_user_org_id = current_user.organization_id
+
+    db_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user_org_id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="Solicitação não encontrada.")
-        
+    
+    # 2. Atualiza Status (Isso faz commit, invalidando 'current_user' e 'db_obj' antigos)
     updated_request = await crud.maintenance.update_request_status(
-        db=db, db_obj=db_obj, update_data=update_data, manager_id=current_user.id
+        db=db, db_obj=db_obj, update_data=update_data, manager_id=current_user_id
     )
     
+    # 3. Converter para Pydantic imediatamente para garantir resposta segura
+    response = MaintenanceRequestPublic.model_validate(updated_request)
+    
+    # 4. Notificação usando variáveis seguras (sem acessar objetos ORM)
     message = f"O status da sua solicitação de manutenção (#{updated_request.id}) foi atualizado para: {updated_request.status.value}."
-    background_tasks.add_task(
-        crud.notification.create_notification,
-        db=db,
-        message=message,
-        notification_type=NotificationType.MAINTENANCE_REQUEST_STATUS_UPDATE,
-        user_id=updated_request.reported_by_id,
-        organization_id=current_user.organization_id,
-        related_entity_type="maintenance_request",
-        related_entity_id=updated_request.id
-    )
+    
+    if updated_request.reported_by_id:
+        await crud.notification.create_notification(
+            db=db,
+            message=message,
+            notification_type=NotificationType.MAINTENANCE_REQUEST_STATUS_UPDATE,
+            user_id=updated_request.reported_by_id,
+            organization_id=current_user_org_id, # Usa a variável extraída, não current_user.organization_id
+            related_entity_type="maintenance_request",
+            related_entity_id=updated_request.id
+        )
         
-    return updated_request
-
+    return response
 
 
 @router.get("/{request_id}/comments", response_model=List[MaintenanceCommentPublic])
@@ -269,7 +270,6 @@ async def read_comments_for_request(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
 ):
-    """Retorna os comentários de uma solicitação de manutenção."""
     comments = await crud.maintenance_comment.get_comments_for_request(
         db=db, request_id=request_id, organization_id=current_user.organization_id
     )
@@ -285,64 +285,57 @@ async def create_comment_for_request(
     comment_in: MaintenanceCommentCreate,
     current_user: User = Depends(deps.get_current_active_user)
 ):
+    # 1. Extração Segura
+    current_user_id = current_user.id
+    current_user_org_id = current_user.organization_id
+    current_user_role = current_user.role
+    current_user_name = current_user.full_name
+
     try:
-        # 1. Cria o comentário (apenas Flush)
         comment = await crud.maintenance.create_comment(
-            db, comment_in=comment_in, request_id=request_id, user_id=current_user.id, organization_id=current_user.organization_id
+            db, comment_in=comment_in, request_id=request_id, user_id=current_user_id, organization_id=current_user_org_id
         )
         
-        # 2. Busca dados para notificação ANTES do commit
-        # (Necessário pois o request_obj vai expirar após o commit)
-        request_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user.organization_id)
+        request_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user_org_id)
         
         reported_by_id = None
         if request_obj:
             reported_by_id = request_obj.reported_by_id
             
-        current_user_org_id = current_user.organization_id
-        current_user_role = current_user.role
-        current_user_name = current_user.full_name
-        
-        # 3. FAZ O COMMIT (Salva a mensagem no banco)
         await db.commit()
 
-        # 4. REFRESH OBRIGATÓRIO
-        # Recarrega o comentário e seus relacionamentos para retornar ao Frontend sem erros
         await db.refresh(comment, ["user"])
         if comment.user:
             await db.refresh(comment.user, ["organization"])
         
-        # 5. Lógica de Notificação
+        response = MaintenanceCommentPublic.model_validate(comment)
+        
         if request_obj:
             message = f"Novo comentário de {current_user_name} na solicitação de manutenção #{request_id}."
             
             if current_user_role == UserRole.DRIVER:
-                # Motorista comentou -> Avisa os Gestores
-                background_tasks.add_task(
-                    crud.notification.create_notification, 
+                await crud.notification.create_notification(
                     db=db, 
                     message=message,
                     notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                    organization_id=current_user_org_id, 
+                    organization_id=current_user_org_id, # Usa variável segura
                     send_to_managers=True,
                     related_entity_type="maintenance_request", 
                     related_entity_id=request_id
                 )
             else:
-                # Gestor comentou -> Avisa o Motorista (se houver)
                 if reported_by_id:
-                    background_tasks.add_task(
-                        crud.notification.create_notification, 
+                    await crud.notification.create_notification(
                         db=db, 
                         message=message,
                         notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                        organization_id=current_user_org_id, 
+                        organization_id=current_user_org_id, # Usa variável segura
                         user_id=reported_by_id,
                         related_entity_type="maintenance_request", 
                         related_entity_id=request_id
                     )
 
-        return comment
+        return response
 
     except ValueError as e:
         await db.rollback()
@@ -358,7 +351,6 @@ async def upload_attachment_file(
     file: UploadFile = File(...),
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Recebe um arquivo, salva-o localmente e retorna a URL de acesso."""
     file_extension = file.filename.split(".")[-1] if file.filename else ""
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_location = f"static/uploads/{unique_filename}"
@@ -368,7 +360,6 @@ async def upload_attachment_file(
         
     return {"file_url": f"/{file_location}"}
 
-# --- ENDPOINT CORRIGIDO ---
 @router.post("/{request_id}/replace-component", response_model=ReplaceComponentResponse)
 async def replace_maintenance_component(
     *,
@@ -378,62 +369,56 @@ async def replace_maintenance_component(
     payload: ReplaceComponentPayload,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
+    # 1. Extração Segura
+    current_user_org_id = current_user.organization_id
+
     try:
-        # 1. Executa a lógica
         log_entry, comment_entry, reported_by_id = await crud.maintenance.perform_component_replacement(
             db=db,
             request_id=request_id,
             payload=payload,
-            user=current_user
+            user=current_user # Passar objeto user AQUI ainda é seguro pois não houve commit
         )
         
-        # 2. Guarda dados simples antes do commit
         comment_text_for_notification = comment_entry.comment_text
-        current_user_org_id = current_user.organization_id
         
-        # 3. FAZ O COMMIT
         await db.commit()
 
-        # 4. REFRESH OBRIGATÓRIO (Correção dos 12 erros de validação)
-        # Recarregar o Comentário
         await db.refresh(comment_entry, ["user"])
         if comment_entry.user:
             await db.refresh(comment_entry.user, ["organization"])
 
-        # Recarregar o Log de Troca e suas relações complexas
         await db.refresh(log_entry, ["user", "component_removed", "component_installed"])
         
-        # Precisamos garantir que os componentes carreguem suas 'parts' e 'transactions'
-        # pois o Schema de resposta provavelmente exibe o nome da peça.
         if log_entry.component_removed:
             await db.refresh(log_entry.component_removed, ["part", "inventory_transaction"])
             if log_entry.component_removed.part:
-                 await db.refresh(log_entry.component_removed.part, ["items"]) # Carrega items se necessário
+                 await db.refresh(log_entry.component_removed.part, ["items"])
         
         if log_entry.component_installed:
             await db.refresh(log_entry.component_installed, ["part", "inventory_transaction"])
             if log_entry.component_installed.part:
                  await db.refresh(log_entry.component_installed.part, ["items"])
 
-        # 5. Lógica de Notificação
-        if reported_by_id:
-             background_tasks.add_task(
-                 crud.notification.create_notification, 
-                 db=db,
-                 message=comment_text_for_notification,
-                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                 organization_id=current_user_org_id,
-                 user_id=reported_by_id, 
-                 related_entity_type="maintenance_request", 
-                 related_entity_id=request_id
-             )
-
-        return ReplaceComponentResponse(
+        response = ReplaceComponentResponse(
             success=True,
             message="Substituição realizada com sucesso.",
             part_change_log=log_entry,
             new_comment=comment_entry
         )
+
+        if reported_by_id:
+             await crud.notification.create_notification(
+                 db=db,
+                 message=comment_text_for_notification,
+                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                 organization_id=current_user_org_id, # Usa variável segura
+                 user_id=reported_by_id, 
+                 related_entity_type="maintenance_request", 
+                 related_entity_id=request_id
+             )
+
+        return response
 
     except ValueError as e:
         await db.rollback() 
@@ -460,8 +445,10 @@ async def install_maintenance_component(
     payload: InstallComponentPayload,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
+    # 1. Extração Segura
+    current_user_org_id = current_user.organization_id
+
     try:
-        # 1. Executa a lógica
         log_entry, comment_entry, reported_by_id = await crud.maintenance.perform_new_installation(
             db=db,
             request_id=request_id,
@@ -469,14 +456,10 @@ async def install_maintenance_component(
             user=current_user
         )
         
-        # 2. Guarda dados para notificação
         comment_text_for_notification = comment_entry.comment_text
-        current_user_org_id = current_user.organization_id
         
-        # 3. Commit
         await db.commit()
 
-        # 4. Refresh Obrigatório
         await db.refresh(comment_entry, ["user"])
         if comment_entry.user:
             await db.refresh(comment_entry.user, ["organization"])
@@ -487,25 +470,25 @@ async def install_maintenance_component(
             if log_entry.component_installed.part:
                  await db.refresh(log_entry.component_installed.part, ["items"])
 
-        # 5. Notificação
-        if reported_by_id:
-             background_tasks.add_task(
-                 crud.notification.create_notification, 
-                 db=db,
-                 message=comment_text_for_notification,
-                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                 organization_id=current_user_org_id,
-                 user_id=reported_by_id, 
-                 related_entity_type="maintenance_request", 
-                 related_entity_id=request_id
-             )
-
-        return InstallComponentResponse(
+        response = InstallComponentResponse(
             success=True,
             message="Instalação realizada com sucesso.",
             part_change_log=log_entry,
             new_comment=comment_entry
         )
+
+        if reported_by_id:
+             await crud.notification.create_notification(
+                 db=db,
+                 message=comment_text_for_notification,
+                 notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                 organization_id=current_user_org_id, # Usa variável segura
+                 user_id=reported_by_id, 
+                 related_entity_type="maintenance_request", 
+                 related_entity_id=request_id
+             )
+
+        return response
 
     except ValueError as e:
         await db.rollback() 
@@ -516,7 +499,6 @@ async def install_maintenance_component(
         traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro interno: {e}")
 
-# --- CORREÇÃO NA FUNÇÃO DE REVERSÃO ---
 @router.post("/part-changes/{change_id}/revert", response_model=MaintenanceCommentPublic)
 async def revert_part_change(
     *,
@@ -525,9 +507,9 @@ async def revert_part_change(
     change_id: int,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    """
-    Reverte uma troca de peça, devolvendo o item instalado ao estoque.
-    """
+    # 1. Extração Segura
+    current_user_org_id = current_user.organization_id
+
     try:
         log_entry, new_comment, reported_by_id = await crud.maintenance.revert_part_change(
             db=db,
@@ -535,35 +517,29 @@ async def revert_part_change(
             user=current_user
         )
         
-        # 1. Guarda dados simples antes do commit (para evitar erro na task)
         comment_text_for_notification = new_comment.comment_text
-        current_user_org_id = current_user.organization_id
         maintenance_req_id = log_entry.maintenance_request_id
         
-        # 2. Faz o Commit
         await db.commit()
         
-        # 3. REFRESH OBRIGATÓRIO (Correção do ResponseValidationError)
-        # Como fizemos commit, o objeto 'new_comment' expirou. 
-        # Precisamos recarregá-lo junto com o usuário para o Pydantic validar a resposta.
         await db.refresh(new_comment, ["user"])
         if new_comment.user:
             await db.refresh(new_comment.user, ["organization"])
         
-        # 4. Notificação
+        response = MaintenanceCommentPublic.model_validate(new_comment)
+
         if reported_by_id:
-             background_tasks.add_task(
-                 crud.notification.create_notification, 
+             await crud.notification.create_notification(
                  db=db, 
                  message=comment_text_for_notification,
                  notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                 organization_id=current_user_org_id,
+                 organization_id=current_user_org_id, # Usa variável segura
                  user_id=reported_by_id, 
                  related_entity_type="maintenance_request", 
                  related_entity_id=maintenance_req_id
              )
              
-        return new_comment
+        return response
 
     except ValueError as e:
         await db.rollback()
@@ -578,4 +554,4 @@ async def revert_part_change(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro interno ao processar a reversão: {e}"
-        )
+        )   

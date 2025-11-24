@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "TruCar"
     API_V1_STR: str = "/api/v1"
 
-    SUPERUSER_EMAILS: Set[str] = {"admin@admin.com"}
+    SUPERUSER_EMAILS: Set[str] = {"admin@admin.com", "vitorhugolemes6@gmail.com"}
     
     SMTP_SERVER: str
     SMTP_PORT: int
