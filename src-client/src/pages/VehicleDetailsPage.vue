@@ -1,327 +1,481 @@
 <template>
-  <q-page padding>
+  <q-page padding class="q-gutter-y-md">
     <div v-if="!vehicleStore.isLoading && vehicleStore.selectedVehicle">
-      <h1 class="text-h4 text-weight-bold q-my-md">
-        {{ vehicleStore.selectedVehicle.brand }} {{ vehicleStore.selectedVehicle.model }}
-      </h1>
-      <div class="text-subtitle1 text-grey
-      ">
-        {{ vehicleStore.selectedVehicle.license_plate || vehicleStore.selectedVehicle.identifier }}
+      <q-card flat bordered class="bg-primary text-white">
+        <q-card-section class="row items-center q-gutter-x-md">
+          <q-avatar
+            size="70px"
+            font-size="40px"
+            color="white"
+            text-color="primary"
+            icon="directions_car"
+          />
+          <div>
+            <div class="text-caption opacity-80">Veículo Selecionado</div>
+            <div class="text-h4 text-weight-bold">
+              {{ vehicleStore.selectedVehicle.brand }} {{ vehicleStore.selectedVehicle.model }}
+            </div>
+            <div class="text-subtitle1 opacity-90 row items-center q-gutter-x-sm">
+              <q-badge color="white" text-color="primary" :label="(vehicleStore.selectedVehicle.license_plate || vehicleStore.selectedVehicle.identifier) || ''" />
+              <q-separator vertical dark />
+              <span>
+                {{ isAgro ? 'Horímetro' : 'Odômetro' }}: 
+                <strong>{{ (isAgro ? vehicleStore.selectedVehicle.current_engine_hours : vehicleStore.selectedVehicle.current_km)?.toLocaleString('pt-BR') || 0 }} {{ isAgro ? 'h' : 'km' }}</strong>
+              </span>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </div>
+    <div v-else class="row items-center q-gutter-x-md">
+      <q-skeleton type="circle" size="70px" />
+      <div class="col">
+        <q-skeleton type="text" width="40%" class="text-h4" />
+        <q-skeleton type="text" width="20%" class="text-subtitle1" />
       </div>
     </div>
-    <q-skeleton v-else type="text" class="text-h4 q-my-md" width="300px" />
 
-    <q-tabs v-model="tab" dense class="text-grey q-mt-md" active-color="primary" indicator-color="primary" align="left">
-      <q-tab name="tires" label="Pneus" />
-      <q-tab name="history" :label="`Histórico de Peças (${filteredHistory.length})`" />
-      <q-tab name="components" :label="`Componentes Ativos (${filteredComponents.length})`" />
-      <q-tab name="costs" :label="`Custos (${filteredCosts.length})`" />
-      <q-tab name="maintenance" :label="`Manutenções (${filteredMaintenances.length})`" />
-    </q-tabs>
+    <q-card flat bordered>
+      <q-tabs
+        v-model="tab"
+        dense
+        class="text-grey-7"
+        active-color="primary"
+        indicator-color="primary"
+        align="justify"
+        narrow-indicator
+      >
+        <q-tab name="tires" icon="radio_button_checked" label="Gestão de Pneus" />
+        <q-tab name="history" icon="history" :label="`Movimentações (${filteredHistory.length})`" />
+        <q-tab name="components" icon="extension" :label="`Componentes (${filteredComponents.length})`" />
+        <q-tab name="costs" icon="attach_money" :label="`Custos (${filteredCosts.length})`" />
+        <q-tab name="maintenance" icon="build" :label="`Manutenções (${filteredMaintenances.length})`" />
+      </q-tabs>
 
-    <q-separator />
+      <q-separator />
 
-    <q-tab-panels v-model="tab" animated>
-      <q-tab-panel name="tires" class="q-pa-md">
-        <!-- ... (Toda a lógica de Pneus permanece igual) ... -->
-        <div class="row q-col-gutter-md q-mb-md">
-          <div class="col-6 col-md-3">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey">Custo por KM (Pneus)</div>
-                <div class="text-h6 text-weight-bold">
-                  {{ kpiTireCostPerKm }}
-                  <span v-if="kpiTireCostPerKm !== 'N/A'" class="text-subtitle2 text-grey"> R$/km</span>
-                </div>
-              </q-card-section>
-            </q-card>
+      <q-tab-panels v-model="tab" animated transition-prev="fade" transition-next="fade">
+        
+        <q-tab-panel name="tires" class="q-pa-md">
+          <div class="row q-col-gutter-md q-mb-lg">
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-card flat bordered class="full-height">
+                <q-card-section class="row items-center justify-between no-wrap">
+                  <div>
+                    <div class="text-caption text-grey">CPK (Custo por KM)</div>
+                    <div class="text-h6 text-weight-bold text-primary">
+                      {{ kpiTireCostPerKm }}
+                      <small v-if="kpiTireCostPerKm !== 'N/A'" class="text-caption text-grey">R$/km</small>
+                    </div>
+                  </div>
+                  <q-icon name="trending_up" size="lg" color="primary" class="q-ml-sm opacity-50" />
+                </q-card-section>
+              </q-card>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-card flat bordered class="full-height">
+                <q-card-section class="row items-center justify-between no-wrap">
+                  <div>
+                    <div class="text-caption text-grey">Vida Útil Média</div>
+                    <div class="text-h6 text-weight-bold text-secondary">
+                      {{ kpiAvgTireLifespan }}
+                      <small v-if="kpiAvgTireLifespan !== 'N/A'" class="text-caption text-grey">km</small>
+                    </div>
+                  </div>
+                  <q-icon name="speed" size="lg" color="secondary" class="q-ml-sm opacity-50" />
+                </q-card-section>
+              </q-card>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-card flat bordered class="full-height">
+                <q-card-section class="row items-center justify-between no-wrap">
+                  <div>
+                    <div class="text-caption text-grey">Pneus em Alerta</div>
+                    <div class="text-h6 text-weight-bold" :class="kpiTiresInAlert > 0 ? 'text-negative' : 'text-positive'">
+                      {{ kpiTiresInAlert }}
+                      <small class="text-caption text-grey">unid.</small>
+                    </div>
+                  </div>
+                  <q-icon 
+                    :name="kpiTiresInAlert > 0 ? 'warning' : 'check_circle'" 
+                    size="lg" 
+                    :color="kpiTiresInAlert > 0 ? 'negative' : 'positive'" 
+                    class="q-ml-sm opacity-50" 
+                  />
+                </q-card-section>
+              </q-card>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-card flat bordered class="full-height">
+                <q-card-section class="row items-center justify-between no-wrap">
+                  <div>
+                    <div class="text-caption text-grey">Custo Total (Histórico)</div>
+                    <div class="text-h6 text-weight-bold ">
+                      {{ kpiTotalTireCost }}
+                    </div>
+                  </div>
+                  <q-icon name="monetization_on" size="lg" color="grey-7" class="q-ml-sm opacity-50" />
+                </q-card-section>
+              </q-card>
+            </div>
           </div>
-          <div class="col-6 col-md-3">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey">Vida Útil Média</div>
-                <div class="text-h6 text-weight-bold">
-                  {{ kpiAvgTireLifespan }}
-                  <span v-if="kpiAvgTireLifespan !== 'N/A'" class="text-subtitle2 text-grey"> km</span>
-                </div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-6 col-md-3">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey">Pneus em Alerta</div>
-                <div class="text-h6 text-weight-bold" :class="kpiTiresInAlert > 0 ? 'text-negative' : 'text-positive'">
-                  {{ kpiTiresInAlert }}
-                </div>
-              </q-card-section>
-            </q-card>
-          </div>
-          <div class="col-6 col-md-3">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-caption text-grey">Custo Total (Pneus)</div>
-                <div class="text-h6 text-weight-bold">
-                  {{ kpiTotalTireCost }}
-                </div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </div>
-        <q-separator class="q-my-lg" />
-        <div class="row items-center justify-between q-mb-md">
-          <div class="text-h6">Layout e Status Atual</div>
-          <q-btn
-            v-if="tireStore.tireLayout?.axle_configuration"
-            label="Alterar Config."
-            color="secondary"
-            flat dense icon="settings"
-            @click="isAxleConfigDialogOpen = true"
-          />
-        </div>
-        <InteractiveTireLayout
-          v-if="tireStore.tireLayout?.axle_configuration"
-          :axle-config="tireStore.tireLayout.axle_configuration"
-          :tires="tiresWithStatus"
-          :is-agro="isAgro"
-          @install="openInstallDialog"
-          @remove="openRemoveDialog"
-        />
-        <div v-else-if="!tireStore.isLoading && !vehicleStore.isLoading && !tireStore.tireLayout?.axle_configuration" class="text-center q-pa-lg bg bordered-card">
-            <q-icon name="build" size="lg" color="grey-5" />
-            <div class="text-h6 q-mt-md">Nenhuma configuração de eixos definida.</div>
-            <p class="text-grey">Para começar a gerenciar os pneus, você precisa primeiro definir o layout de eixos do veículo.</p>
+
+          <q-separator class="q-mb-md" />
+
+          <div class="row items-center justify-between q-mb-md">
+            <div class="text-h6 text-weight-regular row items-center">
+              <q-icon name="settings_overscan" class="q-mr-sm" color="primary" />
+              Layout dos Pneus
+            </div>
             <q-btn
-              label="Definir Configuração de Eixos"
-              color="primary"
-              unelevated
+              v-if="tireStore.tireLayout?.axle_configuration"
+              label="Alterar Configuração"
+              color="secondary"
+              outline
+              icon="settings"
               @click="isAxleConfigDialogOpen = true"
             />
-        </div>
-        <q-separator class="q-my-lg" />
-        <div class="text-h6 q-mb-md">Análise e Histórico de Pneus</div>
-        <div class="row q-col-gutter-lg">
-          <div class="col-12 col-lg-8">
-            <q-table
-              title="Histórico de Pneus Removidos"
-              :rows="removedTiresHistory"
-              :columns="historyTireColumns"
-              row-key="id"
-              flat bordered
-              dense
-              no-data-label="Nenhum pneu foi removido deste veículo ainda."
-              :loading="isHistoryLoading"
+          </div>
+
+          <div class="q-mb-xl">
+             <InteractiveTireLayout
+              v-if="tireStore.tireLayout?.axle_configuration"
+              :axle-config="tireStore.tireLayout.axle_configuration"
+              :tires="tiresWithStatus"
+              :is-agro="isAgro"
+              @install="openInstallDialog"
+              @remove="openRemoveDialog"
             />
-          </div>
-          <div class="col-12 col-lg-4">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-subtitle1">Custos Mensais com Pneus</div>
-              </q-card-section>
-              <q-card-section>
-                <TireCostChart :costs="tireCostsByMonth" />
-              </q-card-section>
-            </q-card>
-          </div>
-        </div>
-        <q-inner-loading :showing="tireStore.isLoading || isHistoryLoading" />
-      </q-tab-panel>
-
-      <q-tab-panel name="history">
-        <div class="row items-center justify-between q-mb-md q-gutter-sm">
-          <div class="text-h6">Histórico de Movimentações</div>
-          <div class="row items-center q-gutter-sm">
-            <q-input dense outlined v-model="dateRange.history" mask="##/##/####" label="De" style="width: 120px" clearable>
-              <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.history" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
-            </q-input>
-            <q-input dense outlined v-model="dateRange.historyTo" mask="##/##/####" label="Até" style="width: 120px" clearable>
-              <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.historyTo" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
-            </q-input>
-            <q-input dense debounce="300" v-model="search.history" placeholder="Pesquisar..." style="width: 220px" clearable>
-              <template v-slot:append><q-icon name="search" /></template>
-            </q-input>
-            <q-btn @click="exportToCsv('history')" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
-          </div>
-        </div>
-        <q-table
-          :rows="filteredHistory"
-          :columns="historyColumns"
-          row-key="id"
-          :loading="isHistoryLoading"
-          no-data-label="Nenhuma movimentação encontrada para os filtros aplicados."
-          flat
-          bordered
-        >
-          <!-- CORREÇÃO: Slot para a célula customizada -->
-          <template v-slot:body-cell-part_and_item="props">
-            <q-td :props="props">
-              <div>{{ getPartName(props.row.item?.part_id || props.row.part?.id) }}</div>
-              
-              <a
-                v-if="props.row.item"
-                href="#"
-                @click.prevent="goToItemDetails(props.row.item.id)"
-                class="text-primary text-weight-medium"
-                style="text-decoration: none;"
-              >
-                (Cód. Item: {{ props.row.item.item_identifier }})
-                <q-tooltip>Ver detalhes do item (ID Global: {{ props.row.item.id }})</q-tooltip>
-              </a>
-              <span v-else class="text-grey">(Item N/A)</span>
-            </q-td>
-          </template>
-          </q-table>
-      </q-tab-panel>
-
-      <q-tab-panel name="components">
-        <div class="row items-center justify-between q-mb-md q-gutter-sm">
-          <div class="text-h6">Componentes Atualmente Instalados</div>
-          <div class="row items-center q-gutter-sm">
-            <q-input dense debounce="300" v-model="search.components" placeholder="Pesquisar..." style="width: 220px" clearable>
-              <template v-slot:append><q-icon name="search" /></template>
-            </q-input>
-            <q-btn @click="exportToCsv('components')" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
-            <q-btn @click="isInstallDialogOpen = true" color="primary" icon="add" label="Instalar Componente" unelevated />
-          </div>
-        </div>
-        <q-table :rows="filteredComponents" :columns="componentColumns" row-key="id" :loading="componentStore.isLoading" no-data-label="Nenhum componente encontrado." flat bordered>
-          
-          <!-- CORREÇÃO: Slot para a célula customizada de Componente -->
-          <template v-slot:body-cell-component_and_item="props">
-            <q-td :props="props">
-              <a href="#" @click.prevent="openPartHistoryDialog(props.row.part)" class="text-primary text-weight-medium" style="text-decoration: none;">
-                {{ props.row.part?.name || 'Peça N/A' }}
-                <q-tooltip>Ver histórico completo do TEMPLATE</q-tooltip>
-              </a>
-              <a
-                v-if="props.row.inventory_transaction?.item"
-                href="#"
-                @click.prevent="goToItemDetails(props.row.inventory_transaction.item.id)"
-                class="text-primary text-weight-medium"
-                style="text-decoration: none; display: block;"
-              >
-                (Cód. Item: {{ props.row.inventory_transaction.item.item_identifier }})
-                <q-tooltip>Ver detalhes do ITEM (ID Global: {{ props.row.inventory_transaction.item.id }})</q-tooltip>
-              </a>
-              <span v-else class="text-grey">(Item N/A)</span>
-            </q-td>
-          </template>
-          <!-- FIM DO SLOT -->
-          
-          <template v-slot:body-cell-actions="props">
-            <q-td :props="props">
-              <q-btn v-if="props.row.is_active" @click="confirmDiscard(props.row)" flat round dense color="negative" icon="delete" title="Descartar (Fim de Vida)" />
-            </q-td>
-          </template>
-        </q-table>
-      </q-tab-panel>
-
-      <q-tab-panel name="costs">
-        <!-- ... (Toda a lógica de Custos permanece igual) ... -->
-        <div class="row items-center justify-between q-mb-md q-gutter-sm">
-            <div class="text-h6">Custos Lançados</div>
-            <div class="row items-center q-gutter-sm">
-              <q-input dense outlined v-model="dateRange.costs" mask="##/##/####" label="De" style="width: 120px" clearable>
-                <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.costs" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
-              </q-input>
-              <q-input dense outlined v-model="dateRange.costsTo" mask="##/##/####" label="Até" style="width: 120px" clearable>
-                <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.costsTo" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
-              </q-input>
-              <q-input dense debounce="300" v-model="search.costs" placeholder="Pesquisar..." style="width: 220px" clearable>
-                <template v-slot:append><q-icon name="search" /></template>
-              </q-input>
-              <q-btn @click="exportToCsv('costs')" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
-              <q-btn @click="isAddCostDialogOpen = true" color="primary" icon="add" label="Adicionar Custo" unelevated />
+            
+            <div v-else-if="!tireStore.isLoading && !vehicleStore.isLoading && !tireStore.tireLayout?.axle_configuration" 
+                 class="rounded-borders q-pa-xl text-center"
+                 :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'"
+            >
+                <q-icon name="no_crash" size="4rem" color="grey-5" />
+                <div class="text-h6 q-mt-md text-grey-7">Nenhuma configuração definida</div>
+                <p class="text-grey-6 q-mb-md">Defina o layout de eixos para começar a gerenciar os pneus.</p>
+                <q-btn
+                  label="Definir Eixos Agora"
+                  color="primary"
+                  unelevated
+                  icon="add"
+                  @click="isAxleConfigDialogOpen = true"
+                />
             </div>
-        </div>
-        <div class="row q-col-gutter-lg">
-          <div class="col-12 col-md-7">
-            <q-table :rows="filteredCosts" :columns="costColumns" row-key="id" :loading="costStore.isLoading" no-data-label="Nenhum custo encontrado para os filtros aplicados." flat bordered>
-              <template v-slot:bottom-row>
-                <q-tr class="text-weight-bold" :class="$q.dark.isActive ? 'bg-black-9' : 'bg-grey-2'">
-                  <q-td colspan="3" class="text-right">Total (Filtrado):</q-td>
-                  <q-td class="text-right">
-                    {{ new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCost) }}
-                  </q-td>
-                </q-tr>
+          </div>
+
+          <div class="text-h6 text-weight-regular q-mb-md row items-center">
+              <q-icon name="analytics" class="q-mr-sm" color="primary" />
+              Análise de Desempenho
+            </div>
+          <div class="row q-col-gutter-lg">
+            <div class="col-12 col-lg-8">
+              <q-table
+                title="Histórico de Remoções (Descarte/Troca)"
+                :rows="removedTiresHistory"
+                :columns="historyTireColumns"
+                row-key="id"
+                flat bordered
+                dense
+                :class="$q.dark.isActive ? 'bg-dark' : 'bg-white'"
+                no-data-label="Nenhum registro de remoção encontrado."
+                :loading="isHistoryLoading"
+              >
+                 <template v-slot:top-right>
+                    <q-btn icon="download" flat round dense color="grey" title="Exportar" />
+                 </template>
+              </q-table>
+            </div>
+            <div class="col-12 col-lg-4">
+              <q-card flat bordered class="full-height">
+                <q-card-section>
+                  <div class="text-subtitle1 text-weight-medium">Evolução de Custos (Mensal)</div>
+                  <div class="text-caption text-grey">Gastos com aquisição de pneus</div>
+                </q-card-section>
+                <q-card-section>
+                  <TireCostChart :costs="tireCostsByMonth" />
+                </q-card-section>
+              </q-card>
+            </div>
+          </div>
+          <q-inner-loading :showing="tireStore.isLoading || isHistoryLoading" label="Atualizando dados..." />
+        </q-tab-panel>
+
+        <q-tab-panel name="history">
+          <div class="column q-gutter-y-md">
+            <div class="row items-center justify-between wrap q-gutter-y-sm">
+              <div class="text-h6 row items-center">
+                <q-icon name="manage_history" class="q-mr-sm" color="primary" />
+                Histórico de Movimentações
+              </div>
+              <div class="row items-center q-gutter-sm">
+                <q-input dense outlined v-model="dateRange.history" mask="##/##/####" label="De" style="width: 140px">
+                  <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.history" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Ok" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
+                </q-input>
+                <q-input dense outlined v-model="dateRange.historyTo" mask="##/##/####" label="Até" style="width: 140px">
+                  <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.historyTo" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Ok" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
+                </q-input>
+                <q-input dense outlined debounce="300" v-model="search.history" placeholder="Buscar por peça..." style="width: 250px">
+                  <template v-slot:prepend><q-icon name="search" /></template>
+                </q-input>
+                <q-btn @click="exportToCsv('history')" color="secondary" outline icon="file_download" label="CSV" />
+              </div>
+            </div>
+
+            <q-table
+              :rows="filteredHistory"
+              :columns="historyColumns"
+              row-key="id"
+              :loading="isHistoryLoading"
+              no-data-label="Nenhuma movimentação encontrada."
+              flat bordered
+              class="sticky-header-table"
+            >
+              <template v-slot:body-cell-part_and_item="props">
+                <q-td :props="props">
+                  <div class="text-weight-medium">{{ getPartName(props.row.item?.part_id || props.row.part?.id) }}</div>
+                  <div v-if="props.row.item" class="text-caption text-grey">
+                    Cód: <a href="#" @click.prevent="goToItemDetails(props.row.item.id)" class="text-primary link-hover">{{ props.row.item.item_identifier }}</a>
+                  </div>
+                  <span v-else class="text-caption text-grey-5">(Sem identificador)</span>
+                </q-td>
+              </template>
+              
+               <template v-slot:body-cell-transaction_type="props">
+                <q-td :props="props">
+                   <q-chip 
+                    dense square outline 
+                    :color="props.value.includes('Saída') ? 'orange' : 'teal'" 
+                    :icon="props.value.includes('Saída') ? 'arrow_upward' : 'arrow_downward'"
+                   >
+                     {{ props.value }}
+                   </q-chip>
+                </q-td>
               </template>
             </q-table>
           </div>
-          <div class="col-12 col-md-5">
-            <q-card flat bordered>
-              <q-card-section>
-                <div class="text-h6">Distribuição de Custos (Filtrado)</div>
-              </q-card-section>
-              <q-card-section>
-                <CostsPieChart v-if="filteredCosts.length > 0" :costs="filteredCosts" />
-                <div v-else class="text-center text-grey q-pa-md">
-                  Sem dados para exibir o gráfico.
-                </div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </div>
-      </q-tab-panel>
+        </q-tab-panel>
 
-      <q-tab-panel name="maintenance">
-        <!-- ... (Toda a lógica de Manutenção permanece igual) ... -->
-        <div class="row items-center justify-between q-mb-md q-gutter-sm">
-          <div class="text-h6">Histórico de Manutenções</div>
-          <div class="row items-center q-gutter-sm">
-            <q-input dense debounce="300" v-model="search.maintenances" placeholder="Pesquisar..." style="width: 220px" clearable>
-              <template v-slot:append><q-icon name="search" /></template>
-            </q-input>
-            <q-btn @click="exportToCsv('maintenances')" color="secondary" icon="archive" label="Exportar CSV" unelevated dense />
-            <q-btn color="primary" icon="add" label="Agendar Manutenção" unelevated @click="isMaintenanceDialogOpen = true" />
-          </div>
-        </div>
-        <q-table :rows="filteredMaintenances" :columns="maintenanceColumns" row-key="id" :loading="maintenanceStore.isLoading" no-data-label="Nenhuma manutenção encontrada para os filtros aplicados." flat bordered>
-          <template v-slot:body-cell-status="props">
-            <q-td :props="props">
-              <q-chip :color="props.row.status === 'COMPLETED' ? 'positive' : 'warning'" text-color="white" dense square>{{ props.value }}</q-chip>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-actions="props">
-            <q-td :props="props">
-              <q-btn flat round dense icon="visibility" @click="openMaintenanceDetails(props.row)" title="Ver Detalhes" />
-            </q-td>
-          </template>
-        </q-table>
-      </q-tab-panel>
-    </q-tab-panels>
+        <q-tab-panel name="components">
+          <div class="column q-gutter-y-md">
+            <div class="row items-center justify-between wrap q-gutter-y-sm">
+              <div class="text-h6 row items-center">
+                 <q-icon name="extension" class="q-mr-sm" color="primary" />
+                 Componentes Instalados
+              </div>
+              <div class="row items-center q-gutter-sm">
+                <q-input dense outlined debounce="300" v-model="search.components" placeholder="Buscar componente..." style="width: 250px">
+                  <template v-slot:prepend><q-icon name="search" /></template>
+                </q-input>
+                <q-btn @click="exportToCsv('components')" color="secondary" outline icon="file_download" label="CSV" />
+                <q-btn @click="isInstallDialogOpen = true" color="primary" unelevated icon="add_circle" label="Instalar" />
+              </div>
+            </div>
 
-    <!-- ... (Todos os diálogos permanecem iguais) ... -->
+            <q-table 
+              :rows="filteredComponents" 
+              :columns="componentColumns" 
+              row-key="id" 
+              :loading="componentStore.isLoading" 
+              no-data-label="Nenhum componente instalado." 
+              flat bordered
+            >
+              <template v-slot:body-cell-component_and_item="props">
+                <q-td :props="props">
+                  <div class="row items-center">
+                    <q-avatar icon="settings" size="sm" color="grey-3" text-color="primary" class="q-mr-sm" />
+                    <div>
+                      <a href="#" @click.prevent="openPartHistoryDialog(props.row.part)" class="text-primary text-weight-bold link-hover">
+                        {{ props.row.part?.name || 'Peça Desconhecida' }}
+                      </a>
+                      <div v-if="props.row.inventory_transaction?.item" class="text-caption text-grey">
+                        Cód: <a href="#" @click.prevent="goToItemDetails(props.row.inventory_transaction.item.id)" class="text-secondary link-hover">{{ props.row.inventory_transaction.item.item_identifier }}</a>
+                      </div>
+                    </div>
+                  </div>
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-actions="props">
+                <q-td :props="props">
+                  <q-btn v-if="props.row.is_active" @click="confirmDiscard(props.row)" flat round dense color="negative" icon="delete_forever">
+                    <q-tooltip>Descartar / Fim de Vida</q-tooltip>
+                  </q-btn>
+                </q-td>
+              </template>
+            </q-table>
+          </div>
+        </q-tab-panel>
+
+        <q-tab-panel name="costs">
+          <div class="column q-gutter-y-md">
+            <div class="row items-center justify-between wrap q-gutter-y-sm">
+              <div class="text-h6 row items-center">
+                <q-icon name="attach_money" class="q-mr-sm" color="primary" />
+                Gestão de Despesas
+              </div>
+              <div class="row items-center q-gutter-sm">
+                <q-input dense outlined v-model="dateRange.costs" mask="##/##/####" label="Início" style="width: 130px">
+                   <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.costs" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Ok" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
+                </q-input>
+                <q-input dense outlined v-model="dateRange.costsTo" mask="##/##/####" label="Fim" style="width: 130px">
+                   <template v-slot:append><q-icon name="event" class="cursor-pointer"><q-popup-proxy cover><q-date v-model="dateRange.costsTo" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Ok" color="primary" flat /></div></q-date></q-popup-proxy></q-icon></template>
+                </q-input>
+                <q-input dense outlined debounce="300" v-model="search.costs" placeholder="Buscar custo..." style="width: 200px">
+                   <template v-slot:prepend><q-icon name="search" /></template>
+                </q-input>
+                 <q-btn-dropdown color="primary" unelevated label="Ações" icon="bolt">
+                    <q-list>
+                      <q-item clickable v-close-popup @click="isAddCostDialogOpen = true">
+                        <q-item-section avatar><q-icon name="add" /></q-item-section>
+                        <q-item-section>Adicionar Custo</q-item-section>
+                      </q-item>
+                      <q-item clickable v-close-popup @click="exportToCsv('costs')">
+                        <q-item-section avatar><q-icon name="file_download" /></q-item-section>
+                        <q-item-section>Exportar CSV</q-item-section>
+                      </q-item>
+                    </q-list>
+                 </q-btn-dropdown>
+              </div>
+            </div>
+
+            <div class="row q-col-gutter-lg">
+              <div class="col-12 col-md-8">
+                <q-table 
+                  :rows="filteredCosts" 
+                  :columns="costColumns" 
+                  row-key="id" 
+                  :loading="costStore.isLoading" 
+                  no-data-label="Nenhum custo registrado no período." 
+                  flat bordered
+                >
+                  <template v-slot:bottom-row>
+                    <q-tr class="text-weight-bold" :class="$q.dark.isActive ? '' : 'bg-grey-2'">
+                      <q-td colspan="3" class="text-right text-uppercase">Total Filtrado:</q-td>
+                      <q-td class="text-right text-primary text-h6">
+                        {{ new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCost) }}
+                      </q-td>
+                    </q-tr>
+                  </template>
+                </q-table>
+              </div>
+              <div class="col-12 col-md-4">
+                <q-card flat bordered class="full-height">
+                  <q-card-section>
+                    <div class="text-subtitle1 text-weight-medium">Distribuição por Categoria</div>
+                  </q-card-section>
+                  <q-card-section class="flex flex-center">
+                    <CostsPieChart v-if="filteredCosts.length > 0" :costs="filteredCosts" />
+                    <div v-else class="text-center text-grey q-pa-xl column items-center">
+                       <q-icon name="donut_small" size="40px" color="grey-4" />
+                       <span class="q-mt-sm">Sem dados para o gráfico.</span>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+
+        <q-tab-panel name="maintenance">
+          <div class="column q-gutter-y-md">
+            <div class="row items-center justify-between wrap q-gutter-y-sm">
+              <div class="text-h6 row items-center">
+                 <q-icon name="build" class="q-mr-sm" color="primary" />
+                 Histórico de Manutenções
+              </div>
+              <div class="row items-center q-gutter-sm">
+                <q-input dense outlined debounce="300" v-model="search.maintenances" placeholder="Buscar ordem de serviço..." style="width: 250px">
+                  <template v-slot:prepend><q-icon name="search" /></template>
+                </q-input>
+                <q-btn @click="exportToCsv('maintenances')" color="secondary" outline icon="file_download" label="CSV" />
+                <q-btn color="primary" unelevated icon="add" label="Nova OS" @click="isMaintenanceDialogOpen = true" />
+              </div>
+            </div>
+
+            <q-table 
+              :rows="filteredMaintenances" 
+              :columns="maintenanceColumns" 
+              row-key="id" 
+              :loading="maintenanceStore.isLoading" 
+              no-data-label="Nenhuma manutenção encontrada." 
+              flat bordered
+            >
+              <template v-slot:body-cell-status="props">
+                <q-td :props="props">
+                  <q-chip 
+                    :color="props.row.status === 'COMPLETED' ? 'positive' : (props.row.status === 'IN_PROGRESS' ? 'primary' : 'warning')" 
+                    text-color="white" 
+                    dense 
+                    icon="info"
+                  >
+                    {{ props.value }}
+                  </q-chip>
+                </q-td>
+              </template>
+              <template v-slot:body-cell-actions="props">
+                <q-td :props="props">
+                  <q-btn flat round dense color="primary" icon="visibility" @click="openMaintenanceDetails(props.row)">
+                     <q-tooltip>Ver Detalhes da OS</q-tooltip>
+                  </q-btn>
+                </q-td>
+              </template>
+            </q-table>
+          </div>
+        </q-tab-panel>
+      </q-tab-panels>
+    </q-card>
+
     <q-dialog v-model="isInstallTireDialogOpen">
       <q-card style="width: 500px; max-width: 90vw;">
         <q-form @submit.prevent="handleInstallTire">
-          <q-card-section>
-            <div class="text-h6">Instalar Pneu na Posição: {{ targetPosition }}</div>
+          <q-card-section class="bg-primary text-white row items-center">
+            <div class="text-h6">Instalar Pneu</div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup />
           </q-card-section>
-          <q-card-section class="q-gutter-y-md">
-            <q-select outlined v-model="installTireForm.part_id" :options="tireOptions" label="Selecione o Pneu do Estoque *" emit-value map-options use-input @filter="filterTires" :rules="[val => !!val || 'Selecione um pneu']" />
-            <q-input v-if="!isAgro" outlined v-model.number="installTireForm.install_km" type="number" label="KM atual do Veículo *" :rules="[val => val !== null && val >= 0 || 'KM inválido']" />
-            <q-input v-else outlined v-model.number="installTireForm.install_engine_hours" type="number" label="Horas do Motor atuais *" :rules="[val => val !== null && val >= 0 || 'Horas inválidas']" />
+          <q-card-section class="q-pt-md">
+            <div class="text-subtitle2 q-mb-md text-grey-8">
+              Posição Alvo: <strong>{{ targetPosition }}</strong>
+            </div>
+            <div class="q-gutter-y-md">
+              <q-select outlined v-model="installTireForm.part_id" :options="tireOptions" label="Selecione o Pneu do Estoque *" emit-value map-options use-input @filter="filterTires" :rules="[val => !!val || 'Selecione um pneu']">
+                 <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                 </template>
+              </q-select>
+              <q-input v-if="!isAgro" outlined v-model.number="installTireForm.install_km" type="number" label="KM atual do Veículo *" :rules="[val => val !== null && val >= 0 || 'KM inválido']" />
+              <q-input v-else outlined v-model.number="installTireForm.install_engine_hours" type="number" label="Horas do Motor atuais *" :rules="[val => val !== null && val >= 0 || 'Horas inválidas']" />
+            </div>
           </q-card-section>
+          <q-separator />
           <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Cancelar" v-close-popup />
-            <q-btn type="submit" unelevated color="primary" label="Instalar" :loading="tireStore.isLoading" />
+            <q-btn flat label="Cancelar" v-close-popup color="grey" />
+            <q-btn type="submit" unelevated color="primary" label="Confirmar Instalação" :loading="tireStore.isLoading" />
           </q-card-actions>
         </q-form>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="isAxleConfigDialogOpen">
-      <q-card style="width: 400px; max-width: 90vw;">
+      <q-card style="width: 450px; max-width: 90vw;">
         <q-form @submit.prevent="handleUpdateAxleConfig">
-          <q-card-section>
-            <div class="text-h6">Definir Configuração de Eixos</div>
+          <q-card-section class="bg-secondary text-white">
+            <div class="text-h6">Configuração de Eixos</div>
           </q-card-section>
-          <q-card-section>
-            <q-select outlined v-model="selectedAxleConfig" :options="axleConfigOptions" label="Selecione o tipo de veículo/eixo" emit-value map-options :rules="[val => !!val || 'Selecione uma configuração']" />
+          <q-card-section class="q-pt-lg">
+            <q-select outlined v-model="selectedAxleConfig" :options="axleConfigOptions" label="Layout de Rodagem" hint="Selecione a disposição dos pneus" emit-value map-options :rules="[val => !!val || 'Selecione uma configuração']" />
           </q-card-section>
           <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Cancelar" v-close-popup />
-            <q-btn type="submit" unelevated color="primary" label="Salvar" />
+            <q-btn flat label="Cancelar" v-close-popup color="grey" />
+            <q-btn type="submit" unelevated color="secondary" label="Salvar Configuração" />
           </q-card-actions>
         </q-form>
       </q-card>
@@ -330,15 +484,15 @@
     <q-dialog v-model="isInstallDialogOpen">
       <q-card style="width: 500px; max-width: 90vw;">
         <q-form @submit.prevent="handleInstallComponent">
-          <q-card-section><div class="text-h6">Instalar Componente</div></q-card-section>
-          <q-card-section class="q-gutter-y-md">
-            <q-select outlined v-model="installFormComponent.part_id" :options="partOptions" label="Selecione a Peça/Fluído *" emit-value map-options use-input @filter="filterParts" :rules="[val => !!val || 'Selecione um item']">
+          <q-card-section class="bg-primary text-white"><div class="text-h6">Instalar Componente</div></q-card-section>
+          <q-card-section class="q-gutter-y-md q-pt-md">
+            <q-select outlined v-model="installFormComponent.part_id" :options="partOptions" label="Peça/Item do Estoque *" emit-value map-options use-input @filter="filterParts" :rules="[val => !!val || 'Selecione um item']">
               <template v-slot:no-option><q-item><q-item-section class="text-grey">Nenhum item encontrado</q-item-section></q-item></template>
             </q-select>
             <q-input outlined v-model.number="installFormComponent.quantity" type="number" label="Quantidade *" :rules="[val => val > 0 || 'Deve ser maior que zero']" />
           </q-card-section>
           <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Cancelar" v-close-popup />
+            <q-btn flat label="Cancelar" v-close-popup color="grey" />
             <q-btn type="submit" unelevated color="primary" label="Instalar" :loading="componentStore.isLoading" />
           </q-card-actions>
         </q-form>
@@ -357,7 +511,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router'; // <-- 1. IMPORTAR ROUTER
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, type QTableColumn, exportFile } from 'quasar';
 import { api } from 'boot/axios';
 import { format, differenceInDays, parse } from 'date-fns';
@@ -373,7 +527,7 @@ import { useMaintenanceStore } from 'stores/maintenance-store';
 import { useTireStore } from 'stores/tire-store';
 
 // Models
-import { InventoryItemStatus } from 'src/models/inventory-item-models'; // <-- ADICIONE ESTA IMPORTAÇÃO
+import { InventoryItemStatus } from 'src/models/inventory-item-models';
 import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
 import type { Part } from 'src/models/part-models';
@@ -391,7 +545,7 @@ import TireCostChart from 'components/TireCostChart.vue';
 import { axleLayouts } from 'src/config/tire-layouts';
 import AddCostDialog from 'components/AddCostDialog.vue';
 
-// --- 2. INICIAR ROUTER ---
+// --- INICIALIZAÇÃO ---
 const route = useRoute();
 const router = useRouter(); 
 const $q = useQuasar();
@@ -411,7 +565,7 @@ const isAgro = computed(() => authStore.userSector === 'agronegocio');
 const isHistoryLoading = ref(false);
 const inventoryHistory = ref<InventoryTransaction[]>([]);
 
-// DIÁLOGOS E FORMULÁRIOS
+// VARIÁVEIS DE CONTROLE UI
 const isAddCostDialogOpen = ref(false);
 const isInstallDialogOpen = ref(false);
 const isPartHistoryDialogOpen = ref(false);
@@ -437,27 +591,21 @@ const axleConfigOptions = Object.keys(axleLayouts).map(key => ({
 }));
 
 async function refreshAllVehicleData() {
-isHistoryLoading.value = true;
-  
-  // --- A CORREÇÃO ESTÁ AQUI ---
-  // 1. Primeiro, buscamos os nomes das peças e ESPERAMOS eles chegarem.
-  //    Isso garante que partStore.parts estará preenchido.
+  isHistoryLoading.value = true;
   await partStore.fetchParts();
-
-  // 2. Agora que temos os nomes, buscamos todo o resto em paralelo.
-await Promise.all([
-fetchHistory(), // Esta função agora pode confiar que partStore.parts existe
-vehicleStore.fetchVehicleById(vehicleId),
-costStore.fetchCosts(vehicleId),
-componentStore.fetchComponents(vehicleId),
- maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 }),
- tireStore.fetchTireLayout(vehicleId),
-tireStore.fetchRemovedTiresHistory(vehicleId), // <-- BUSCA O HISTÓRICO CORRETO
- ]);
+  await Promise.all([
+    fetchHistory(),
+    vehicleStore.fetchVehicleById(vehicleId),
+    costStore.fetchCosts(vehicleId),
+    componentStore.fetchComponents(vehicleId),
+    maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 }),
+    tireStore.fetchTireLayout(vehicleId),
+    tireStore.fetchRemovedTiresHistory(vehicleId),
+  ]);
   isHistoryLoading.value = false;
 }
 
-// ... (Lógica de Pneus e KPIs) ...
+// LÓGICA DE PNEUS E KPIS
 const tiresWithStatus = computed((): TireWithStatus[] => {
   if (!tireStore.tireLayout?.tires || !vehicleStore.selectedVehicle) return [];
   const currentKm = vehicleStore.selectedVehicle.current_km || 0;
@@ -510,10 +658,8 @@ const tireCostsByMonth = computed(() => {
       amount: t.part!.value!,
     }));
 });
-// ... (Fim da lógica de Pneus e KPIs) ...
 
-
-// ### TABELAS E FILTROS ###
+// FILTROS E COMPUTED PROPERTIES
 const search = ref({ history: '', components: '', costs: '', maintenances: '' });
 const dateRange = ref({ history: '', historyTo: '', costs: '', costsTo: '' });
 
@@ -525,7 +671,6 @@ const filteredHistory = computed(() => {
     if(endDate) endDate.setHours(23, 59, 59, 999);
     const rowDate = new Date(row.timestamp);
     const dateMatch = (!startDate || rowDate >= startDate) && (!endDate || rowDate <= endDate);
-    // Melhorar a pesquisa para incluir o item_identifier
     const itemIdentifier = row.item?.item_identifier || '';
     const partName = row.part?.name || row.item?.part?.name || '';
     const textMatch = !needle || 
@@ -535,6 +680,7 @@ const filteredHistory = computed(() => {
     return dateMatch && textMatch;
   });
 });
+
 const filteredComponents = computed(() => {
   const needle = search.value.components.toLowerCase();
   if (!needle) return componentStore.components;
@@ -543,6 +689,7 @@ const filteredComponents = computed(() => {
     return JSON.stringify(row).toLowerCase().includes(needle) || String(itemIdentifier).includes(needle);
   });
 });
+
 const filteredCosts = computed(() => {
   return costStore.costs.filter(row => {
     const needle = search.value.costs.toLowerCase();
@@ -556,14 +703,14 @@ const filteredCosts = computed(() => {
   });
 });
 const totalCost = computed(() => filteredCosts.value.reduce((sum, cost) => sum + cost.amount, 0));
+
 const filteredMaintenances = computed(() => {
   const needle = search.value.maintenances.toLowerCase();
   if (!needle) return maintenanceStore.maintenances;
   return maintenanceStore.maintenances.filter(row => JSON.stringify(row).toLowerCase().includes(needle));
 });
 
-
-// COLUNAS DAS TABELAS
+// DEFINIÇÃO DE COLUNAS
 const historyTireColumns: QTableColumn<VehicleTireHistory>[] = [
   { name: 'part', label: 'Pneu (Série)', field: row => row.part.serial_number || 'N/A', align: 'left', sortable: true },
   { name: 'position', label: 'Posição', field: (row) => row.position_code || 'N/A', align: 'center' },
@@ -572,95 +719,38 @@ const historyTireColumns: QTableColumn<VehicleTireHistory>[] = [
   { name: 'cost_per_km', label: 'Custo/KM', field: row => (row.km_run > 0 && row.part.value) ? `R$ ${(row.part.value / row.km_run).toFixed(2)}` : 'N/A', align: 'right', sortable: true },
 ];
 
-// --- 3. CORREÇÃO COLUNAS HISTÓRICO ---
 const historyColumns: QTableColumn<InventoryTransaction>[] = [
-    { name: 'timestamp', label: 'Data e Hora', field: 'timestamp', format: (val) => format(new Date(val), 'dd/MM/yyyy HH:mm'), align: 'left', sortable: true },
-    { 
-      name: 'part_and_item', 
-      label: 'Peça / Cód. Item', 
-      field: (row) => {
-          const partId = row.item?.part_id || row.part?.id;
-          const partFromStore = partStore.parts.find(p => p.id === partId);
-
-          const name = partFromStore?.name ||   // 1º: Tentar o partStore (confiável)
-                       row.part?.name ||          // 2º: Tentar o 'part' da transação
-                       row.item?.part?.name ||    // 3º: Tentar o 'part' do item da transação
-                       'Peça N/A';              // 4º: Fallback
-
-          // A lógica do Cód. Item já está correta
-          const itemId = row.item?.item_identifier || 'N/A';
-          
-          return `${name} (Cód. Item: ${itemId})`;
-      },
-      align: 'left', 
-      sortable: true 
-    },
-    { name: 'transaction_type', label: 'Movimentação', field: 'transaction_type', align: 'center', sortable: true },
-    { name: 'user', label: 'Realizado por', field: row => row.user?.full_name || 'Sistema', align: 'left' },
-    { name: 'notes', label: 'Notas', field: 'notes', align: 'left', style: 'max-width: 200px; white-space: normal;' },
+    { name: 'timestamp', label: 'Data/Hora', field: 'timestamp', format: (val) => format(new Date(val), 'dd/MM/yyyy HH:mm'), align: 'left', sortable: true },
+    { name: 'part_and_item', label: 'Item Movimentado', field: (row) => row.id, align: 'left', sortable: true },
+    { name: 'transaction_type', label: 'Tipo', field: 'transaction_type', align: 'center', sortable: true },
+    { name: 'user', label: 'Responsável', field: row => row.user?.full_name || 'Sistema', align: 'left' },
+    { name: 'notes', label: 'Observações', field: 'notes', align: 'left', style: 'max-width: 250px; white-space: normal;' },
 ];
 
-// --- 4. CORREÇÃO COLUNAS COMPONENTES ---
-  const componentColumns: QTableColumn<VehicleComponent>[] = [
-    { 
-    name: 'component_and_item', // <-- Nome do slot customizado
-    label: 'Componente / Cód. Item', 
-    field: (row) => {
-        const name = row.part?.name || 'Peça N/A';
-        const itemId = row.inventory_transaction?.item?.item_identifier || 'N/A';
-        return `${name} (Cód. Item: ${String(itemId)})`;
-    },
-    align: 'left', 
-    sortable: true 
-  },
-  { 
-    name: 'installation_date', 
-    label: 'Instalado em', 
-    field: 'installation_date', 
-    format: (val) => format(new Date(val), 'dd/MM/yyyy'), 
-    align: 'left', 
-    sortable: true 
-  },
-  { 
-    name: 'age', 
-    label: 'Idade (dias)', 
-    field: 'installation_date', 
-    format: (val) => `${differenceInDays(new Date(), new Date(val))}`, 
-    align: 'center', 
-    sortable: true 
-  },
-  { 
-    name: 'installer', 
-    label: 'Instalado por', 
-    field: row => row.inventory_transaction?.user?.full_name || 'N/A', 
-    align: 'left', 
-    sortable: true 
-  },
-  { 
-    name: 'actions', 
-    label: 'Ações', 
-    field: () => '', 
-    align: 'right' 
-  },
+const componentColumns: QTableColumn<VehicleComponent>[] = [
+    { name: 'component_and_item', label: 'Componente', field: (row) => row.id, align: 'left', sortable: true },
+    { name: 'installation_date', label: 'Instalação', field: 'installation_date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), align: 'left', sortable: true },
+    { name: 'age', label: 'Tempo de Uso (dias)', field: 'installation_date', format: (val) => `${differenceInDays(new Date(), new Date(val))}`, align: 'center', sortable: true },
+    { name: 'installer', label: 'Instalador', field: row => row.inventory_transaction?.user?.full_name || 'N/A', align: 'left', sortable: true },
+    { name: 'actions', label: '', field: () => '', align: 'right' },
 ];
-// --- FIM DA CORREÇÃO ---
 
 const costColumns: QTableColumn[] = [
   { name: 'date', label: 'Data', field: 'date', format: (val) => format(new Date(val), 'dd/MM/yyyy'), sortable: true, align: 'left' },
-  { name: 'cost_type', label: 'Tipo', field: 'cost_type', sortable: true, align: 'left' },
+  { name: 'cost_type', label: 'Categoria', field: 'cost_type', sortable: true, align: 'left' },
   { name: 'description', label: 'Descrição', field: 'description', sortable: false, align: 'left', style: 'max-width: 300px; white-space: pre-wrap;' },
-  { name: 'amount', label: 'Valor', field: 'amount', format: (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), sortable: true, align: 'right' },
+  { name: 'amount', label: 'Valor (R$)', field: 'amount', format: (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), sortable: true, align: 'right' },
 ];
+
 const maintenanceColumns: QTableColumn<MaintenanceRequest>[] = [
-  { name: 'created_at', label: 'Data', field: 'created_at', format: (val) => val ? format(new Date(val), 'dd/MM/yyyy') : 'A definir', sortable: true, align: 'left' },
-  { name: 'category', label: 'Tipo', field: 'category', sortable: true, align: 'left' },
-  { name: 'problem_description', label: 'Descrição', field: 'problem_description', align: 'left', style: 'white-space: pre-wrap;' },
+  { name: 'created_at', label: 'Data Solicitação', field: 'created_at', format: (val) => val ? format(new Date(val), 'dd/MM/yyyy') : 'A definir', sortable: true, align: 'left' },
+  { name: 'category', label: 'Categoria', field: 'category', sortable: true, align: 'left' },
+  { name: 'problem_description', label: 'Problema Reportado', field: 'problem_description', align: 'left', style: 'max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-  { name: 'actions', label: 'Ações', field: () => '', align: 'right' },
+  { name: 'actions', label: '', field: () => '', align: 'right' },
 ];
 
-
-// ### FUNÇÕES DE AÇÃO ATUALIZADAS ###
+// MÉTODOS E AÇÕES
 async function fetchHistory() {
   isHistoryLoading.value = true;
   try {
@@ -676,14 +766,10 @@ async function fetchHistory() {
 
 function getPartName(partId: number | undefined | null): string {
   if (!partId) return 'Peça N/A';
-  
-  // partStore.parts foi carregado no 'onMounted'
   const part = partStore.parts.find(p => p.id === partId);
-  
   return part?.name || 'Peça N/A';
 }
 
-// ... (Funções de Pneu: openInstallDialog, handleInstallTire, openRemoveDialog, handleUpdateAxleConfig, filterTires) ...
 function openInstallDialog(positionCode: string) {
   targetPosition.value = positionCode;
   installTireForm.value = {
@@ -693,6 +779,7 @@ function openInstallDialog(positionCode: string) {
   };
   isInstallTireDialogOpen.value = true;
 }
+
 async function handleInstallTire() {
   if (!installTireForm.value.part_id) {
     $q.notify({ type: 'negative', message: 'Por favor, selecione um pneu.' });
@@ -712,6 +799,7 @@ async function handleInstallTire() {
     await refreshAllVehicleData();
   }
 }
+
 function openRemoveDialog(tire: VehicleTire) {
   const message = isAgro.value
     ? `Digite as Horas do Motor atuais para remover o pneu (Série: ${tire.part.serial_number}) da posição ${tire.position_code}.`
@@ -751,6 +839,7 @@ function openRemoveDialog(tire: VehicleTire) {
     })();
   });
 }
+
 async function handleUpdateAxleConfig() {
   if (!selectedAxleConfig.value) return;
   const success = await vehicleStore.updateAxleConfiguration(vehicleId, selectedAxleConfig.value);
@@ -759,6 +848,7 @@ async function handleUpdateAxleConfig() {
     await tireStore.fetchTireLayout(vehicleId);
   }
 }
+
 function filterTires(val: string, update: (cb: () => void) => void) {
   update(() => {
     const needle = val.toLowerCase();
@@ -767,23 +857,20 @@ function filterTires(val: string, update: (cb: () => void) => void) {
       .map(p => ({ label: `${p.brand || ''} ${p.name} (Série: ${p.serial_number || 'N/A'})`, value: p.id }));
   });
 }
-// ... (Fim das funções de Pneu) ...
-
 
 function filterParts(val: string, update: (cb: () => void) => void) {
   update(() => {
     const needle = val.toLowerCase();
     partOptions.value = partStore.parts
-      .filter(p => p.name.toLowerCase().includes(needle) && p.stock > 0 && p.category !== 'Pneu') // Exclui Pneus
+      .filter(p => p.name.toLowerCase().includes(needle) && p.stock > 0 && p.category !== 'Pneu')
       .map(p => ({ label: `${p.name} (Estoque: ${p.stock})`, value: p.id }));
   });
 }
 
 async function handleInstallComponent() {
   if (!installFormComponent.value.part_id) return;
-  // Esta função não existe mais, usamos setItemStatus
-  // Vamos emular o comportamento antigo pegando um item do estoque
   $q.notify({ type: 'info', message: 'Função de Instalação Manual (sem Cód. Item) ainda não implementada.' });
+  // Código comentado original mantido para referência futura
   // const success = await componentStore.installComponent(vehicleId, {
   //   part_id: installFormComponent.value.part_id,
   //   quantity: installFormComponent.value.quantity,
@@ -805,8 +892,6 @@ function confirmDiscard(component: VehicleComponent) {
     }).onOk(() => {
       void (async () => {
         if (component.part) {
-            // Esta função também foi modificada.
-            // Precisamos do item_id
             const item_id = component.inventory_transaction?.item?.id;
             if (item_id) {
                const success = await partStore.setItemStatus(component.part.id, item_id, InventoryItemStatus.FIM_DE_VIDA, undefined, "Descartado pelo gerenciador de componentes.");
@@ -831,11 +916,9 @@ function openMaintenanceDetails(maintenance: MaintenanceRequest) {
   isMaintenanceDetailsOpen.value = true;
 }
 
-// --- 5. ADICIONAR FUNÇÃO DE NAVEGAÇÃO ---
 function goToItemDetails(itemId: number) {
   void router.push({ name: 'item-details', params: { id: itemId } });
 }
-// --- FIM DA FUNÇÃO ---
 
 function exportToCsv(tabName: 'history' | 'components' | 'costs' | 'maintenances') {
     let data: (InventoryTransaction | VehicleComponent | MaintenanceRequest | VehicleCost | VehicleTireHistory)[], columns: QTableColumn[], fileName: string;
@@ -874,8 +957,22 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-.bordered-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+.link-hover {
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
+}
+.opacity-50 {
+  opacity: 0.5;
+}
+.opacity-80 {
+  opacity: 0.8;
+}
+.opacity-90 {
+  opacity: 0.9;
+}
+.full-height {
+  height: 100%;
 }
 </style>

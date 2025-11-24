@@ -19,9 +19,9 @@
           <div class="text-h6 q-mb-md text-grey-9">Rota e Paradas</div>
           
           <q-timeline color="secondary" class="q-ml-sm">
-            <q-timeline-entry
-              v-for="(stop, index) in order.stop_points"
-              :key="stop.id"
+<q-timeline-entry
+  v-for="stop in order.stop_points" 
+  :key="stop.id"
               :icon="stop.type === 'Coleta' ? 'inventory_2' : 'local_shipping'"
               :color="getStopColor(stop)"
             >
@@ -34,7 +34,7 @@
               
               <q-card flat bordered class="bg-grey-1">
                 <q-card-section class="q-py-sm">
-                  <div class="text-body2">{{ stop.address }} - {{ stop.city }}/{{ stop.state }}</div>
+                  <div class="text-body2">{{ stop.address }} - {{ (stop as any).city }}/{{ (stop as any).state }}</div>
                   <div v-if="stop.cargo_description" class="text-caption text-grey-7 q-mt-xs">
                     <q-icon name="description" size="xs" /> {{ stop.cargo_description }}
                   </div>
@@ -151,7 +151,7 @@ import { useAuthStore } from 'stores/auth-store';
 import { useFreightOrderStore } from 'stores/freight-order-store';
 import { useVehicleStore } from 'stores/vehicle-store';
 import { useUserStore } from 'stores/user-store';
-import type { FreightOrder, FreightOrderUpdate, FreightOrderClaim, FreightStopPoint } from 'src/models/freight-order-models';
+import type { FreightOrder, FreightOrderUpdate, FreightOrderClaim  } from 'src/models/freight-order-models';
 import type { User } from 'src/models/auth-models';
 
 const props = defineProps<{ order: FreightOrder; }>();
@@ -167,7 +167,7 @@ const allocationForm = ref<Partial<FreightOrderUpdate>>({});
 const claimForm = ref<Partial<FreightOrderClaim>>({});
 
 const headerClass = computed(() => {
-  switch (props.order.status) {
+  switch (props.order.status as string) {
     case 'Atribuída': return 'bg-primary';
     case 'Em Trânsito': return 'bg-orange-8';
     case 'Entregue': return 'bg-positive';
@@ -176,10 +176,11 @@ const headerClass = computed(() => {
   }
 });
 
-function getStopColor(stop: FreightStopPoint) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getStopColor(stop: any) {
   if (stop.status === 'Concluído') return 'positive';
   if (stop.type === 'Coleta') return 'accent';
-  return 'secondary';
+  return 'secondary'; // Padrão para entregas pendentes
 }
 
 watch(() => props.order, (newOrder) => {

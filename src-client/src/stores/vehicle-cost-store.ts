@@ -65,7 +65,6 @@ export const useVehicleCostStore = defineStore('vehicleCost', {
     async addCost(vehicleId: number, payload: VehicleCostCreate): Promise<boolean> {
       try {
         await api.post(`/vehicles/${vehicleId}/costs/`, payload);
-        Notify.create({ type: 'positive', message: 'Custo adicionado com sucesso!' });
         
         // Após adicionar, podemos recarregar os custos do veículo específico ou todos,
         // dependendo do contexto da página. Para ser seguro, vamos chamar fetchAllCosts

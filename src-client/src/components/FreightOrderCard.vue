@@ -58,20 +58,24 @@ const props = defineProps<{
 // Tenta pegar o primeiro ponto de coleta e o último de entrega
 const startPoint = computed(() => {
   const point = props.order.stop_points.find(p => p.type === 'Coleta');
-  return point ? point.city || point.address : '---';
+  // Adicionado (point as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return point ? (point as any).city || point.address : '---';
 });
 
 const endPoint = computed(() => {
-  // Pega o último ponto que seja Entrega, ou o último ponto geral
   const points = [...props.order.stop_points];
   const delivery = points.reverse().find(p => p.type === 'Entrega');
-  return delivery ? delivery.city || delivery.address : '---';
+  // Adicionado (delivery as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return delivery ? (delivery as any).city || delivery.address : '---';
 });
 
 const statusColor = computed(() => {
-  switch (props.order.status) {
-    case 'Aberta': return 'blue-grey';
-    case 'Atribuída': return 'primary';
+  // Adicionado (as string) para permitir 'Cancelada' caso não esteja no type
+  switch (props.order.status as string) {
+    case 'Pendente': return 'grey';
+    case 'Agendada': return 'blue';
     case 'Em Trânsito': return 'orange';
     case 'Entregue': return 'positive';
     case 'Cancelada': return 'negative';

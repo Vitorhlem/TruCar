@@ -96,6 +96,15 @@ export const usePartStore = defineStore('part', {
               }
           });
           
+          // --- CORREÇÃO: Anexar os arquivos ao FormData ---
+          if (payload.photo_file) {
+              formData.append('file', payload.photo_file);
+          }
+          if (payload.invoice_file) {
+              formData.append('invoice_file', payload.invoice_file);
+          }
+          // ------------------------------------------------
+          
           await api.post('/parts/', formData, {
               headers: { 'Content-Type': 'multipart/form-data' },
           });

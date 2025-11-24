@@ -35,3 +35,4 @@ pdf
 *.pdf
 */uploads
 src-py/static/uploads/documents/*
+src-py/static/uploads/*

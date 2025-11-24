@@ -1,62 +1,38 @@
 <template>
-  <q-page padding>
+  <q-page class="q-pa-md q-pa-lg-xl">
     
-    <div v-if="isDemo" class="q-mb-lg animate-fade">
-      <div class="row">
-        <div class="col-12 ">
-          <q-card flat bordered class="full-height">
-            <q-card-section>
-              <div class="row items-center justify-between no-wrap">
-                <div class="col">
-                  <div class="text-subtitle2 text-uppercase">Limite de Veículos</div>
-                  <div class="text-h4 text-primary text-weight-bold q-mt-sm">
-                    {{ demoUsageCount }} <span class="text-h6 text-grey-6">/ {{ demoUsageLimitLabel }}</span>
-                  </div>
-                </div>
-                <div class="col-auto">
-                  <q-circular-progress
-                    show-value
-                    font-size="12px"
-                    :value="usagePercentage"
-                    size="50px"
-                    :thickness="0.22"
-                    :color="usageColor"
-                    track-color="grey-3"
-                    class="q-ma-md"
-                  >
-                    {{ usagePercentage }}%
-                  </q-circular-progress>
-                </div>
-              </div>
-              <q-linear-progress :value="usagePercentage / 100" class="q-mt-md" :color="usageColor" rounded />
-              <div class="text-caption text-grey-7 q-mt-sm">
-                <q-icon name="info" />
-                Você cadastrou {{ usagePercentage }}% da sua frota permitida no plano Demo.
-              </div>
-            </q-card-section>
-          </q-card>
+    <div class="row items-center justify-between q-mb-lg q-col-gutter-y-md">
+      <div class="col-12 col-md-auto">
+        <h1 class="text-h4 text-weight-bolder q-my-none text-primary flex items-center gap-sm">
+          <q-icon name="garage" size="md" />
+          {{ terminologyStore.vehiclePageTitle }}
+        </h1>
+        <div class="text-subtitle2 text-grey-7 q-mt-xs" :class="{ 'text-grey-5': $q.dark.isActive }">
+          Gerencie e monitore toda a sua frota num só lugar
         </div>
       </div>
-    </div>
 
-    <div class="flex items-center justify-between q-mb-md">
-      <h1 class="text-h5 text-weight-bold q-my-none">{{ terminologyStore.vehiclePageTitle }}</h1>
-      <div class="row items-center q-gutter-md">
+      <div class="col-12 col-md-auto row q-gutter-sm">
         <q-input
-          outlined dense debounce="300" v-model="searchTerm"
-          :placeholder="`Buscar por ${terminologyStore.plateOrIdentifierLabel.toLowerCase()}, marca...`"
-          style="width: 250px"
+          outlined
+          dense
+          debounce="300"
+          v-model="searchTerm"
+          :placeholder="`Buscar ${terminologyStore.plateOrIdentifierLabel.toLowerCase()} ou modelo...`"
+          class="search-input"
+          :bg-color="$q.dark.isActive ? 'grey-9' : 'white'"
         >
-          <template v-slot:append><q-icon name="search" /></template>
+          <template v-slot:prepend><q-icon name="search" /></template>
         </q-input>
         
-        <div v-if="authStore.isManager" class="d-inline-block relative-position">
+        <div v-if="authStore.isManager" class="relative-position">
           <q-btn
             @click="openCreateDialog" 
             color="primary"
             icon="add" 
             :label="terminologyStore.addVehicleButtonLabel" 
             unelevated
+            class="full-height"
             :disable="isVehicleLimitReached"
           />
           
@@ -72,7 +48,7 @@
                 <div>
                     <div class="text-weight-bold">Limite de Frota Atingido</div>
                     <div class="text-caption">O plano Demo permite até {{ demoUsageLimitLabel }} veículos.</div>
-                    <div class="text-caption q-mt-xs text-yellow-2 cursor-pointer" @click="showLimitUpgradeDialog">Clique para saber mais</div>
+                    <div class="text-caption q-mt-xs text-yellow-2 cursor-pointer" @click="showLimitUpgradeDialog">Clique para aumentar</div>
                 </div>
             </div>
           </q-tooltip>
@@ -80,12 +56,56 @@
       </div>
     </div>
 
+    <div v-if="isDemo" class="q-mb-xl animate-fade">
+      <q-card flat bordered class="demo-card-gradient">
+        <q-card-section class="q-pa-md">
+          <div class="row items-center justify-between">
+            <div class="col-grow row items-center q-gutter-x-md">
+              <q-circular-progress
+                show-value
+                font-size="12px"
+                :value="usagePercentage"
+                size="50px"
+                :thickness="0.22"
+                :color="usageColor"
+                track-color="white"
+                class="text-white q-my-xs"
+              >
+                {{ usagePercentage }}%
+              </q-circular-progress>
+              
+              <div>
+                <div class="text-subtitle2 text-uppercase text-white text-opacity-80">Uso do Plano Demo</div>
+                <div class="text-h5 text-white text-weight-bold">
+                  {{ demoUsageCount }} <span class="text-body1 text-white text-opacity-70">/ {{ demoUsageLimitLabel }} veículos</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-auto">
+               <q-btn flat dense color="white" icon="info" round>
+                 <q-tooltip>Você cadastrou {{ usagePercentage }}% da sua frota permitida no plano Demo.</q-tooltip>
+               </q-btn>
+            </div>
+          </div>
+          <q-linear-progress :value="usagePercentage / 100" class="q-mt-sm rounded-borders" color="white" track-color="white-30" />
+        </q-card-section>
+      </q-card>
+    </div>
+
     <div v-if="vehicleStore.isLoading && vehicleStore.vehicles.length === 0" class="row q-col-gutter-md">
       <div v-for="n in 8" :key="n" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-        <q-card flat bordered>
-          <q-skeleton height="160px" square />
-          <q-card-section><q-skeleton type="text" class="text-subtitle1" /></q-card-section>
-          <q-separator /><q-card-section><q-skeleton type="text" width="70%" /></q-card-section>
+        <q-card flat bordered :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'">
+          <q-skeleton height="180px" square />
+          <q-card-section>
+            <q-skeleton type="text" class="text-subtitle1" width="60%" />
+            <q-skeleton type="text" class="text-caption" width="40%" />
+          </q-card-section>
+          <q-separator />
+          <q-card-section class="row justify-between">
+            <q-skeleton type="text" width="30%" />
+            <q-skeleton type="text" width="30%" />
+          </q-card-section>
         </q-card>
       </div>
     </div>
@@ -93,168 +113,273 @@
     <div v-else-if="vehicleStore.vehicles.length > 0" class="row q-col-gutter-md">
       <div v-for="vehicle in vehicleStore.vehicles" :key="vehicle.id" class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
         <q-card 
-           class="column no-wrap full-height vehicle-card" 
-           :class="{ 'vehicle-card-interactive': authStore.isManager }"
+           class="column no-wrap full-height vehicle-card custom-border" 
+           :class="{ 
+             'vehicle-card-interactive': authStore.isManager,
+             'bg-grey-10 border-grey-8': $q.dark.isActive,
+             'bg-white': !$q.dark.isActive
+           }"
            @click="handleCardClick(vehicle)"
+           flat bordered
         >
-          <q-img :src="vehicle.photo_url ?? undefined" height="160px" fit="cover" class="bg-grey-3">
-            <template v-slot:error>
-              <div class="absolute-full flex flex-center bg-primary text-white">
-                <q-icon :name="getVehicleIcon(vehicle)" size="48px" />
+          <div class="relative-position">
+            <q-img :src="getImageUrl(vehicle.photo_url) ?? undefined" height="180px" fit="cover" class="bg-grey-3">
+              <template v-slot:error>
+                <div class="absolute-full flex flex-center bg-grey-3 text-grey-5" :class="{'bg-grey-9 text-grey-7': $q.dark.isActive}">
+                  <q-icon :name="getVehicleIcon(vehicle)" size="56px" />
+                </div>
+              </template>
+              
+              <div class="absolute-bottom text-subtitle2 text-white p-2" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
+                 <div class="row items-center justify-between full-width">
+                   <div class="text-weight-bold">{{ vehicle.year }}</div>
+                   <div v-if="vehicle.telemetry_device_id" class="flex items-center">
+                     <q-icon name="sensors" color="green-4" size="16px" class="q-mr-xs" />
+                     <span class="text-caption text-green-3">Conectado</span>
+                   </div>
+                 </div>
               </div>
-            </template>
-            <q-badge :color="getStatusColor(vehicle.status)" :label="vehicle.status" class="absolute-top-right q-ma-sm" />
-          </q-img>
+            </q-img>
+            
+            <q-badge 
+              :color="getStatusColor(vehicle.status)" 
+              class="absolute-top-right q-ma-sm shadow-2"
+              rounded
+              padding="xs sm"
+            >
+              {{ vehicle.status }}
+            </q-badge>
+          </div>
 
-          <q-card-section>
-            <div class="flex items-start no-wrap">
-              <div class="col">
-                <div class="text-subtitle1 text-weight-bold ellipsis">{{ vehicle.brand }} {{ vehicle.model }}</div>
-                <div class="text-caption">{{ vehicle.license_plate || vehicle.identifier }} &bull; {{ vehicle.year }}</div>
-              </div>
-              <div v-if="authStore.isManager" class="col-auto no-wrap">
-                <q-icon v-if="vehicle.telemetry_device_id" name="sensors" color="positive" size="20px" class="q-mr-xs">
-                  <q-tooltip>Telemetria Ativa</q-tooltip>
-                </q-icon>
-                <q-btn @click.stop="goToVehicleDetails(vehicle, 'costs')" flat round dense icon="receipt_long">
-                  <q-tooltip>Ver Custos</q-tooltip>
-                </q-btn>
-                <q-btn @click.stop="openEditDialog(vehicle)" flat round dense icon="edit"><q-tooltip>Editar</q-tooltip></q-btn>
-                <q-btn @click.stop="promptToDelete(vehicle)" flat round dense icon="delete" color="negative"><q-tooltip>Excluir</q-tooltip></q-btn>
-              </div>
+          <q-card-section class="col q-pb-none">
+            <div class="text-overline text-grey-7 line-height-tight" :class="{'text-grey-5': $q.dark.isActive}">
+              {{ vehicle.brand }}
+            </div>
+            <div class="text-h6 text-weight-bold ellipsis q-mb-xs">
+              {{ vehicle.model }}
+            </div>
+            <div class="row items-center text-caption text-grey-8" :class="{'text-grey-4': $q.dark.isActive}">
+               <q-icon name="pin" size="16px" class="q-mr-xs text-primary" />
+               <span class="text-weight-medium">{{ vehicle.license_plate || vehicle.identifier }}</span>
             </div>
           </q-card-section>
 
           <q-space />
-          <q-separator />
-
-          <q-card-section class="q-py-sm">
-            <div class="flex justify-between items-center text-caption ">
-              <span>{{ terminologyStore.distanceUnit.toLowerCase() === 'km' ? 'Odómetro' : 'Horímetro' }}</span>
-              <span class="text-weight-bold ">{{ formatDistance(terminologyStore.distanceUnit.toLowerCase() === 'km' ? vehicle.current_km : vehicle.current_engine_hours, terminologyStore.distanceUnit as 'km' | 'Horas') }}</span>
-            </div>
-            <div v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date" class="flex justify-between items-center text-caption q-mt-xs">
-              <span>Próx. Revisão</span>
-              <span class="text-weight-bold ellipsis text-right" style="max-width: 60%;">
-                {{ vehicle.next_maintenance_km ? `${vehicle.next_maintenance_km.toLocaleString('pt-BR')} ${terminologyStore.distanceUnit}` : '' }}
-                {{ vehicle.next_maintenance_km && vehicle.next_maintenance_date ? ' ou ' : '' }}
-                {{ vehicle.next_maintenance_date ? (new Date(vehicle.next_maintenance_date + 'T00:00:00')).toLocaleDateString('pt-BR') : '' }}
-              </span>
-            </div>
+          
+          <q-card-section class="q-pt-sm">
+             <div class="row q-col-gutter-sm">
+               <div class="col-6">
+                 <div class="metric-box" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'">
+                    <div class="text-caption text-grey-6 text-xs-custom">
+                       {{ terminologyStore.distanceUnit.toLowerCase() === 'km' ? 'Odómetro' : 'Horímetro' }}
+                    </div>
+                    <div class="text-weight-bold text-primary text-body2">
+                      {{ formatDistance(terminologyStore.distanceUnit.toLowerCase() === 'km' ? vehicle.current_km : vehicle.current_engine_hours, terminologyStore.distanceUnit as 'km' | 'Horas') }}
+                    </div>
+                 </div>
+               </div>
+               
+               <div class="col-6" v-if="vehicle.next_maintenance_km || vehicle.next_maintenance_date">
+                 <div class="metric-box" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'">
+                    <div class="text-caption text-grey-6 text-xs-custom">Próx. Revisão</div>
+                    <div class="text-weight-bold text-warning-9 text-body2 ellipsis">
+                       {{ vehicle.next_maintenance_date ? (new Date(vehicle.next_maintenance_date + 'T00:00:00')).toLocaleDateString('pt-BR').slice(0,5) : (vehicle.next_maintenance_km ? `${(vehicle.next_maintenance_km/1000).toFixed(0)}k` : '--') }}
+                    </div>
+                 </div>
+               </div>
+             </div>
           </q-card-section>
+
+          <q-separator :color="$q.dark.isActive ? 'grey-8' : 'grey-2'" />
+
+          <q-card-actions align="right" class="q-px-md" v-if="authStore.isManager">
+             <q-btn flat round dense size="sm" color="grey-6" icon="receipt_long" @click.stop="goToVehicleDetails(vehicle, 'costs')">
+               <q-tooltip>Ver Custos</q-tooltip>
+             </q-btn>
+             <q-btn flat round dense size="sm" color="primary" icon="edit" @click.stop="openEditDialog(vehicle)">
+               <q-tooltip>Editar</q-tooltip>
+             </q-btn>
+             <q-btn flat round dense size="sm" color="negative" icon="delete_outline" @click.stop="promptToDelete(vehicle)">
+               <q-tooltip>Excluir</q-tooltip>
+             </q-btn>
+          </q-card-actions>
         </q-card>
       </div>
     </div>
 
-    <div v-else class="full-width row flex-center text-primary q-gutter-sm q-pa-xl">
-      <q-icon name="add_circle_outline" size="3em" />
-      <span class="text-h6">Nenhum {{ terminologyStore.vehicleNoun.toLowerCase() }} encontrado</span>
+    <div v-else class="full-width column flex-center q-pa-xl text-center">
+      <div class="bg-grey-2 rounded-borders flex flex-center q-mb-md" style="width: 120px; height: 120px; border-radius: 50%;">
+        <q-icon name="no_crash" size="64px" class="text-grey-5" />
+      </div>
+      <div class="text-h5 text-weight-bold text-grey-8" :class="{'text-white': $q.dark.isActive}">
+        Nenhum {{ terminologyStore.vehicleNoun.toLowerCase() }} encontrado
+      </div>
+      <div class="text-body1 text-grey-6 q-mb-lg max-width-md">
+        Comece adicionando veículos à sua frota para gerir manutenções, custos e motoristas.
+      </div>
       <q-btn 
         @click="openCreateDialog" 
         v-if="authStore.isManager" 
         unelevated 
         color="primary" 
-        :label="`Adicionar primeiro ${terminologyStore.vehicleNoun.toLowerCase()}`" 
-        class="q-ml-lg"
+        icon="add"
+        :label="`Adicionar ${terminologyStore.vehicleNoun}`" 
+        size="lg"
         :disable="isVehicleLimitReached"
       />
     </div>
 
-    <div class="flex flex-center q-mt-lg" v-if="pagination.rowsNumber > pagination.rowsPerPage">
-      <q-pagination v-model="pagination.page" :max="Math.ceil(pagination.rowsNumber / pagination.rowsPerPage)" @update:model-value="onPageChange" direction-links boundary-links icon-first="skip_previous" icon-last="skip_next" icon-prev="fast_rewind" icon-next="fast_forward" />
+    <div class="flex flex-center q-mt-xl" v-if="pagination.rowsNumber > pagination.rowsPerPage">
+      <q-pagination 
+        v-model="pagination.page" 
+        :max="Math.ceil(pagination.rowsNumber / pagination.rowsPerPage)" 
+        @update:model-value="onPageChange" 
+        direction-links 
+        boundary-numbers
+        color="primary"
+        active-design="unelevated"
+        active-color="primary"
+        active-text-color="white"
+        flat
+      />
     </div>
 
-    <q-dialog v-model="showComparisonDialog">
-      <q-card style="width: 700px; max-width: 95vw;">
-        <q-card-section class="bg-primary text-white q-py-lg">
-          <div class="text-h5 text-weight-bold text-center">Desbloqueie o Potencial Máximo</div>
-          <div class="text-subtitle1 text-center text-blue-2">Veja o que você ganha com o upgrade</div>
+    <q-dialog v-model="showComparisonDialog" transition-show="scale" transition-hide="scale">
+      <q-card style="width: 750px; max-width: 95vw;" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'">
+        <q-card-section class="bg-primary text-white q-py-lg text-center relative-position overflow-hidden">
+          <div class="absolute-full bg-white opacity-10" style="transform: skewY(-5deg) scale(1.5);"></div>
+          <q-icon name="rocket_launch" size="4em" class="q-mb-sm" />
+          <div class="text-h4 text-weight-bold relative-position">Desbloqueie o Potencial Máximo</div>
+          <div class="text-subtitle1 text-blue-2 relative-position">Veja o que ganha com o upgrade para PRO</div>
         </q-card-section>
 
         <q-card-section class="q-pa-none">
-          <q-markup-table flat separator="horizontal">
+          <q-markup-table flat :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-transparent' : ''">
             <thead>
-              <tr class="bg-grey-1 text-uppercase text-grey-7">
-                <th class="text-left q-pa-md">Funcionalidade</th>
-                <th class="text-center text-weight-bold q-pa-md bg-amber-1 text-amber-9">Plano Demo (Atual)</th>
-                <th class="text-center text-weight-bold q-pa-md text-primary">Plano PRO</th>
+              <tr :class="$q.dark.isActive ? 'bg-grey-8' : 'bg-grey-1 text-grey-7'">
+                <th class="text-left q-pa-md text-uppercase text-caption">Funcionalidade</th>
+                <th class="text-center text-weight-bold q-pa-md bg-amber-1 text-amber-9 border-left">Plano Demo</th>
+                <th class="text-center text-weight-bold q-pa-md text-primary bg-blue-1">Plano PRO</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td class="text-weight-medium q-pa-md"><q-icon name="directions_car" color="grey-6" size="xs" /> Gestão de Veículos</td>
                 <td class="text-center bg-amber-1 text-amber-10">Até {{ demoUsageLimitLabel }} veículos</td>
-                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Frota Ilimitada</td>
+                <td class="text-center text-primary text-weight-bold bg-blue-1"><q-icon name="check_circle" /> Frota Ilimitada</td>
               </tr>
               <tr>
                 <td class="text-weight-medium q-pa-md"><q-icon name="history" color="grey-6" size="xs" /> Histórico de Dados</td>
                 <td class="text-center bg-amber-1 text-amber-10">Últimos 7 dias</td>
-                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Ilimitado (Vitalício)</td>
+                <td class="text-center text-primary text-weight-bold bg-blue-1"><q-icon name="check_circle" /> Ilimitado (Vitalício)</td>
               </tr>
               <tr>
                 <td class="text-weight-medium q-pa-md"><q-icon name="speed" color="grey-6" size="xs" /> Limite de Viagens</td>
                 <td class="text-center bg-amber-1 text-amber-10">10 por mês</td>
-                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Ilimitado</td>
-              </tr>
-              <tr>
-                <td class="text-weight-medium q-pa-md"><q-icon name="support_agent" color="grey-6" size="xs" /> Suporte Técnico</td>
-                <td class="text-center bg-amber-1 text-amber-10">Comunidade</td>
-                <td class="text-center text-primary text-weight-bold"><q-icon name="check_circle" /> Prioritário 24/7</td>
+                <td class="text-center text-primary text-weight-bold bg-blue-1"><q-icon name="check_circle" /> Ilimitado</td>
               </tr>
             </tbody>
           </q-markup-table>
         </q-card-section>
 
-        <q-card-actions align="center" class="q-pa-lg bg-grey-1">
-          <div class="text-center full-width">
-            <div class="text-grey-7 q-mb-md">Pronto para escalar sua frota?</div>
-            <q-btn color="primary" label="Falar com Consultor" size="lg" unelevated icon="whatsapp" class="full-width" />
-            <q-btn flat color="grey-7" label="Continuar no Demo por enquanto" class="q-mt-sm" v-close-popup />
+        <q-card-actions align="center" class="q-pa-lg" :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1'">
+          <div class="column items-center full-width q-gutter-y-md">
+            <div class="text-h6 text-weight-bold">Pronto para escalar a sua frota?</div>
+            <q-btn color="positive" label="Falar com Consultor" size="lg" unelevated icon="whatsapp" class="full-width shadow-3" />
+            <q-btn flat color="grey-7" label="Continuar no Demo por enquanto" v-close-popup />
           </div>
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="isFormDialogOpen">
-        <q-card style="width: 500px; max-width: 90vw;">
-          <q-card-section>
+    <q-dialog v-model="isFormDialogOpen" persistent>
+        <q-card style="width: 550px; max-width: 95vw;" :class="$q.dark.isActive ? 'bg-grey-9' : ''">
+          <q-card-section class="row items-center q-pb-none">
             <div class="text-h6">{{ isEditing ? terminologyStore.editButtonLabel : terminologyStore.newButtonLabel }}</div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup />
           </q-card-section>
+
           <q-form @submit.prevent="onFormSubmit">
-            <q-card-section class="q-gutter-y-md">
-              <q-input outlined v-model="formData.brand" label="Marca *" :rules="[val => !!val || 'Campo obrigatório']" />
-              <q-input outlined v-model="formData.model" label="Modelo *" :rules="[val => !!val || 'Campo obrigatório']" />
-              <q-input v-if="!isEditing" outlined v-model="formData.license_plate" :label="terminologyStore.plateOrIdentifierLabel + ' *'" :mask="authStore.userSector !== 'agronegocio' ? 'AAA#A##' : ''" :rules="[val => !!val || 'Campo obrigatório']" />
-              <q-input outlined v-model.number="formData.year" type="number" label="Ano *" :rules="[val => val > 1980 || 'Ano inválido']" />
-              <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" />
-              <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" />
-              <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" />
-              <q-file v-model="photoFile" label="Carregar Foto do Veículo" outlined clearable accept=".jpg, image/*">
-                <template v-slot:prepend><q-icon name="attach_file" /></template>
-                <template v-if="formData.photo_url && !photoFile" v-slot:append>
-                  <q-avatar square><img :src="formData.photo_url ?? undefined" alt="Foto atual" /></q-avatar>
+            <q-card-section class="q-gutter-y-md scroll" style="max-height: 70vh">
+              <div class="row q-col-gutter-sm">
+                 <div class="col-12 col-sm-6">
+                    <q-input outlined v-model="formData.brand" label="Marca *" :rules="[val => !!val || 'Obrigatório']" dense />
+                 </div>
+                 <div class="col-12 col-sm-6">
+                    <q-input outlined v-model="formData.model" label="Modelo *" :rules="[val => !!val || 'Obrigatório']" dense />
+                 </div>
+              </div>
+
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                   <q-input outlined v-model.number="formData.year" type="number" label="Ano *" :rules="[val => val > 1980 || 'Inválido']" dense />
+                </div>
+                <div class="col-12 col-sm-6">
+                   <q-input v-if="!isEditing" outlined v-model="formData.license_plate" :label="terminologyStore.plateOrIdentifierLabel + ' *'" :mask="authStore.userSector !== 'agronegocio' ? 'AAA#A##' : ''" :rules="[val => !!val || 'Obrigatório']" dense />
+                </div>
+              </div>
+
+              <q-input v-if="authStore.userSector === 'agronegocio'" outlined v-model.number="formData.current_engine_hours" type="number" label="Horas de Motor Atuais" step="0.1" dense />
+              <q-input v-else outlined v-model.number="formData.current_km" type="number" label="KM Inicial" dense />
+              
+              <q-select v-if="isEditing" outlined v-model="formData.status" :options="statusOptions" label="Status" dense />
+              
+              <q-file 
+                v-model="photoFile" 
+                label="Carregar Foto" 
+                outlined 
+                dense 
+                clearable 
+                accept=".jpg, image/*" 
+                class="q-mt-sm"
+                @update:model-value="onFileSelected"
+              >
+                <template v-slot:prepend><q-icon name="cloud_upload" /></template>
+                
+                <template v-slot:append>
+                    <q-avatar size="24px" square v-if="photoPreview || formData.photo_url">
+                      <img :src="(photoPreview || getImageUrl(formData.photo_url)) || ''" style="object-fit: cover" />
+                      <q-tooltip>Imagem atual</q-tooltip>
+                    </q-avatar>
                 </template>
               </q-file>
-              <q-separator class="q-my-md" />
-              <div class="text-subtitle1 text-weight-medium">Telemetria (Opcional)</div>
-              <q-input outlined v-model="formData.telemetry_device_id" label="ID do Dispositivo de Telemetria" hint="Ex: TRATOR-001. Este ID conecta o maquinário ao dispositivo físico." />
-              <q-separator class="q-my-lg" />
-              <div class="text-subtitle1 text-weight-medium">Dados de Manutenção</div>
-              <q-input outlined v-model.number="formData.next_maintenance_km" type="number" :label="`Próxima Revisão (${terminologyStore.distanceUnit})`" clearable />
-              <q-input outlined v-model="formData.next_maintenance_date" mask="##/##/####" label="Próxima Revisão (Data)" clearable>
-                <template v-slot:append>
-                  <q-icon name="event" class="cursor-pointer">
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="formData.next_maintenance_date" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date>
-                    </q-popup-proxy>
-                  </q-icon>
-                </template>
-              </q-input>
-              <q-input outlined v-model="formData.maintenance_notes" type="textarea" label="Anotações de Manutenção" autogrow />
+              
+              <div class="text-subtitle2 q-mt-md text-primary">Manutenção Preventiva</div>
+              <q-separator class="q-mb-md" />
+              
+              <div class="row q-col-gutter-sm">
+                 <div class="col-12 col-sm-6">
+                    <q-input outlined v-model.number="formData.next_maintenance_km" type="number" :label="`Próxima Revisão (${terminologyStore.distanceUnit})`" clearable dense />
+                 </div>
+                 <div class="col-12 col-sm-6">
+                    <q-input outlined v-model="formData.next_maintenance_date" mask="##/##/####" label="Próxima Revisão (Data)" clearable dense>
+                      <template v-slot:append>
+                        <q-icon name="event" class="cursor-pointer">
+                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                            <q-date v-model="formData.next_maintenance_date" mask="DD/MM/YYYY"><div class="row items-center justify-end"><q-btn v-close-popup label="Fechar" color="primary" flat /></div></q-date>
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
+                    </q-input>
+                 </div>
+              </div>
+              
+              <q-expansion-item dense dense-toggle switch-toggle-side label="Configurações Avançadas" class="bg-grey-2 rounded-borders q-mt-md" :class="$q.dark.isActive ? 'bg-grey-8' : ''">
+                  <q-card :class="$q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'">
+                      <q-card-section class="q-gutter-y-sm">
+                         <q-input bg-color="white" :dark="false" outlined v-model="formData.telemetry_device_id" label="ID Telemetria" dense hint="ID para conexão com IoT" />
+                         <q-input bg-color="white" :dark="false" outlined v-model="formData.maintenance_notes" type="textarea" label="Anotações Gerais" autogrow dense />
+                      </q-card-section>
+                  </q-card>
+              </q-expansion-item>
             </q-card-section>
+            
+            <q-separator />
+            
             <q-card-actions align="right" class="q-pa-md">
-              <q-btn flat label="Cancelar" v-close-popup />
-              <q-btn type="submit" unelevated color="primary" label="Salvar" :loading="isSubmitting" />
+              <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+              <q-btn type="submit" unelevated color="primary" label="Salvar Veículo" :loading="isSubmitting" />
             </q-card-actions>
           </q-form>
         </q-card>
@@ -274,6 +399,19 @@ import { VehicleStatus, type Vehicle, type VehicleCreate, type VehicleUpdate } f
 import api from 'src/services/api';
 import axios from 'axios';
 
+// --- CONFIGURAÇÃO DE URL DE IMAGENS ---
+// Ajuste esta porta caso o seu backend não esteja na 8000
+const API_BASE_URL = 'http://localhost:8000'; 
+
+function getImageUrl(url: string | null | undefined) {
+  if (!url) return undefined;
+  // Se já for um link completo (https://...), usa-o.
+  if (url.startsWith('http')) return url;
+  // Se for relativo (/static/...), adiciona o domínio do backend.
+  return `${API_BASE_URL}${url}`;
+}
+// ----------------------------------------
+
 const $q = useQuasar();
 const vehicleStore = useVehicleStore();
 const authStore = useAuthStore();
@@ -287,6 +425,7 @@ const isEditing = computed(() => editingVehicleId.value !== null);
 const statusOptions = Object.values(VehicleStatus);
 const formData = ref<Partial<Vehicle>>({});
 const photoFile = ref<File | null>(null);
+const photoPreview = ref<string | null>(null); // CORREÇÃO: Variável para o preview
 
 const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
 
@@ -314,9 +453,9 @@ const usagePercentage = computed(() => {
 });
 
 const usageColor = computed(() => {
-  if (usagePercentage.value >= 100) return 'negative';
-  if (usagePercentage.value >= 80) return 'warning';
-  return 'primary';
+  if (usagePercentage.value >= 100) return 'red-4';
+  if (usagePercentage.value >= 80) return 'orange-4';
+  return 'white';
 });
 
 function showLimitUpgradeDialog() {
@@ -348,6 +487,16 @@ function resetForm() {
     telemetry_device_id: null,
   };
   photoFile.value = null;
+  photoPreview.value = null; // CORREÇÃO: Limpa o preview
+}
+
+// CORREÇÃO: Gera preview ao selecionar arquivo
+function onFileSelected(val: File | null) {
+  if (val) {
+    photoPreview.value = URL.createObjectURL(val);
+  } else {
+    photoPreview.value = null;
+  }
 }
 
 function openCreateDialog() {
@@ -368,6 +517,7 @@ function openEditDialog(vehicle: Vehicle) {
       : null,
   };
   photoFile.value = null;
+  photoPreview.value = null; // CORREÇÃO: Limpa o preview para mostrar a foto original
   isFormDialogOpen.value = true;
 }
 
@@ -496,8 +646,8 @@ function promptToDelete(vehicle: Vehicle) {
     message: `Tem a certeza que deseja excluir ${terminologyStore.vehicleNoun.toLowerCase()} ${vehicle.brand} ${vehicle.model}?`,
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
     cancel: { label: 'Cancelar', flat: true },
-  }).onOk(() => { // <--- Função síncrona
-    void (async () => { // <--- IIFE
+  }).onOk(() => {
+    void (async () => {
       await vehicleStore.deleteVehicle(vehicle.id, {
         page: pagination.value.page, rowsPerPage: pagination.value.rowsPerPage, search: searchTerm.value,
       });
@@ -510,15 +660,62 @@ function promptToDelete(vehicle: Vehicle) {
 </script>
 
 <style scoped lang="scss">
+.search-input {
+  width: 300px;
+  @media (max-width: 599px) {
+    width: 100%;
+  }
+}
+
+.demo-card-gradient {
+  background: linear-gradient(135deg, var(--q-primary) 0%, darken($primary, 20%) 100%);
+  border: none;
+  border-radius: 12px;
+}
+
 .vehicle-card {
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+
   &.vehicle-card-interactive {
      cursor: pointer;
      &:hover {
-       transform: translateY(-4px);
-       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+       transform: translateY(-5px);
+       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+       border-color: var(--q-primary);
      }
+  }
+}
+
+.metric-box {
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.text-xs-custom {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.custom-border {
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.white-30 {
+  color: rgba(255,255,255,0.3) !important;
+}
+
+.opacity-10 {
+  opacity: 0.1;
+}
+
+/* Dark mode specific tweaks if not handled by Quasar classes */
+.body--dark {
+  .custom-border {
+    border: 1px solid rgba(255,255,255,0.1);
   }
 }
 </style>

@@ -208,6 +208,7 @@ async function handleSubmit() {
   isSubmitting.value = true;
   try {
     // Limpeza de dados: campos vazios viram null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payload: any = { ...formData.value };
     Object.keys(payload).forEach((key) => {
       if (typeof payload[key] === 'string' && payload[key].trim() === '') {

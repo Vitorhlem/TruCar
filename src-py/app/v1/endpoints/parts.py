@@ -60,6 +60,10 @@ async def create_part(
     value: Optional[float] = Form(None),
     serial_number: Optional[str] = Form(None), 
     lifespan_km: Optional[int] = Form(None),
+    # --- CORREÇÃO: Adicionados os parâmetros de arquivo ---
+    file: Optional[UploadFile] = File(None), 
+    invoice_file: Optional[UploadFile] = File(None),
+    # -----------------------------------------------------
     current_user: User = Depends(deps.get_current_active_manager)
 ):
     try:
@@ -75,7 +79,17 @@ async def create_part(
         brand=brand, location=location, notes=notes, value=value,
         serial_number=serial_number, lifespan_km=lifespan_km
     )
-    photo_url, invoice_url = None, None
+    
+    # --- CORREÇÃO: Lógica de salvamento dos arquivos ---
+    photo_url = None
+    if file:
+        photo_url = await save_upload_file(file, UPLOAD_DIRECTORY)
+        
+    invoice_url = None
+    if invoice_file:
+        invoice_url = await save_upload_file(invoice_file, UPLOAD_INVOICE_DIRECTORY)
+    # ---------------------------------------------------
+
     try:
         part_db = await crud_part.create(
             db=db, part_in=part_in, organization_id=current_user.organization_id, 
@@ -100,7 +114,6 @@ async def create_part(
         await db.rollback()
         logging.error(f"Erro ao criar peça: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao criar peça: {e}")
-    
 @router.put("/{part_id}") 
 async def update_part(
     part_id: int,
