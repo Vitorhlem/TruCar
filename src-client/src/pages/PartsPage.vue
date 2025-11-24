@@ -157,7 +157,7 @@
         </template>
         
         <template v-slot:header="props">
-            <q-tr :props="props" :class="$q.dark.isActive ? 'bg-grey-8' : 'bg-grey-1'">
+            <q-tr :props="props" :class="$q.dark.isActive ? '' : 'bg-grey-1'">
                 <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bold text-primary">
                     {{ col.label }}
                 </q-th>

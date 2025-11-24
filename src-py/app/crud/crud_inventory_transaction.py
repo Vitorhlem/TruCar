@@ -12,26 +12,24 @@ from app.models.user_model import User
 async def _create_transaction_no_commit(
     db: AsyncSession,
     *,
-    part_id: int, # Mantido como referência do template
+    part_id: int,
     user_id: int,
     transaction_type: TransactionType,
-    item_id: int, # <--- AGORA É OBRIGATÓRIO (Item específico)
-    quantity_change: int = 0, # Mantido na assinatura para compatibilidade, mas IGNORADO no modelo
+    item_id: int,
+    quantity_change: int = 0,
     notes: Optional[str] = None,
     related_vehicle_id: Optional[int] = None,
 ) -> InventoryTransaction:
     """
     Cria o objeto da transação.
-    NOTA: 'quantity_change' é ignorado pois o modelo agora rastreia itens individuais.
     """
     db_obj = InventoryTransaction(
         part_id=part_id,
         user_id=user_id,
         transaction_type=transaction_type,
-        # quantity_change=quantity_change,  <-- REMOVIDO (Causava o erro)
         notes=notes,
         related_vehicle_id=related_vehicle_id,
-        item_id=item_id # <-- ADICIONADO
+        item_id=item_id
     )
     db.add(db_obj)
     return db_obj
@@ -42,7 +40,7 @@ async def create_transaction(
     part_id: int,
     user_id: int,
     transaction_type: TransactionType,
-    item_id: int, # <--- OBRIGATÓRIO
+    item_id: int,
     quantity_change: int = 0,
     notes: Optional[str] = None,
     related_vehicle_id: Optional[int] = None,
@@ -65,12 +63,20 @@ async def create_transaction(
     if related_user_id:
         db_obj.related_user_id = related_user_id
 
+    # CORREÇÃO AQUI:
+    # 1. Fazemos flush para garantir que o ID seja gerado pelo banco
+    await db.flush()
+    
+    # 2. Capturamos o ID em uma variável local ANTES do commit
+    transaction_id = db_obj.id
+
+    # 3. Fazemos o commit (que expira o objeto db_obj)
     await db.commit()
     
-    # Recarrega com relações
+    # 4. Usamos a variável transaction_id na query, em vez de db_obj.id
     stmt = (
         select(InventoryTransaction)
-        .where(InventoryTransaction.id == db_obj.id)
+        .where(InventoryTransaction.id == transaction_id)
         .options(
             selectinload(InventoryTransaction.user).selectinload(User.organization),
             selectinload(InventoryTransaction.related_user).selectinload(User.organization),

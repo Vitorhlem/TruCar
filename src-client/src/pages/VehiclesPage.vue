@@ -344,9 +344,9 @@
                     </q-avatar>
                 </template>
               </q-file>
-              
+               <q-separator class="q-mb-md" />
               <div class="text-subtitle2 q-mt-md text-primary">Manutenção Preventiva</div>
-              <q-separator class="q-mb-md" />
+             
               
               <div class="row q-col-gutter-sm">
                  <div class="col-12 col-sm-6">
