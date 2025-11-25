@@ -34,29 +34,7 @@
           </q-list>
         </q-card>
 
-        <q-card v-if="authStore.isManager" flat bordered class="q-mt-lg bg-primary text-white">
-          <q-card-section>
-            <div class="text-subtitle2 q-mb-sm opacity-8">Status do Plano</div>
-            <div class="text-h6 text-weight-bold">{{ isDemo ? 'Demonstração' : 'Enterprise' }}</div>
-            <q-separator color="" class="q-my-sm opacity-5" />
-            <div class="row q-col-gutter-sm q-mt-xs">
-              <div class="col-12">
-                <div class="flex justify-between text-caption">
-                  <span>Veículos</span>
-                  <span>{{ usage.vehicles }} / {{ limits.vehicles }}</span>
-                </div>
-                <q-linear-progress :value="usage.vehicles / limits.vehicles" color="white" track-color="blue-8" class="q-mt-xs" rounded />
-              </div>
-              <div class="col-12">
-                <div class="flex justify-between text-caption">
-                  <span>Usuários</span>
-                  <span>{{ usage.users }} / {{ limits.users }}</span>
-                </div>
-                <q-linear-progress :value="usage.users / limits.users" color="white" track-color="blue-8" class="q-mt-xs" rounded />
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+        
       </div>
 
       <div class="col-12 col-md-9">
@@ -115,15 +93,42 @@
               <q-separator class="q-my-xl" />
 
               <div class="text-h6 q-mb-md text-negative">Segurança</div>
-              <q-form @submit.prevent="handleChangePassword" class="row q-col-gutter-md items-end" style="max-width: 600px">
+              <q-form @submit.prevent="handleChangePassword" class="row q-col-gutter-md items-start" style="max-width: 800px">
                 <div class="col-12 col-md-4">
-                  <q-input outlined v-model="passwordForm.current_password" type="password" label="Senha Atual" dense />
+                  <q-input 
+                    outlined 
+                    v-model="passwordForm.current_password" 
+                    type="password" 
+                    label="Senha Atual" 
+                    dense 
+                    :rules="[val => !!val || 'Obrigatório']"
+                  />
                 </div>
                 <div class="col-12 col-md-4">
-                  <q-input outlined v-model="passwordForm.new_password" type="password" label="Nova Senha" dense />
+                  <q-input 
+                    outlined 
+                    v-model="passwordForm.new_password" 
+                    type="password" 
+                    label="Nova Senha" 
+                    dense 
+                    :rules="[val => !!val || 'Obrigatório', val => val.length >= 6 || 'Mínimo 6 caracteres']"
+                  />
                 </div>
                 <div class="col-12 col-md-4">
-                  <q-btn type="submit" label="Alterar Senha" outline color="negative" class="full-width" :loading="isSubmittingPassword" />
+                  <q-input 
+                    outlined 
+                    v-model="passwordForm.confirm_password" 
+                    type="password" 
+                    label="Confirmar Nova Senha" 
+                    dense 
+                    :rules="[
+                      val => !!val || 'Obrigatório',
+                      val => val === passwordForm.new_password || 'As senhas não conferem'
+                    ]"
+                  />
+                </div>
+                <div class="col-2.5 text-right">
+                  <q-btn type="submit" label="Alterar Senha" outline color="negative" :loading="isSubmittingPassword" />
                 </div>
               </q-form>
             </q-tab-panel>
@@ -268,9 +273,16 @@
                   </div>
                 </div>
                 <div class="text-right">
-                  <q-btn type="submit" label="Salvar Dados da Empresa" color="primary" unelevated :disable="isDemo" />
-                  <q-tooltip v-if="isDemo">Disponível apenas no plano Ativo</q-tooltip>
-                </div>
+  <q-btn 
+    type="submit" 
+    label="Salvar Dados da Empresa" 
+    color="primary" 
+    unelevated 
+    :loading="isSavingOrg" 
+    :disable="isDemo" 
+  />
+  <q-tooltip v-if="isDemo">Disponível apenas no plano Ativo</q-tooltip>
+</div>
               </q-form>
             </q-tab-panel>
 
@@ -341,6 +353,7 @@ import { useTerminologyStore } from 'stores/terminology-store';
 import { useUserStore } from 'stores/user-store';
 import { api } from 'boot/axios';
 import type { UserSector } from 'src/models/auth-models';
+import defaultAvatar from 'assets/default-avatar.png';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -350,23 +363,17 @@ const userStore = useUserStore();
 
 const currentTab = ref('account');
 const isDemo = computed(() => authStore.isDemo);
-const limits = reactive({ vehicles: 10, users: 5 });
-const usage = reactive({ vehicles: 3, users: 2 });
 
 // --- FUNÇÃO AUXILIAR PARA CORRIGIR URL DA IMAGEM ---
 function getAvatarUrl(url: string | null | undefined): string {
-  if (!url) return 'https://cdn.quasar.dev/img/boy-avatar.png';
-  
+  if (!url) return defaultAvatar; // <--- AQUI ESTÁ A MÁGICA
   if (url.startsWith('http')) return url;
-  
-  const backendUrl = 'http://127.0.0.1:8000'; // Ajuste se necessário
-  
+  const backendUrl = 'http://127.0.0.1:8000'; 
   if (url.startsWith('/static') || url.startsWith('/')) {
     return `${backendUrl}${url}`;
   }
   return url;
 }
-
 // --- LÓGICA DE UPLOAD DE FOTO ---
 const fileInput = ref<HTMLInputElement | null>(null);
 const isUploading = ref(false);
@@ -509,15 +516,49 @@ watch(notificationPrefs, (newVal) => {
 
 // --- ORGANIZAÇÃO ---
 const orgForm = reactive({
-  name: authStore.user?.organization?.name || '',
+  name: '', // Inicialize vazio, vamos carregar da API
   cnpj: '',
   address: '',
   contact_phone: '',
   website: ''
 });
+const isSavingOrg = ref(false); // Estado de carregamento para o botão
 
-function handleUpdateOrg() {
-  $q.notify({ type: 'positive', message: 'Dados da empresa salvos (Simulação)' });
+async function fetchOrganizationData() {
+  if (!authStore.isManager) return;
+  
+  try {
+    const { data } = await api.get('/settings/organization');
+    // Preenche o formulário com os dados vindos do backend
+    orgForm.name = data.name || '';
+    orgForm.cnpj = data.cnpj || '';
+    orgForm.address = data.address || '';
+    orgForm.contact_phone = data.contact_phone || '';
+    orgForm.website = data.website || '';
+  } catch (error) {
+    console.error('Erro ao buscar dados da organização:', error);
+    $q.notify({ type: 'negative', message: 'Falha ao carregar dados da empresa.' });
+  }
+}
+
+async function handleUpdateOrg() {
+  isSavingOrg.value = true;
+  try {
+    // Envia os dados para o backend
+    await api.put('/settings/organization', orgForm);
+    
+    // Atualiza o nome da organização na store local se tiver mudado
+    if (authStore.user && authStore.user.organization) {
+      authStore.user.organization.name = orgForm.name;
+    }
+
+    $q.notify({ type: 'positive', message: 'Dados da empresa atualizados com sucesso!' });
+  } catch (error) {
+    console.error(error);
+    $q.notify({ type: 'negative', message: 'Erro ao salvar dados da empresa.' });
+  } finally {
+    isSavingOrg.value = false;
+  }
 }
 
 function showUpgradeDialog() {
@@ -560,10 +601,10 @@ const visibleTabs = computed(() => {
   }
   return tabs;
 });
-
 onMounted(() => {
   if (authStore.isManager) {
     void settingsStore.fetchFuelIntegrationSettings();
+    void fetchOrganizationData(); // <--- ADICIONE ESTA CHAMADA
   }
 });
 </script>

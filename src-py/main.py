@@ -66,8 +66,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # 5. Configurar o CORS
 origins = [
-    "https://trucar.netlify.app",
-    "https://trucar-at4e.onrender.com",
+    "https://trucar.netlify.app/",
+    "https://trucar.onrender.com/",
     "http://localhost",
     "http://localhost:8080",
     "http://localhost:9000",

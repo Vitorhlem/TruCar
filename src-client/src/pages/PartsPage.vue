@@ -439,12 +439,24 @@ import ManageStockDialog from 'components/ManageStockDialog.vue';
 import PartHistoryDialog from 'components/PartHistoryDialog.vue';
 
 // --- CONFIGURAÇÃO DE URL DE IMAGENS ---
-const API_BASE_URL = 'http://localhost:8000'; 
+const getBaseUrlForAssets = () => {
+    // Se estiver em desenvolvimento, usa localhost:8000
+    if (process.env.DEV) {
+        return 'http://localhost:8000';
+    }
+    // Se estiver em produção (build), usa a URL do Render
+    // (Deve ser a mesma configurada no seu axios.ts: https://trucar.onrender.com)
+    return 'https://trucar.onrender.com';
+};
 
-function getImageUrl(url: string | null | undefined) {
-  if (!url) return undefined;
-  if (url.startsWith('http')) return url;
-  return `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+function getImageUrl(url: string | null | undefined): string | undefined {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    
+    const baseUrl = getBaseUrlForAssets();
+    
+    // Constrói a URL completa garantindo que não haja barras duplas (//)
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
 // --- NOVA FUNÇÃO PARA ABRIR NOTA FISCAL ---

@@ -3,11 +3,15 @@ import { Dark } from 'quasar';
 import { ref } from 'vue';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
-import type { OrganizationFuelIntegrationPublic, OrganizationFuelIntegrationUpdate } from 'src/models/organization-models';
+import type { 
+  OrganizationFuelIntegrationPublic, 
+  OrganizationFuelIntegrationUpdate,
+  OrganizationPublic,  // <-- Importar
+  OrganizationUpdate   // <-- Importar
+} from 'src/models/organization-models';
 
 export const useSettingsStore = defineStore('settings', () => {
   // --- Dark Mode State ---
-  // Lê a preferência do localStorage ou usa 'auto' como padrão
   const darkMode = ref<boolean | 'auto'>(
     JSON.parse(localStorage.getItem('darkMode') || '"auto"')
   );
@@ -15,12 +19,9 @@ export const useSettingsStore = defineStore('settings', () => {
   function setDarkMode(value: boolean | 'auto') {
     darkMode.value = value;
     Dark.set(value);
-    // Salva a preferência no localStorage
     localStorage.setItem('darkMode', JSON.stringify(value));
   }
 
-  // --- FUNÇÃO INIT ADICIONADA ---
-  // Esta função é chamada pelo App.vue para garantir que o tema seja aplicado
   function init() {
     Dark.set(darkMode.value);
   }
@@ -29,8 +30,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const fuelIntegrationSettings = ref<OrganizationFuelIntegrationPublic | null>(null);
   const isLoadingFuelSettings = ref(false);
 
-  // --- AÇÕES PARA INTEGRAÇÃO DE COMBUSTÍVEL ---
+  // --- ORGANIZATION STATE (NOVO) ---
+  const organizationSettings = ref<OrganizationPublic | null>(null);
+  const isLoadingOrgSettings = ref(false);
+  // --------------------------------
 
+  // --- AÇÕES PARA INTEGRAÇÃO DE COMBUSTÍVEL ---
   async function fetchFuelIntegrationSettings() {
     isLoadingFuelSettings.value = true;
     try {
@@ -38,7 +43,6 @@ export const useSettingsStore = defineStore('settings', () => {
       fuelIntegrationSettings.value = response.data;
     } catch (error) {
       console.error('Falha ao buscar configurações de integração:', error);
-      Notify.create({ type: 'negative', message: 'Não foi possível carregar as configurações de integração.' });
     } finally {
       isLoadingFuelSettings.value = false;
     }
@@ -58,13 +62,47 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  // --- AÇÕES PARA ORGANIZAÇÃO (NOVO) ---
+  async function fetchOrganizationSettings() {
+    isLoadingOrgSettings.value = true;
+    try {
+      const response = await api.get<OrganizationPublic>('/settings/organization');
+      organizationSettings.value = response.data;
+    } catch (error) {
+      console.error('Erro ao buscar dados da organização:', error);
+      Notify.create({ type: 'negative', message: 'Erro ao carregar dados da empresa.' });
+    } finally {
+      isLoadingOrgSettings.value = false;
+    }
+  }
+
+  async function updateOrganizationSettings(payload: OrganizationUpdate) {
+    isLoadingOrgSettings.value = true;
+    try {
+      const response = await api.put<OrganizationPublic>('/settings/organization', payload);
+      organizationSettings.value = response.data;
+      Notify.create({ type: 'positive', message: 'Dados da empresa atualizados com sucesso!' });
+    } catch (error) {
+      console.error('Erro ao atualizar organização:', error);
+      Notify.create({ type: 'negative', message: 'Erro ao salvar dados da empresa.' });
+    } finally {
+      isLoadingOrgSettings.value = false;
+    }
+  }
+  // -------------------------------------
+
   return {
     darkMode,
     setDarkMode,
-    init, // <-- Exporta a função para ser usada pelo App.vue
+    init,
     fuelIntegrationSettings,
     isLoadingFuelSettings,
     fetchFuelIntegrationSettings,
     updateFuelIntegrationSettings,
+    // Exporta os novos:
+    organizationSettings,
+    isLoadingOrgSettings,
+    fetchOrganizationSettings,
+    updateOrganizationSettings
   };
 });

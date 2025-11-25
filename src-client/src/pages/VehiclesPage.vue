@@ -399,16 +399,24 @@ import { VehicleStatus, type Vehicle, type VehicleCreate, type VehicleUpdate } f
 import api from 'src/services/api';
 import axios from 'axios';
 
-// --- CONFIGURAÇÃO DE URL DE IMAGENS ---
-// Ajuste esta porta caso o seu backend não esteja na 8000
-const API_BASE_URL = 'http://localhost:8000'; 
+const getBaseUrlForAssets = () => {
+    // Se estiver em desenvolvimento, usa localhost:8000
+    if (process.env.DEV) {
+        return 'http://localhost:8000';
+    }
+    // Se estiver em produção (build), usa a URL do Render
+    // (Deve ser a mesma configurada no seu axios.ts: https://trucar.onrender.com)
+    return 'https://trucar.onrender.com';
+};
 
-function getImageUrl(url: string | null | undefined) {
-  if (!url) return undefined;
-  // Se já for um link completo (https://...), usa-o.
-  if (url.startsWith('http')) return url;
-  // Se for relativo (/static/...), adiciona o domínio do backend.
-  return `${API_BASE_URL}${url}`;
+function getImageUrl(url: string | null | undefined): string | undefined {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    
+    const baseUrl = getBaseUrlForAssets();
+    
+    // Constrói a URL completa garantindo que não haja barras duplas (//)
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 // ----------------------------------------
 

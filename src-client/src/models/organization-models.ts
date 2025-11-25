@@ -1,20 +1,16 @@
-// Em: src/models/organization-models.ts
+// Em: src-client/src/models/organization-models.ts
 import type { UserRole, UserSector } from './auth-models';
 
-// --- ESTA INTERFACE PRECISA SER ATUALIZADA ---
 export interface OrganizationNestedInUser {
   id: number;
   name: string;
   sector: UserSector;
-  // --- CAMPOS ADICIONADOS ---
   vehicle_limit: number;
   driver_limit: number;
   freight_order_limit: number;
   maintenance_limit: number;
-  part_limit?: number; // <--- Este resolve o erro na PartsPage
-  // --- FIM DA ADIÇÃO ---
+  part_limit?: number; 
 }
-// --- FIM DA ATUALIZAÇÃO ---
 
 export interface UserNestedInOrganization {
   id: number;
@@ -24,30 +20,43 @@ export interface UserNestedInOrganization {
 export interface OrganizationBase {
   name: string;
   sector: UserSector;
+  // --- CAMPOS DE CADASTRO (Re-adicionados) ---
+  cnpj?: string;
+  address?: string;
+  contact_phone?: string;
+  website?: string;
+  // ------------------------------------------
 }
 
 export interface Organization extends OrganizationBase {
   id: number;
   users: UserNestedInOrganization[];
-  // --- CAMPOS ADICIONADOS ---
   vehicle_limit: number;
   driver_limit: number;
   freight_order_limit: number;
   maintenance_limit: number;
-  part_limit?: number; // <--- Este corrige o erro da PartsPage
-  // --- FIM DA ADIÇÃO ---
+  part_limit?: number; 
 }
+
+// --- CORREÇÃO DO ERRO ---
+// Criamos um alias exportado para satisfazer a importação de 'OrganizationPublic'
+export type OrganizationPublic = Organization;
+// ------------------------
 
 export interface OrganizationUpdate {
   name?: string;
   sector?: UserSector;
-  // --- CAMPOS ADICIONADOS ---
   vehicle_limit?: number;
   driver_limit?: number;
   freight_order_limit?: number;
   maintenance_limit?: number;
-  part_limit?: number; // <--- Este resolve o erro na PartsPage
-  // --- FIM DA ADIÇÃO ---
+  part_limit?: number;
+  // --- CAMPOS DE CADASTRO NO UPDATE ---
+  cnpj?: string;
+  address?: string;
+  contact_phone?: string;
+  website?: string;
+  // ------------------------------------
 }
 
 export interface OrganizationFuelIntegrationPublic {
