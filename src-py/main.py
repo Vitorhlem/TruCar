@@ -65,12 +65,17 @@ app = FastAPI(
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # 5. Configurar o CORS
-origins = ["*"] 
+origins = [
+    "https://trucar.netlify.app",    # Frontend em Produção (Netlify)
+    "http://localhost",               # Localhost padrão
+    "http://localhost:8080",          # Quasar/Vue padrão (se estiver usando)
+    "http://localhost:9000",          # Quasar/Vue Dev padrão
+]   
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Agora aceita qualquer origem
-    allow_credentials=True,
+    allow_origins=origins,            # Agora especifica a origem exata
+    allow_credentials=True,           # Permite credenciais (necessário para Bearer tokens)
     allow_methods=["*"],
     allow_headers=["*"],
 )
