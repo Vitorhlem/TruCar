@@ -10,50 +10,53 @@ class Settings(BaseSettings):
 
     SUPERUSER_EMAILS: Set[str] = {"admin@admin.com", "vitorhugolemes6@gmail.com"}
     
-    # Configurações SMTP (Mantidas obrigatórias)
+    # Configurações SMTP
     SMTP_SERVER: str
     SMTP_PORT: int
     SMTP_USER: str
     SMTP_PASSWORD: str
     EMAILS_FROM_EMAIL: str
     
-    # O Pydantic lerá a variável do ambiente 'REDIS_URL' se existir
-    # Senão, usará o fallback local (Corrigi o IP para local)
-    REDIS_URL: str = "redis://127.0.0.1:6379/0" 
+    REDIS_URL: str = "redis://127.0.0.1:6379/0"
 
-    # --- CORREÇÃO DE BANCO DE DADOS ---
-    # 1. Tornamos os campos individuais opcionais para que o Render não gere erro 422
+    # --- CORREÇÃO: Campos individuais opcionais ---
     POSTGRES_USER: Optional[str] = None
     POSTGRES_PASSWORD: Optional[str] = None
     POSTGRES_SERVER: Optional[str] = None
     POSTGRES_DB: Optional[str] = None
     
-    # 2. Adicionamos o campo que o Render fornece (DATABASE_URL)
+    # Campo lido do Render (DATABASE_URL)
     database_url_from_env: Optional[str] = Field(None, alias="DATABASE_URL")
     
-    # 3. O resultado final será armazenado neste atributo
+    # Resultado final (URI que o SQLAlchemy usa)
     DATABASE_URI: Optional[str] = None
     
-    # 4. VALIDADOR: Monta a URI priorizando a DATABASE_URL do Render
     @model_validator(mode='after')
     def assemble_db_uri(self) -> 'Settings':
-        # Prioridade 1: Usar a URL completa fornecida pelo Render
-        if self.database_url_from_env:
-            # Render fornece 'postgres://'. Trocamos para 'postgresql+asyncpg://' (dialeto do SQLAlchemy async).
-            uri = self.database_url_from_env.replace("postgres://", "postgresql+asyncpg://", 1)
-            self.DATABASE_URI = uri
+        uri = None
         
-        # Prioridade 2: Usar os campos individuais se todos estiverem presentes (para ambiente local)
-        elif self.POSTGRES_USER and self.POSTGRES_PASSWORD and self.POSTGRES_SERVER and self.POSTGRES_DB:
-             self.DATABASE_URI = (
+        # Prioridade 1: Usar a URL completa do ambiente (Render)
+        if self.database_url_from_env:
+            uri = self.database_url_from_env
+            
+            # CORREÇÃO CRÍTICA: Troca do prefixo síncrono para o assíncrono
+            if uri.startswith("postgres://"):
+                uri = uri.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif uri.startswith("postgresql://") and not uri.startswith("postgresql+asyncpg://"):
+                # Garante que substitui o prefixo padrão pelo assíncrono
+                uri = uri.replace("postgresql://", "postgresql+asyncpg://", 1)
+        
+        # Prioridade 2: Usar os campos individuais para ambiente local (se fornecidos)
+        elif self.POSTGRES_USER and self.POSTGRES_SERVER and self.POSTGRES_DB:
+             uri = (
                 f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
                 f"{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
              )
         
-        # 5. Geração de erro claro se faltar configuração em produção
-        else:
-            raise ValueError("Erro de Configuração: As variáveis do PostgreSQL (DATABASE_URL ou POSTGRES_*) são obrigatórias.")
-        
+        if not uri:
+             raise ValueError("Configuração do banco de dados inválida. DATABASE_URL ou POSTGRES_* são necessários.")
+
+        self.DATABASE_URI = uri
         return self
     # --- FIM DA CORREÇÃO ---
 
