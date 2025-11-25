@@ -4,8 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import uuid
 import shutil
+from app.models.document_model import Document
 from pathlib import Path
-
+from app.schemas.audit_log_schema import AuditLogCreate
+from app.crud import crud_audit_log
 from app import crud, deps
 from app.models.user_model import User, UserRole
 from app.schemas.document_schema import DocumentPublic, DocumentCreate, DocumentUpdate
@@ -58,6 +60,15 @@ async def create_document(
         db=db, obj_in=document_in,
         organization_id=current_user.organization_id, file_url=file_url
     )
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="CREATE", resource_type="Documentos", resource_id=str(Document.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"type": Document.document_type, "title": Document.title, "vehicle_id": Document.vehicle_id}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
     
     return created_document
 
@@ -111,6 +122,15 @@ async def delete_document(
             file_path.unlink()
     except Exception as e:
         print(f"Erro ao apagar arquivo físico: {e}")
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="DELETE", resource_type="Documentos", resource_id=str(Document.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"deleted_title": Document.title}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
 
     await crud.document.remove(db, id=doc_id, organization_id=current_user.organization_id)
     return

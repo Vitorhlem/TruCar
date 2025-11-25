@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from datetime import date
 from app.models.notification_model import NotificationType
-
+from app.schemas.audit_log_schema import AuditLogCreate
+from app.crud import crud_audit_log
 from app import crud, deps
 from app.models.user_model import User, UserRole
 from app.schemas.journey_schema import JourneyCreate, JourneyUpdate, JourneyPublic, EndJourneyResponse
@@ -79,6 +80,16 @@ async def start_journey(
             related_entity_id=journey.id,
             related_vehicle_id=journey.vehicle.id
         )
+
+        try:
+            await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+                action="CREATE", resource_type="Registro de Viagem", resource_id=str(journey.id),
+                user_id=current_user.id, organization_id=current_user.organization_id,
+                details={"vehicle_id": journey.vehicle_id, "start_km": journey.start_mileage}
+            ))
+            await db.commit()
+        except Exception as e:
+            print(f"Erro auditoria: {e}")
         
         return journey
     except (VehicleNotAvailableError, ValueError) as e:
@@ -121,6 +132,16 @@ async def end_journey(
             related_entity_id=finished_journey.id,
             related_vehicle_id=updated_vehicle.id
         )
+
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="UPDATE", resource_type="Registro de Viagem", resource_id=str(finished_journey.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"action": "finish_journey", "end_km": journey_in.end_mileage}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
 
     return EndJourneyResponse(journey=finished_journey, vehicle=updated_vehicle)
 

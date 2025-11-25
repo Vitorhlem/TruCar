@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from pydantic import BaseModel  # Importa BaseModel
-
+from app.schemas.audit_log_schema import AuditLogCreate
+from app.crud import crud_audit_log
 from app import crud, deps
 from app.models.user_model import User, UserRole
 from sqlalchemy.exc import IntegrityError
@@ -99,6 +100,17 @@ async def create_vehicle(
         vehicle = await crud.vehicle.create_with_owner(
             db=db, obj_in=vehicle_in, organization_id=current_user.organization_id
         )
+
+        try:
+            await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+                action="CREATE", resource_type="Veículos", resource_id=str(vehicle.id),
+                user_id=current_user.id, organization_id=current_user.organization_id,
+                details={"plate": vehicle.license_plate, "model": vehicle.model}
+            ))
+            await db.commit()
+        except Exception as e:
+            print(f"Erro auditoria: {e}")
+
         return vehicle
     except IntegrityError:
         await db.rollback()
@@ -106,6 +118,9 @@ async def create_vehicle(
             status_code=status.HTTP_409_CONFLICT,
             detail="Um veículo com esta placa ou identificador já existe na sua organização.",
         )
+    
+
+    
 
 
 @router.put("/{vehicle_id}", response_model=VehiclePublic)
@@ -126,6 +141,17 @@ async def update_vehicle(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado.")
 
     updated_vehicle = await crud.vehicle.update(db=db, db_vehicle=db_vehicle, vehicle_in=vehicle_in)
+
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="UPDATE", resource_type="Veículos", resource_id=str(updated_vehicle.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"updates": vehicle_in.model_dump(exclude_unset=True)}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
+
     return updated_vehicle
 
 
@@ -172,4 +198,14 @@ async def delete_vehicle(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado.")
 
     await crud.vehicle.remove(db=db, db_vehicle=db_vehicle)
+
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="DELETE", resource_type="Veículos", resource_id=str(vehicle_id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"deleted_plate": db_vehicle.license_plate}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

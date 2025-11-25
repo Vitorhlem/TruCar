@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 import uuid
+from app.schemas.audit_log_schema import AuditLogCreate
+from app.crud import crud_audit_log
 import shutil
+from app.models.part_model import Part
 from pathlib import Path
 from pydantic import BaseModel
 import logging
@@ -96,6 +99,7 @@ async def create_part(
             user_id=current_user.id, photo_url=photo_url, invoice_url=invoice_url
         )
         part_id_to_return = part_db.id
+        
         await db.commit()
         return {"id": part_id_to_return, "message": "Peça criada com sucesso."}
     except ValueError as e:
@@ -109,6 +113,15 @@ async def create_part(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"O número de série '{serial_number}' já está em uso por outra peça."
             )
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="CREATE", resource_type="Peças", resource_id=str(Part.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"name": Part.name, "part_number": Part.part_number}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
         raise HTTPException(status_code=500, detail=f"Erro de integridade no banco: {e}")
     except Exception as e: 
         await db.rollback()

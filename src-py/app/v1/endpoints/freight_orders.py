@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-
+from app.schemas.audit_log_schema import AuditLogCreate
+from app.crud import crud_audit_log
 from app import crud, deps
 from app.models.user_model import User, UserRole
 from app.models.freight_order_model import FreightStatus
@@ -43,7 +44,15 @@ async def create_freight_order(
     
     if current_user.role == UserRole.CLIENTE_DEMO:
         await crud.demo_usage.increment_usage(db, organization_id=current_user.organization_id, resource_type="freight_orders")
-        
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="CREATE", resource_type="Ordem de Frete", resource_id=str(freight_order.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"order_number": freight_order.order_number, "value": freight_order.agreed_value}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
     return freight_order
 
 
@@ -89,7 +98,19 @@ async def claim_freight_order(
         raise HTTPException(status_code=404, detail="Veículo não encontrado.")
 
     claimed_order = await crud.freight_order.claim_order(db, order=order, driver=current_user, vehicle=vehicle)
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="UPDATE", resource_type="Ordem de Frete", resource_id=str(claimed_order.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"action": "driver_claim", "vehicle_id": claim_in.vehicle_id}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
+
+
     return claimed_order
+    
 
 
 @router.post("/{order_id}/start-leg/{stop_point_id}", response_model=JourneyPublic)

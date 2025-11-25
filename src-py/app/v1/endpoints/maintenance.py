@@ -6,6 +6,8 @@ from datetime import datetime
 import uuid
 import shutil
 from app import crud, deps
+from app.schemas.audit_log_schema import AuditLogCreate
+from app.crud import crud_audit_log
 from app.core.config import settings 
 from app.models.user_model import User, UserRole
 from app.schemas.maintenance_schema import (
@@ -171,8 +173,17 @@ async def create_maintenance_request(
                 subject=f"[TruCar] Novo Chamado #{request.id} - {request.vehicle.license_plate}",
                 message_html=email_html
             )
-        
+        try:
+            await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+                action="CREATE", resource_type="Chamado de Manutenção", resource_id=str(request.id),
+                user_id=current_user.id, organization_id=current_user.organization_id,
+                details={"vehicle_id": request.vehicle_id, "problem": request.problem_description}
+            ))
+            await db.commit()
+        except Exception as e:
+            print(f"Erro auditoria: {e}")
         return response
+    
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     
@@ -288,7 +299,15 @@ async def update_request_status(
             related_entity_type="maintenance_request",
             related_entity_id=updated_request.id
         )
-        
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="UPDATE", resource_type="Chamado de Manutenção", resource_id=str(updated_request.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"new_status": update_data.status, "manager_notes": update_data.manager_notes}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Erro auditoria: {e}")
     return response
 
 @router.get("/{request_id}/comments", response_model=List[MaintenanceCommentPublic])
@@ -416,7 +435,15 @@ async def replace_maintenance_component(
                  organization_id=current_user_org_id, user_id=reported_by_id, 
                  related_entity_type="maintenance_request", related_entity_id=request_id
              )
-
+        try:
+            await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+                action="UPDATE", resource_type="Chamado de Manutenção", resource_id=str(request_id),
+                user_id=current_user.id, organization_id=current_user.organization_id,
+                details={"action": "replace_component", "new_item_id": payload.new_item_id, "removed_component_id": payload.component_to_remove_id}
+            ))
+            await db.commit()
+        except Exception as e:
+            print(f"Erro auditoria: {e}")
         return response
 
     except ValueError as e:

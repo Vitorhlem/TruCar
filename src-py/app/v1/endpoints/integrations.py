@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from typing import Optional
-
 from app import crud, deps
 from app.schemas.telemetry_schema import TelemetryPayload
 

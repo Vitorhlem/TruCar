@@ -5,7 +5,8 @@ from sqlalchemy.orm import selectinload
 from typing import List
 import logging
 import json
-
+from app.schemas.audit_log_schema import AuditLogCreate
+from app.crud import crud_audit_log
 from app import crud, deps
 from app.db.session import SessionLocal
 from app.models.user_model import User, UserRole
@@ -93,6 +94,15 @@ async def create_fine(
         )
         result = await db.execute(stmt)
         fine_loaded = result.scalars().first()
+        try:
+            await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+                action="CREATE", resource_type="Multas", resource_id=str(fine.id),
+                user_id=current_user.id, organization_id=current_user.organization_id,
+                details={"vehicle_id": fine.vehicle_id, "value": fine.value, "driver_id": fine.driver_id}
+            ))
+            await db.commit()
+        except Exception as e:
+            print(f"Erro auditoria: {e}")
         
         return fine_loaded
         
@@ -171,6 +181,15 @@ async def update_fine(
         )
         result = await db.execute(stmt)
         fine_loaded = result.scalars().first()
+        try:
+            await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+                action="UPDATE", resource_type="Multas", resource_id=str(fine_id),
+                user_id=current_user.id, organization_id=current_user.organization_id,
+                details={"updates": payload_dict}
+            ))
+            await db.commit()
+        except Exception as e:
+            print(f"Erro auditoria: {e}")
         
         return fine_loaded
     except HTTPException as he:
@@ -196,6 +215,16 @@ async def delete_fine(
         await crud.fine.remove(db=db, db_fine=db_fine)
         
         await db.commit()
+
+        try:
+            await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+                action="DELETE", resource_type="Multas", resource_id=str(fine_id),
+                user_id=current_user.id, organization_id=current_user.organization_id,
+                details={"deleted_fine_id": fine_id}
+            ))
+            await db.commit()
+        except Exception as e:
+            print(f"Erro auditoria: {e}")
         
         return
     except HTTPException as he:

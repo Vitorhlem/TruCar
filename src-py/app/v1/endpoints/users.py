@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-
+from app.schemas.audit_log_schema import AuditLogCreate
+from app.crud import crud_audit_log
 from app import crud
 from app.schemas.user_schema import UserCreate, UserUpdate, UserPublic, UserStats, UserPasswordUpdate, UserNotificationPrefsUpdate
 from app.core.security import verify_password
@@ -46,6 +47,21 @@ async def create_user(
         organization_id=current_user.organization_id,
         role=user_in.role or UserRole.DRIVER
     )
+
+    # --- LOG DE AUDITORIA ---
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="CREATE",
+            resource_type="Usúarios",
+            resource_id=str(new_user.id),
+            user_id=current_user.id,
+            organization_id=current_user.organization_id,
+            details={"email": new_user.email, "role": new_user.role}
+        ))
+        await db.commit() # Confirma o log
+    except Exception as e:
+        print(f"Falha ao criar log de auditoria: {e}")
+
     return new_user
 
 @router.put("/me", response_model=UserPublic)
@@ -197,6 +213,19 @@ async def delete_user(
     user_response = UserPublic.model_validate(user_to_delete)
     
     await crud.user.remove(db=db, db_user=user_to_delete)
+
+    try:
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="DELETE",
+            resource_type="Usúarios",
+            resource_id=str(user_id),
+            user_id=current_user.id,
+            organization_id=current_user.organization_id,
+            details={"deleted_user_name": user_to_delete.full_name}
+        ))
+        await db.commit()
+    except Exception as e:
+        print(f"Falha ao criar log de auditoria: {e}")
     
     return user_response
 

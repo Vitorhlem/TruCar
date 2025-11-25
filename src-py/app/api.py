@@ -30,7 +30,8 @@ from app.v1.endpoints import (
     costs,
     fines,
     integrations,
-    feedback
+    feedback,
+    audit_logs
 )
 
 api_router = APIRouter()
@@ -65,3 +66,4 @@ api_router.include_router(costs.router, prefix="/costs", tags=["Costs"])
 api_router.include_router(fines.router, prefix="/fines", tags=["Fines"]) # <-- ADICIONE ESTA LINHA
 api_router.include_router(integrations.router, prefix="/integrations", tags=["Integrations"])
 api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
+api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["Audit Logs"]) # <--- ADICIONE

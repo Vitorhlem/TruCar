@@ -360,6 +360,16 @@ function getDriverMenu(): MenuCategory[] {
         ]
     });
 
+    menu.push({
+        label: 'Veículos', icon: 'work',
+        children: [
+          { title: terminologyStore.vehiclePageTitle, icon: 'local_shipping', to: '/vehicles' }
+
+        ]
+    });
+
+
+
     return menu;
 }
 
@@ -413,8 +423,11 @@ function getManagerMenu(): MenuCategory[] {
           { title: 'Documentos', icon: 'description', to: '/documents' },
           { title: 'Multas', icon: 'gavel', to: '/fines' },
           { title: 'Gestão de Usuários', icon: 'people', to: '/users' },
+          { title: 'Auditoria', icon: 'visibility', to: '/audit-logs' } // <--- ADICIONE
       ]
   });
+  
+  
 
   // 5. Inteligência
   menu.push({

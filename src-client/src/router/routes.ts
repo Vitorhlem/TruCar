@@ -66,7 +66,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/JourneysPage.vue'),
         meta: { roles: ['cliente_ativo', 'cliente_demo', 'driver'] }
       },
-      
+      { path: 'audit-logs', name: 'audit-logs', component: () => import('pages/AuditLogsPage.vue'), meta: { requiresAuth: true, roles: ['admin', 'cliente_ativo', 'cliente_demo'] } },
       // --- 3. ROTAS DE GESTÃO (Bloqueadas para Driver) ---
       // O Admin terá acesso a tudo isso graças à alteração no index.ts
       

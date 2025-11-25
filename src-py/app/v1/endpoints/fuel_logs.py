@@ -18,11 +18,7 @@ async def create_fuel_log(
 ):
     """Cria um novo registro de abastecimento (Motoristas e Gestores)."""
     
-    # Lógica de limite simplificada para evitar erros se a função manual não existir
-    # Se for conta DEMO, apenas incrementamos o uso
     if current_user.role == UserRole.CLIENTE_DEMO:
-        # Se você tiver a função 'check_demo_limit_manual' no deps.py, descomente abaixo:
-        # await deps.check_demo_limit_manual(db, current_user, "fuel_logs")
         pass
 
     final_user_id = log_in.user_id if log_in.user_id else current_user.id
@@ -36,6 +32,21 @@ async def create_fuel_log(
     
     if current_user.role == UserRole.CLIENTE_DEMO:
         await crud.demo_usage.increment_usage(db, organization_id=current_user.organization_id, resource_type="fuel_logs")
+        
+    # --- ADIÇÃO DE LOG DE AUDITORIA (Recomendado, já que você tem o sistema) ---
+    try:
+        from app.schemas.audit_log_schema import AuditLogCreate
+        from app.crud import crud_audit_log
+        
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="CREATE", resource_type="Registro de Abastecimento", resource_id=str(fuel_log.id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details={"liters": fuel_log.liters, "cost": fuel_log.total_cost, "vehicle_id": fuel_log.vehicle_id}
+        ))
+        await db.commit()
+    except Exception:
+        pass # Não trava o fluxo principal se o log falhar
+    # ---------------------------------------------------------------------------
 
     vehicle = await crud.vehicle.get(
         db, 
@@ -64,11 +75,14 @@ async def read_fuel_logs(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """Retorna o histórico de abastecimentos."""
-    if current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]:
+    # --- CORREÇÃO AQUI: Adicionado UserRole.ADMIN ---
+    # Se for Admin ou Cliente, vê TUDO da organização.
+    if current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
         return await crud.fuel_log.get_multi_by_org(
             db=db, organization_id=current_user.organization_id, skip=skip, limit=limit
         )
-    else: # DRIVER vê apenas os seus
+    else: 
+        # DRIVER vê apenas os seus
         return await crud.fuel_log.get_multi_by_user(
             db=db, user_id=current_user.id, organization_id=current_user.organization_id, skip=skip, limit=limit
         )
@@ -90,7 +104,7 @@ async def update_fuel_log(
     db: AsyncSession = Depends(deps.get_db),
     log_id: int,
     log_in: FuelLogUpdate,
-    current_user: User = Depends(deps.get_current_active_manager), # <--- APENAS GESTORES (Motorista bloqueado)
+    current_user: User = Depends(deps.get_current_active_manager),
 ):
     """Atualiza um registro de abastecimento (Apenas Gestores)."""
     db_log = await crud.fuel_log.get_fuel_log(db, log_id=log_id, organization_id=current_user.organization_id)
@@ -98,18 +112,51 @@ async def update_fuel_log(
         raise HTTPException(status_code=404, detail="Registo de abastecimento não encontrado.")
     
     updated_log = await crud.fuel_log.update_fuel_log(db=db, db_obj=db_log, obj_in=log_in)
+    
+    # --- AUDITORIA ---
+    try:
+        from app.schemas.audit_log_schema import AuditLogCreate
+        from app.crud import crud_audit_log
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="UPDATE", resource_type="Registro de Abastecimento", resource_id=str(log_id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details=log_in.model_dump(exclude_unset=True)
+        ))
+        await db.commit()
+    except Exception:
+        pass
+    # -----------------
+
     return updated_log
 
 @router.delete("/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_fuel_log(
     log_id: int,
     db: AsyncSession = Depends(deps.get_db),
-    current_user: User = Depends(deps.get_current_active_manager), # <--- APENAS GESTORES (Motorista bloqueado)
+    current_user: User = Depends(deps.get_current_active_manager),
 ):
     """Exclui um registro de abastecimento (Apenas Gestores)."""
     log_to_delete = await crud.fuel_log.get_fuel_log(db, log_id=log_id, organization_id=current_user.organization_id)
     if not log_to_delete:
         raise HTTPException(status_code=404, detail="Registo de abastecimento não encontrado.")
     
+    # Guarda dados para auditoria antes de deletar
+    deleted_details = {"liters": log_to_delete.liters, "cost": log_to_delete.total_cost}
+
     await crud.fuel_log.remove_fuel_log(db, db_obj=log_to_delete)
+    
+    # --- AUDITORIA ---
+    try:
+        from app.schemas.audit_log_schema import AuditLogCreate
+        from app.crud import crud_audit_log
+        await crud_audit_log.create(db=db, log_in=AuditLogCreate(
+            action="DELETE", resource_type="Registro de Abastecimento", resource_id=str(log_id),
+            user_id=current_user.id, organization_id=current_user.organization_id,
+            details=deleted_details
+        ))
+        await db.commit()
+    except Exception:
+        pass
+    # -----------------
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
