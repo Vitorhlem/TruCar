@@ -3,8 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from typing import List, TYPE_CHECKING, Optional
-
+from typing import List, TYPE_CHECKING, Optional, Union, Dict, Any
 from app.core.security import get_password_hash, verify_password, create_password_reset_token, PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
 from app.models.user_model import User, UserRole
 from app.models.organization_model import Organization
@@ -135,21 +134,29 @@ async def create_new_organization_and_user(db: AsyncSession, *, user_in: "UserRe
     return db_user
 
 
-async def update(db: AsyncSession, *, db_user: User, user_in: "UserUpdate") -> User:
-    from app.schemas.user_schema import UserUpdate
-    update_data = user_in.model_dump(exclude_unset=True)
+async def update(db: AsyncSession, *, db_user: User, user_in: Union["UserUpdate", Dict[str, Any]]) -> User:
+    # Se for um dicionário, usa direto. Se for modelo Pydantic, converte.
+    if isinstance(user_in, dict):
+        update_data = user_in
+    else:
+        update_data = user_in.model_dump(exclude_unset=True)
+
+    # Lógica de hash de senha (se houver)
     if "password" in update_data and update_data["password"]:
         hashed_password = get_password_hash(update_data["password"])
         update_data["hashed_password"] = hashed_password
         del update_data["password"]
     
+    # Atualiza apenas os campos presentes no dicionário
     for field, value in update_data.items():
-        setattr(db_user, field, value)
+        if hasattr(db_user, field):
+            setattr(db_user, field, value)
 
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user, ["organization"])
     return db_user
+# -------------------------------------------------
     
 async def update_password(db: AsyncSession, *, db_user: User, new_password: str) -> User:
     """Atualiza a senha de um utilizador."""

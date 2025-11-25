@@ -111,7 +111,7 @@
                     clickable
                     v-ripple
                     class="q-py-md"
-                    :class="{ 'bg-blue-1': !notification.is_read }"
+                    :class="{ '': !notification.is_read }"
                     @click="handleNotificationClick(notification)"
                   >
                     <q-item-section avatar>
@@ -136,7 +136,8 @@
             <template v-slot:label>
               <div class="row items-center no-wrap">
                 <q-avatar size="36px" color="primary" text-color="white" class="q-mr-sm shadow-1">
-                  {{ getUserInitials(authStore.user?.full_name) }}
+                  <img v-if="authStore.user?.avatar_url" :src="getAvatarUrl(authStore.user?.avatar_url)" style="object-fit: cover;">
+                  <span v-else>{{ getUserInitials(authStore.user?.full_name) }}</span>
                 </q-avatar>
                 <div class="text-left gt-xs">
                   <div class="text-weight-bold" style="line-height: 1.1;">{{ firstName(authStore.user?.full_name) }}</div>
@@ -164,7 +165,8 @@
 
               <div class="column items-center justify-center">
                 <q-avatar size="72px" color="primary" text-color="white" class="q-mb-sm">
-                    {{ getUserInitials(authStore.user?.full_name) }}
+                    <img v-if="authStore.user?.avatar_url" :src="getAvatarUrl(authStore.user?.avatar_url)" style="object-fit: cover;">
+                    <span v-else>{{ getUserInitials(authStore.user?.full_name) }}</span>
                 </q-avatar>
                 <div class="text-subtitle1 q-mt-sm text-center">{{ authStore.user?.full_name }}</div>
                 <div class="text-caption text-grey q-mb-sm">{{ authStore.user?.email }}</div>
@@ -236,23 +238,30 @@ function handleLogout() {
   }
 }
 
-// Helpers de Interface
-// --- CORREÇÃO DE TYPESCRIPT ---
+// --- NOVA FUNÇÃO DE AUXÍLIO PARA URL ---
+function getAvatarUrl(url: string | null | undefined): string {
+  if (!url) return ''; // Retorna vazio para cair no v-else (iniciais)
+  if (url.startsWith('http')) return url;
+  const backendUrl = 'http://127.0.0.1:8000'; 
+  if (url.startsWith('/static') || url.startsWith('/')) {
+    return `${backendUrl}${url}`;
+  }
+  return url;
+}
+// --------------------------------------
+
 function getUserInitials(name: string | undefined): string {
     if (!name) return 'U';
     const parts = name.trim().split(' ');
     if (parts.length === 0) return 'U';
     
-    // Usamos verificação explícita em vez de acesso direto ao índice
     const first = parts[0];
     const last = parts[parts.length - 1];
     
-    // Se tivermos primeiro e último, retornamos as iniciais
     if (first && last) {
         return (first.charAt(0) + last.charAt(0)).toUpperCase();
     }
     
-    // Fallback se só tiver o primeiro
     if (first) {
         return first.substring(0, 2).toUpperCase();
     }
@@ -305,7 +314,6 @@ async function handleNotificationClick(notification: Notification) {
       'journey_ended': '/journeys'
   };
   
-  // CORREÇÃO: Garante que a chave é válida ou usa string vazia
   const targetKey = notification.related_entity_type || notification.notification_type;
   const target = routes[targetKey || ''];
   
@@ -331,9 +339,15 @@ function getDriverMenu(): MenuCategory[] {
         }
     ];
 
-    // CORREÇÃO: Verificação de segurança ao acessar menu[0]
     if (sector === 'frete' && menu.length > 0) {
-        menu[0].children.push({ title: 'Cockpit de Viagem', icon: 'airline_seat_recline_normal', to: '/driver-cockpit' });
+        const dashboardItem = menu[0];
+        if (dashboardItem && dashboardItem.children) {
+            dashboardItem.children.push({ 
+                title: 'Cockpit de Viagem', 
+                icon: 'airline_seat_recline_normal', 
+                to: '/driver-cockpit' 
+            });
+        }
     }
 
     menu.push({
@@ -364,7 +378,6 @@ function getManagerMenu(): MenuCategory[] {
 
   // 2. Operacional (Depende do Setor)
   const ops: MenuItem[] = [];
-  // CORREÇÃO: Verifica se sector não é nulo antes de usar includes
   if (sector && ['agronegocio', 'servicos'].includes(sector)) {
     ops.push({ title: terminologyStore.journeyPageTitle, icon: 'route', to: '/journeys' });
   }

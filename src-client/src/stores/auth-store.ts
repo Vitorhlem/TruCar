@@ -134,6 +134,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  
+
   async function resetPassword(payload: PasswordResetRequest): Promise<boolean> {
     try {
       await api.post('/login/reset-password', payload);
@@ -158,6 +160,16 @@ export const useAuthStore = defineStore('auth', () => {
         icon: 'o_error'
       });
       return false;
+    }
+  }
+
+
+  function updateUser(updates: Partial<User>) {
+    if (user.value) {
+      // Atualiza o estado reativo
+      user.value = { ...user.value, ...updates };
+      // Salva no LocalStorage para persistir no F5
+      localStorage.setItem('user', JSON.stringify(user.value));
     }
   }
 
@@ -193,6 +205,7 @@ export const useAuthStore = defineStore('auth', () => {
     isDriver,
     userSector,
     isSuperuser,
+    updateUser,
     isDemo,
     login,
     logout,

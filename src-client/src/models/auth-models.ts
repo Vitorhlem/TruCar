@@ -37,6 +37,7 @@ export interface User {
   is_superuser: boolean;
   avatar_url: string | null;
   notify_in_app: boolean;
+  phone: string | null;
   notify_by_email: boolean;
   notification_email: string | null;
   organization: OrganizationNestedInUser | null; // <-- Esta linha usa a interface que acabamos de corrigir

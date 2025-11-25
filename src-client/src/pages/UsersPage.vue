@@ -280,7 +280,9 @@ function openEditDialog(user: User) {
   editingUserId.value = user.id;
   formData.value = { 
     ...user, 
-    avatar_url: user.avatar_url || '', 
+    avatar_url: user.avatar_url || '',
+    // CORREÇÃO AQUI: Tratamento de valores nulos
+    phone: user.phone || '', 
     password: '' 
   };
   isFormDialogOpen.value = true;

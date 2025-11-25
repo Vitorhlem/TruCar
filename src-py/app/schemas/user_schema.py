@@ -18,6 +18,7 @@ class UserBase(BaseModel):
     full_name: str
     is_active: bool = True
     avatar_url: Optional[str] = None
+    phone: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
@@ -27,6 +28,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
+    phone: Optional[str] = None # <--- Adicionado aqui
     email: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
@@ -35,6 +37,7 @@ class UserUpdate(BaseModel):
     notify_by_email: Optional[bool] = None
     notification_email: Optional[str] = None
     employee_id: Optional[str] = None # Permite a edição do ID se necessário
+    avatar_url: Optional[str] = None
 
 class UserPasswordUpdate(BaseModel):
     current_password: str

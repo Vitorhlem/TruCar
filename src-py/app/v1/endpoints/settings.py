@@ -6,6 +6,7 @@ from app.models.user_model import User
 from app.schemas.organization_schema import (
     OrganizationFuelIntegrationUpdate,
     OrganizationFuelIntegrationPublic,
+    OrganizationPublic, OrganizationUpdate
 )
 
 router = APIRouter()
@@ -55,3 +56,35 @@ async def update_fuel_integration_settings(
         is_api_key_set=bool(updated_org.encrypted_fuel_provider_api_key),
         is_api_secret_set=bool(updated_org.encrypted_fuel_provider_api_secret),
     )
+
+@router.get("/organization", response_model=OrganizationPublic)
+async def read_organization_settings(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_manager),
+):
+    """
+    Retorna os detalhes da organização do usuário logado.
+    """
+    organization = await crud.organization.get(db, id=current_user.organization_id)
+    if not organization:
+        raise HTTPException(status_code=404, detail="Organização não encontrada.")
+    
+    return organization
+
+# --- NOVO ENDPOINT: ATUALIZAR DADOS DA ORGANIZAÇÃO ---
+@router.put("/organization", response_model=OrganizationPublic)
+async def update_organization_settings(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    org_in: OrganizationUpdate,
+    current_user: User = Depends(deps.get_current_active_manager),
+):
+    """
+    Atualiza dados cadastrais da organização (CNPJ, Endereço, etc).
+    """
+    organization = await crud.organization.get(db, id=current_user.organization_id)
+    if not organization:
+        raise HTTPException(status_code=404, detail="Organização não encontrada.")
+
+    updated_org = await crud.organization.update(db=db, db_obj=organization, obj_in=org_in)
+    return updated_org

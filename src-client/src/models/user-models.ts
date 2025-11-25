@@ -11,6 +11,7 @@ export interface UserCreate {
   is_active?: boolean;
   employee_id?: string;
   avatar_url?: string; // <-- ADICIONADO
+  phone?: string; // <-- ADICIONADO
 }
 
 // Usado ao atualizar um utilizador existente. Todos os campos são opcionais.
@@ -22,6 +23,7 @@ export interface UserUpdate {
   is_active?: boolean;
   employee_id?: string;
   avatar_url?: string; // <-- ADICIONADO
+  phone?: string; // <-- ADICIONADO
 }
 
 // --- NOVA INTERFACE ADICIONADA ---
@@ -71,4 +73,5 @@ export interface User {
   avatar_url?: string | null;
   organization_id: number;
   employee_id: string;
+  phone?: string | null; // <-- ADICIONADO
 }

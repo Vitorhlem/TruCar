@@ -175,7 +175,7 @@ async function onSubmit() {
     });
     
     // Correção do erro ESLint: Promise ignored
-    void router.push('/dashboard');
+    void router.push({ name: 'dashboard' });
   } catch (error) {
     console.error(error);
     $q.notify({

@@ -40,7 +40,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     employee_id: Mapped[str] = mapped_column(String(50), index=True, nullable=False, default=generate_employee_id)
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean(), default=True)

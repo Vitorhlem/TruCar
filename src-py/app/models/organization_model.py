@@ -20,7 +20,11 @@ class Organization(Base):
     fuel_provider_name = Column(String(100), nullable=True)
     encrypted_fuel_provider_api_key = Column(LargeBinary, nullable=True)
     encrypted_fuel_provider_api_secret = Column(LargeBinary, nullable=True)
-    # --- FIM DA ADIÇÃO ---
+
+    cnpj = Column(String(20), nullable=True)
+    address = Column(String(255), nullable=True)
+    contact_phone = Column(String(20), nullable=True)
+    website = Column(String(100), nullable=True)
 
     # --- CAMPOS DE LIMITE ADICIONADOS ---
     vehicle_limit = Column(Integer, nullable=False, default=-1) # -1 para Ilimitado

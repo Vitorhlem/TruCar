@@ -48,6 +48,44 @@ async def create_user(
     )
     return new_user
 
+@router.put("/me", response_model=UserPublic)
+async def update_user_me(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    user_in: UserUpdate,
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """Permite que o usuário atualize seus próprios dados básicos (foto, nome, telefone)."""
+    
+    # 1. Converter para dicionário, ignorando campos não enviados
+    update_data = user_in.model_dump(exclude_unset=True)
+    
+    # 2. Remover campos sensíveis do dicionário (para que não sejam alterados)
+    # Se 'role' estiver presente, o .pop vai remover. Se não estiver, não faz nada.
+    update_data.pop("role", None)
+    update_data.pop("is_active", None)
+    update_data.pop("organization_id", None)
+    update_data.pop("password", None)
+
+    # 3. Passar o dicionário limpo para o CRUD
+    updated_user = await crud.user.update(db=db, db_user=current_user, user_in=update_data)
+    return updated_user
+
+@router.put("/me/password", response_model=UserPublic)
+async def update_current_user_password(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    password_data: UserPasswordUpdate,
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="A senha atual está incorreta.")
+    
+    updated_user = await crud.user.update_password(
+        db, db_user=current_user, new_password=password_data.new_password
+    )
+    return updated_user
+
 @router.put("/me/password", response_model=UserPublic)
 async def update_current_user_password(
     *,

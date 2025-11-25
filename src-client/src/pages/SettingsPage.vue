@@ -1,170 +1,330 @@
 <template>
-  <q-page padding>
-    <h1 class="text-h4 text-weight-bold q-my-md">Configurações</h1>
+  <q-page padding class="">
+    <div class="row items-center justify-between q-mb-lg">
+      <div>
+        <h1 class="text-h4 text-weight-bold text-primary q-my-none">Configurações</h1>
+        <div class="text-caption text-grey-7">Gerencie suas preferências e dados do sistema</div>
+      </div>
+    </div>
 
     <div class="row q-col-gutter-lg">
       <div class="col-12 col-md-3">
-        <q-card flat bordered>
-          <q-list separator>
+        <q-card flat bordered class=" rounded-borders">
+          <q-list separator class="text-grey-8">
             <q-item
-              v-for="tab in tabs"
+              v-for="tab in visibleTabs"
               :key="tab.name"
               clickable
               v-ripple
               :active="currentTab === tab.name"
               @click="currentTab = tab.name"
-              active-class="bg-blue-1 text-primary"
+              active-class="bg-primary text-white"
+              class="q-py-md transition-generic"
             >
               <q-item-section avatar>
                 <q-icon :name="tab.icon" />
               </q-item-section>
               <q-item-section>
-                <q-item-label>{{ tab.label }}</q-item-label>
+                <q-item-label class="text-weight-medium">{{ tab.label }}</q-item-label>
+                <q-item-label caption :class="currentTab === tab.name ? 'text-blue-2' : 'text-grey-6'">
+                  {{ tab.caption }}
+                </q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
         </q-card>
+
+        <q-card v-if="authStore.isManager" flat bordered class="q-mt-lg bg-primary text-white">
+          <q-card-section>
+            <div class="text-subtitle2 q-mb-sm opacity-8">Status do Plano</div>
+            <div class="text-h6 text-weight-bold">{{ isDemo ? 'Demonstração' : 'Enterprise' }}</div>
+            <q-separator color="" class="q-my-sm opacity-5" />
+            <div class="row q-col-gutter-sm q-mt-xs">
+              <div class="col-12">
+                <div class="flex justify-between text-caption">
+                  <span>Veículos</span>
+                  <span>{{ usage.vehicles }} / {{ limits.vehicles }}</span>
+                </div>
+                <q-linear-progress :value="usage.vehicles / limits.vehicles" color="white" track-color="blue-8" class="q-mt-xs" rounded />
+              </div>
+              <div class="col-12">
+                <div class="flex justify-between text-caption">
+                  <span>Usuários</span>
+                  <span>{{ usage.users }} / {{ limits.users }}</span>
+                </div>
+                <q-linear-progress :value="usage.users / limits.users" color="white" track-color="blue-8" class="q-mt-xs" rounded />
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
 
       <div class="col-12 col-md-9">
-        <q-card flat bordered>
-          <q-tab-panels v-model="currentTab" animated>
-            <q-tab-panel name="account">
-              <div class="text-h6">Minha Conta</div>
-              <q-separator class="q-my-md" />
-              <q-form @submit.prevent="handleChangePassword" class="q-gutter-y-md" style="max-width: 400px">
-                <div class="text-subtitle1 text-weight-medium">Alterar Senha</div>
-                <q-input outlined v-model="passwordForm.current_password" type="password" label="Senha Atual *" lazy-rules :rules="[val => !!val || 'Campo obrigatório']"/>
-                <q-input outlined v-model="passwordForm.new_password" type="password" label="Nova Senha *" lazy-rules :rules="[val => !!val || 'Campo obrigatório']"/>
-                <q-input outlined v-model="passwordForm.confirm_password" type="password" label="Confirmar Nova Senha *" lazy-rules :rules="[val => !!val || 'Campo obrigatório', val => val === passwordForm.new_password || 'As senhas não correspondem']"/>
-                <div class="row justify-end">
-                  <q-btn type="submit" label="Salvar Nova Senha" color="primary" unelevated :loading="isSubmittingPassword"/>
-                </div>
-              </q-form>
-            </q-tab-panel>
-
-            <q-tab-panel name="appearance">
-              <div class="text-h6 q-mb-md">Aparência</div>
-              <q-list bordered separator padding>
-                <q-item-label header>Tema da Aplicação</q-item-label>
-                <q-item tag="label" v-ripple>
-                  <q-item-section>
-                    <q-item-label>Modo Escuro</q-item-label>
-                    <q-item-label caption>Escolha entre o tema claro, escuro ou o padrão do seu sistema.</q-item-label>
-                  </q-item-section>
-                  <q-item-section side >
-                     <q-btn-toggle v-model="settingsStore.darkMode" @update:model-value="updateDarkMode" push unelevated toggle-color="primary" :options="[{label: 'Claro', value: false}, {label: 'Auto', value: 'auto'}, {label: 'Escuro', value: true}]"/>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-tab-panel>
-
-            <q-tab-panel name="notifications">
-              <div class="text-h6 q-mb-md">Preferências de Notificação</div>
-              <q-list bordered separator padding>
-                <q-item-label header>Canais de Comunicação</q-item-label>
-                <q-item tag="label" v-ripple>
-                  <q-item-section>
-                    <q-item-label>Notificações na Aplicação</q-item-label>
-                    <q-item-label caption>Receber alertas através do ícone de sino.</q-item-label>
-                  </q-item-section>
-                  <q-item-section side top>
-                    <q-toggle v-model="notificationPrefs.notify_in_app" color="primary" />
-                  </q-item-section>
-                </q-item>
-                <q-item tag="label" v-ripple>
-                  <q-item-section>
-                    <q-item-label>Notificações por E-mail</q-item-label>
-                    <q-item-label caption>Receber e-mails sobre atividades importantes.</q-item-label>
-                  </q-item-section>
-                  <q-item-section side top>
-                    <q-toggle v-model="notificationPrefs.notify_by_email" color="primary" />
-                  </q-item-section>
-                </q-item>
-                <q-slide-transition>
-                  <div v-if="notificationPrefs.notify_by_email">
-                    <q-item class="q-px-md q-pt-md">
-                      <q-input
-                        v-model="notificationPrefs.notification_email"
-                        outlined
-                        dense
-                        label="E-mail para notificações"
-                        class="full-width"
-                        hint="Deixe em branco para usar o seu e-mail de login."
-                      >
-                        <template v-slot:prepend><q-icon name="email" /></template>
-                      </q-input>
-                    </q-item>
+        <q-card flat bordered class="fit ">
+          <q-tab-panels v-model="currentTab" animated transition-prev="fade" transition-next="fade">
+            
+            <q-tab-panel name="account" class="q-pa-lg">
+              <div class="text-h6 q-mb-xs">Meu Perfil</div>
+              <p class="text-grey-6 q-mb-lg">Gerencie suas informações pessoais e segurança.</p>
+              
+              <div class="row q-col-gutter-xl">
+                <div class="col-12 col-md-5 text-center">
+                  <div class="relative-position inline-block">
+                    <q-avatar size="120px" class="shadow-3">
+                      <img :src="getAvatarUrl(authStore.user?.avatar_url)">
+                    </q-avatar>
+                    
+                    <input 
+                      type="file" 
+                      ref="fileInput" 
+                      accept="image/*" 
+                      style="display: none" 
+                      @change="handleFileUpload"
+                    />
+                    
+                    <q-btn 
+                      round 
+                      color="primary" 
+                      icon="edit" 
+                      size="sm" 
+                      class="absolute-bottom-right" 
+                      style="bottom: 5px; right: 5px"
+                      @click="triggerFileInput"
+                      :loading="isUploading"
+                    >
+                      <q-tooltip>Alterar Foto</q-tooltip>
+                    </q-btn>
                   </div>
-                </q-slide-transition>
-              </q-list>
-            </q-tab-panel>
+                  <div class="q-mt-md text-h6">{{ authStore.user?.full_name }}</div>
+                  <div class="text-grey-6">{{ authStore.user?.role }}</div>
+                </div>
 
-            <q-tab-panel v-if="authStore.isManager" name="integrations">
-              <div class="text-h6">Integrações</div>
-              <q-separator class="q-my-md" />
-              <q-form @submit.prevent="handleUpdateIntegration" class="q-gutter-y-md" style="max-width: 500px">
-                <div class="text-subtitle1 text-weight-medium">Cartão de Combustível</div>
-                <p class="text-caption text-grey-7">Insira as credenciais da API fornecidas pelo seu provedor de cartão de combustível (ex: Ticket Log) para habilitar a importação automática de abastecimentos.</p>
+                <div class="col-12 col-md-7">
+                  <q-form @submit.prevent="handleUpdateProfile" class="q-gutter-y-md">
+                    <q-input outlined v-model="profileForm.full_name" label="Nome Completo" dense />
+                    <q-input outlined v-model="profileForm.email" label="E-mail" dense disable hint="Para alterar o e-mail, contate o suporte." />
+                    <q-input outlined v-model="profileForm.phone" label="Telefone / WhatsApp" mask="(##) #####-####" dense />
+                    
+                    <div class="row justify-end">
+                      <q-btn type="submit" label="Salvar Dados" color="primary" unelevated :loading="isUpdatingProfile" />
+                    </div>
+                  </q-form>
+                </div>
+              </div>
 
-                <q-select outlined v-model="integrationForm.fuel_provider_name" :options="['Ticket Log', 'Alelo Frota', 'Sodexo Wizeo', 'Outro']" label="Provedor" />
-                
-                <q-input outlined v-model="integrationForm.fuel_provider_api_key" label="Chave de API (API Key)">
-                  <template v-slot:append>
-                    <q-chip dense square :color="settingsStore.fuelIntegrationSettings?.is_api_key_set ? 'positive' : 'grey-7'" text-color="white" :label="settingsStore.fuelIntegrationSettings?.is_api_key_set ? 'Definida' : 'Não Definida'"/>
-                  </template>
-                </q-input>
+              <q-separator class="q-my-xl" />
 
-                <q-input outlined v-model="integrationForm.fuel_provider_api_secret" label="Segredo da API (API Secret)">
-                   <template v-slot:append>
-                    <q-chip dense square :color="settingsStore.fuelIntegrationSettings?.is_api_secret_set ? 'positive' : 'grey-7'" text-color="white" :label="settingsStore.fuelIntegrationSettings?.is_api_secret_set ? 'Definida' : 'Não Definida'"/>
-                  </template>
-                </q-input>
-
-                <div class="row justify-end">
-                  <q-btn type="submit" label="Salvar Configuração" color="primary" unelevated :loading="settingsStore.isLoadingFuelSettings"/>
+              <div class="text-h6 q-mb-md text-negative">Segurança</div>
+              <q-form @submit.prevent="handleChangePassword" class="row q-col-gutter-md items-end" style="max-width: 600px">
+                <div class="col-12 col-md-4">
+                  <q-input outlined v-model="passwordForm.current_password" type="password" label="Senha Atual" dense />
+                </div>
+                <div class="col-12 col-md-4">
+                  <q-input outlined v-model="passwordForm.new_password" type="password" label="Nova Senha" dense />
+                </div>
+                <div class="col-12 col-md-4">
+                  <q-btn type="submit" label="Alterar Senha" outline color="negative" class="full-width" :loading="isSubmittingPassword" />
                 </div>
               </q-form>
             </q-tab-panel>
 
-            <q-tab-panel v-if="authStore.isManager" name="organization">
-              <div class="text-h6">Organização</div>
-              <q-separator class="q-my-md" />
-              <q-list bordered separator padding>
-                <q-item-label header>Plano e Faturação</q-item-label>
-                <q-item>
-                  <q-item-section avatar><q-icon name="workspace_premium" /></q-item-section>
+            <q-tab-panel name="interface" class="q-pa-lg">
+              <div class="text-h6 q-mb-xs">Interface & Sistema</div>
+              <p class="text-grey-6 q-mb-lg">Personalize a aparência e o vocabulário do sistema.</p>
+
+              <div class="row q-col-gutter-md">
+                <div class="col-12">
+                  <q-card flat class="q-pa-md border-blue-left">
+                    <div class="row items-center">
+                      <div class="col-12 col-md-8">
+                        <div class="text-subtitle1 text-weight-bold text-primary">Modo de Operação</div>
+                        <div class="text-caption text-grey-8">
+                          Adapta os termos do sistema. Ex: "Safra" para Agro.
+                        </div>
+                      </div>
+                      <div class="col-12 col-md-4 text-right">
+                        <q-select
+                          outlined bg-color="" dense
+                          v-model="selectedSector"
+                          :options="sectorOptions"
+                          emit-value map-options
+                          label="Selecionar Setor"
+                          @update:model-value="handleSectorChange"
+                        />
+                      </div>
+                    </div>
+                  </q-card>
+                </div>
+
+                <div class="col-12 q-mt-md">
+                  <q-list bordered class="rounded-borders">
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="dark_mode" color="grey-7" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>Tema Escuro</q-item-label>
+                        <q-item-label caption>Alternar entre modo claro e escuro.</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-btn-toggle
+                          v-model="settingsStore.darkMode"
+                          @update:model-value="updateDarkMode"
+                          push unelevated toggle-color="primary"
+                          :options="[
+                            {icon: 'light_mode', value: false},
+                            {icon: 'brightness_auto', value: 'auto'},
+                            {icon: 'dark_mode', value: true}
+                          ]"
+                        />
+                      </q-item-section>
+                    </q-item>
+                    
+                    <q-separator />
+
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="language" color="grey-7" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>Idioma</q-item-label>
+                        <q-item-label caption>Português (Brasil) é o padrão.</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-badge color="grey-4" text-color="grey-8" label="Fixo: PT-BR" />
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </div>
+              </div>
+            </q-tab-panel>
+
+            <q-tab-panel name="notifications" class="q-pa-lg">
+              <div class="text-h6 q-mb-xs">Notificações</div>
+              <p class="text-grey-6 q-mb-lg">Escolha como você quer ser alertado.</p>
+
+              <q-list bordered separator class="rounded-borders">
+                <q-item-label header class="">Canais Gerais</q-item-label>
+                
+                <q-item tag="label" v-ripple>
+                  <q-item-section avatar><q-icon name="notifications_active" color="orange" /></q-item-section>
                   <q-item-section>
-                    <q-item-label>Plano Atual</q-item-label>
-                    <q-item-label caption>
-                      <q-chip
-                        dense
-                        :color="isDemo ? 'amber' : 'positive'"
-                        text-color="white"
-                        :label="isDemo ? 'Demonstração' : 'Ativo'"
-                      />
-                    </q-item-label>
+                    <q-item-label>Alertas no Painel</q-item-label>
+                    <q-item-label caption>Receber alertas no ícone de sino dentro do sistema.</q-item-label>
                   </q-item-section>
-                   <q-item-section side>
-                     <q-btn
-                       v-if="isDemo"
-                       @click="showUpgradeDialog"
-                       color="primary"
-                       label="Fazer Upgrade"
-                       unelevated
-                       dense
-                     />
-                   </q-item-section>
+                  <q-item-section side><q-toggle v-model="notificationPrefs.notify_in_app" color="primary" /></q-item-section>
                 </q-item>
-                <q-item>
-                   <q-item-section avatar><q-icon name="credit_card" /></q-item-section>
-                   <q-item-section>
-                     <q-item-label>Faturação</q-item-label>
-                     <q-item-label caption>Para alterar o seu plano ou dados de faturação, por favor, contacte o nosso suporte.</q-item-label>
-                   </q-item-section>
+
+                <q-item tag="label" v-ripple>
+                  <q-item-section avatar><q-icon name="mail" color="blue" /></q-item-section>
+                  <q-item-section>
+                    <q-item-label>Alertas por E-mail</q-item-label>
+                    <q-item-label caption>Receber resumos e alertas críticos no seu e-mail.</q-item-label>
+                  </q-item-section>
+                  <q-item-section side><q-toggle v-model="notificationPrefs.notify_by_email" color="primary" /></q-item-section>
+                </q-item>
+
+                <q-item v-if="notificationPrefs.notify_by_email" class="">
+                  <q-item-section>
+                    <q-input
+                      v-model="notificationPrefs.notification_email"
+                      outlined dense
+                      label="E-mail alternativo para alertas"
+                      placeholder="Ex: gestao@frota.com"
+                      hint="Se vazio, usaremos seu e-mail de login."
+                    >
+                      <template v-slot:prepend><q-icon name="alternate_email" /></template>
+                    </q-input>
+                  </q-item-section>
                 </q-item>
               </q-list>
             </q-tab-panel>
+
+            <q-tab-panel name="organization" class="q-pa-lg" v-if="authStore.isManager">
+              <div class="row items-center justify-between q-mb-md">
+                <div>
+                  <div class="text-h6">Dados da Organização</div>
+                  <p class="text-grey-6">Informações fiscais e de contato da empresa.</p>
+                </div>
+                <q-btn v-if="isDemo" label="Fazer Upgrade" color="amber-9" icon="star" unelevated @click="showUpgradeDialog" />
+              </div>
+
+              <q-form @submit.prevent="handleUpdateOrg" class="q-gutter-y-md">
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-md-6">
+                    <q-input outlined v-model="orgForm.name" label="Razão Social / Nome Fantasia" :readonly="isDemo" />
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input outlined v-model="orgForm.cnpj" label="CNPJ" mask="##.###.###/####-##" :readonly="isDemo" />
+                  </div>
+                  <div class="col-12">
+                    <q-input outlined v-model="orgForm.address" label="Endereço Completo" :readonly="isDemo" />
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input outlined v-model="orgForm.contact_phone" label="Telefone Comercial" mask="(##) ####-####" :readonly="isDemo" />
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input outlined v-model="orgForm.website" label="Website (Opcional)" :readonly="isDemo" />
+                  </div>
+                </div>
+                <div class="text-right">
+                  <q-btn type="submit" label="Salvar Dados da Empresa" color="primary" unelevated :disable="isDemo" />
+                  <q-tooltip v-if="isDemo">Disponível apenas no plano Ativo</q-tooltip>
+                </div>
+              </q-form>
+            </q-tab-panel>
+
+            <q-tab-panel name="integrations" class="q-pa-lg" v-if="authStore.isManager">
+              <div class="text-h6 q-mb-xs">Integrações</div>
+              <p class="text-grey-6 q-mb-lg">Conecte o TruCar a serviços externos.</p>
+
+              <div class="row q-col-gutter-lg">
+                <div class="col-12 col-md-6">
+                  <q-card flat bordered class="full-height">
+                    <q-card-section>
+                      <div class="row items-center no-wrap">
+                        <q-avatar color="deep-orange-1" text-color="deep-orange" icon="local_gas_station" />
+                        <div class="q-ml-md">
+                          <div class="text-subtitle1 text-weight-bold">Cartão de Combustível</div>
+                          <div class="text-caption text-grey">Ticket Log, Alelo, Sodexo</div>
+                        </div>
+                      </div>
+                    </q-card-section>
+                    <q-separator />
+                    <q-card-section>
+                      <q-form @submit.prevent="handleUpdateIntegration" class="q-gutter-y-sm">
+                        <q-select outlined dense v-model="integrationForm.fuel_provider_name" :options="['Ticket Log', 'Alelo Frota', 'Sodexo Wizeo']" label="Provedor" />
+                        <q-input outlined dense v-model="integrationForm.fuel_provider_api_key" label="API Key" type="password" />
+                        <q-input outlined dense v-model="integrationForm.fuel_provider_api_secret" label="API Secret" type="password" />
+                        <q-btn type="submit" label="Conectar" color="deep-orange" unelevated class="full-width q-mt-sm" :loading="settingsStore.isLoadingFuelSettings" />
+                      </q-form>
+                    </q-card-section>
+                  </q-card>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <q-card flat bordered class="full-height ">
+                    <q-card-section>
+                      <div class="row items-center no-wrap">
+                        <q-avatar color="grey-3" text-color="grey-6" icon="satellite_alt" />
+                        <div class="q-ml-md">
+                          <div class="text-subtitle1 text-weight-bold text-grey-7">Rastreadores & GPS</div>
+                          <div class="text-caption text-grey">Omnilink, Sascar, Cobli</div>
+                        </div>
+                        <q-space />
+                        <q-chip dense color="grey-4" label="Em Breve" />
+                      </div>
+                    </q-card-section>
+                    <q-separator />
+                    <q-card-section class="text-center q-py-lg">
+                      <p class="text-grey-6 text-caption">Importação automática de odômetro e rotas via API de telemetria.</p>
+                      <q-btn label="Tenho Interesse" outline color="grey-6" size="sm" />
+                    </q-card-section>
+                  </q-card>
+                </div>
+              </div>
+            </q-tab-panel>
+
           </q-tab-panels>
         </q-card>
       </div>
@@ -173,96 +333,202 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, reactive } from 'vue';
 import { useQuasar } from 'quasar';
-import { isAxiosError } from 'axios';
 import { useAuthStore } from 'stores/auth-store';
 import { useSettingsStore } from 'stores/settings-store';
+import { useTerminologyStore } from 'stores/terminology-store';
+import { useUserStore } from 'stores/user-store';
 import { api } from 'boot/axios';
+import type { UserSector } from 'src/models/auth-models';
 
+const $q = useQuasar();
 const authStore = useAuthStore();
 const settingsStore = useSettingsStore();
-const $q = useQuasar();
+const terminologyStore = useTerminologyStore();
+const userStore = useUserStore();
+
 const currentTab = ref('account');
-
-const isSubmittingPassword = ref(false);
-const passwordForm = ref({ current_password: '', new_password: '', confirm_password: '' });
-
-// --- LÓGICA DE DEMO ADICIONADA ---
 const isDemo = computed(() => authStore.isDemo);
+const limits = reactive({ vehicles: 10, users: 5 });
+const usage = reactive({ vehicles: 3, users: 2 });
 
-function showUpgradeDialog() {
-  $q.dialog({
-    title: 'Desbloqueie o Potencial Máximo do TruCar',
-    message: 'Para aceder ao histórico completo e outras funcionalidades premium, entre em contato com nossa equipe comercial.',
-    ok: { label: 'Entendido', color: 'primary', unelevated: true },
-    persistent: false
-  });
+// --- FUNÇÃO AUXILIAR PARA CORRIGIR URL DA IMAGEM ---
+function getAvatarUrl(url: string | null | undefined): string {
+  if (!url) return 'https://cdn.quasar.dev/img/boy-avatar.png';
+  
+  if (url.startsWith('http')) return url;
+  
+  const backendUrl = 'http://127.0.0.1:8000'; // Ajuste se necessário
+  
+  if (url.startsWith('/static') || url.startsWith('/')) {
+    return `${backendUrl}${url}`;
+  }
+  return url;
 }
-// --- FIM DA ADIÇÃO ---
 
-const notificationPrefs = ref({
-  notify_in_app: authStore.user?.notify_in_app ?? true,
-  notify_by_email: authStore.user?.notify_by_email ?? true,
-  notification_email: authStore.user?.notification_email || authStore.user?.email || '',
+// --- LÓGICA DE UPLOAD DE FOTO ---
+const fileInput = ref<HTMLInputElement | null>(null);
+const isUploading = ref(false);
+
+function triggerFileInput() {
+  fileInput.value?.click();
+}
+
+async function handleFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files[0]) {
+    const file = target.files[0];
+    isUploading.value = true;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await api.post('/upload-photo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const newAvatarUrl = uploadRes.data.file_url;
+
+      await api.put('/users/me', { avatar_url: newAvatarUrl });
+      
+      // --- CORREÇÃO CRÍTICA PARA PERSISTÊNCIA ---
+      if (authStore.user) {
+        authStore.user.avatar_url = newAvatarUrl;
+        // Salva manualmente no LocalStorage para garantir que o F5 não limpe
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            const parsed = JSON.parse(storedUser);
+            parsed.avatar_url = newAvatarUrl;
+            localStorage.setItem('user', JSON.stringify(parsed));
+        }
+      }
+      // ------------------------------------------
+      
+      $q.notify({ type: 'positive', message: 'Foto atualizada!' });
+    } catch (error) {
+      console.error(error);
+      $q.notify({ type: 'negative', message: 'Erro ao atualizar foto.' });
+    } finally {
+      isUploading.value = false;
+    }
+  }
+}
+
+// --- PERFIL ---
+const profileForm = reactive({
+  full_name: authStore.user?.full_name || '',
+  email: authStore.user?.email || '',
+  phone: authStore.user?.phone || '', // Agora carrega do store se existir
 });
+const isUpdatingProfile = ref(false);
 
-let debounceTimer: number;
-watch(notificationPrefs, (newPrefs) => {
-  clearTimeout(debounceTimer);
-  debounceTimer = window.setTimeout(() => {
-    void authStore.updateMyPreferences(newPrefs);
-  }, 1500);
-}, { deep: true });
+async function handleUpdateProfile() {
+  isUpdatingProfile.value = true;
+  try {
+    if (authStore.user?.id) {
+      await userStore.updateUser(authStore.user.id, { 
+          full_name: profileForm.full_name,
+          phone: profileForm.phone 
+      });
+      
+      // Atualiza store local
+      if (authStore.user) {
+          authStore.user.full_name = profileForm.full_name;
+          // authStore.user.phone = profileForm.phone; (Se o tipo User tiver phone)
+      }
+      
+      $q.notify({ type: 'positive', message: 'Perfil atualizado com sucesso!' });
+    }
+  } catch {
+    $q.notify({ type: 'negative', message: 'Erro ao atualizar perfil.' });
+  } finally {
+    isUpdatingProfile.value = false;
+  }
+}
 
+// --- SENHA ---
+const passwordForm = ref({ current_password: '', new_password: '', confirm_password: '' });
+const isSubmittingPassword = ref(false);
 
 async function handleChangePassword() {
+  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+    $q.notify({ type: 'warning', message: 'As senhas não conferem.' });
+    return;
+  }
   isSubmittingPassword.value = true;
   try {
-    const payload = {
+    await api.put('/users/me/password', {
       current_password: passwordForm.value.current_password,
       new_password: passwordForm.value.new_password,
-    };
-    await api.put('/users/me/password', payload);
-    $q.notify({
-      type: 'positive',
-      message: 'Senha alterada com sucesso!'
     });
-    const form = passwordForm.value;
-    form.current_password = '';
-    form.new_password = '';
-    form.confirm_password = '';
-  } catch (error) {
-    let message = 'Erro ao alterar a senha.';
-    if (isAxiosError(error) && error.response?.data?.detail) {
-      message = error.response.data.detail as string;
-    }
-    $q.notify({ type: 'negative', message });
+    $q.notify({ type: 'positive', message: 'Senha alterada!' });
+    passwordForm.value = { current_password: '', new_password: '', confirm_password: '' };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) { // Mantendo any aqui conforme sua preferência para simplificar
+    const msg = error.response?.data?.detail || 'Erro ao alterar senha.';
+    $q.notify({ type: 'negative', message: msg });
   } finally {
     isSubmittingPassword.value = false;
   }
 }
 
-const tabs = computed(() => {
-  const allTabs = [
-    { name: 'account', label: 'Minha Conta', icon: 'account_circle' },
-    { name: 'appearance', label: 'Aparência', icon: 'visibility' },
-    { name: 'notifications', label: 'Notificações', icon: 'notifications' },
-    { name: 'organization', label: 'Organização', icon: 'business', managerOnly: true },
-    { name: 'integrations', label: 'Integrações', icon: 'sync_alt', managerOnly: true }, // <-- NOVA ABA
-  ];
+// --- INTERFACE ---
+const selectedSector = ref(terminologyStore.currentSector);
+const sectorOptions = [
+  { label: 'Padrão (Frota Geral)', value: 'FREIGHT' },
+  { label: 'Agronegócio (Safra)', value: 'AGRO' },
+  { label: 'Construção (Obras)', value: 'CONSTRUCTION' },
+  { label: 'Serviços', value: 'SERVICES' },
+];
 
-  if (authStore.isManager) {
-    return allTabs;
-  }
-  return allTabs.filter(tab => !tab.managerOnly);
-});
-
-function updateDarkMode(value: boolean | 'auto') {
-  settingsStore.setDarkMode(value);
+function handleSectorChange(val: string) {
+  // Conversão de tipo segura
+  terminologyStore.setSector(val as UserSector);
+  $q.notify({ type: 'info', message: 'Vocabulário alterado.' });
 }
 
-// --- LÓGICA PARA A NOVA ABA DE INTEGRAÇÕES ---
+function updateDarkMode(val: boolean | 'auto') {
+  settingsStore.setDarkMode(val);
+}
+
+// --- NOTIFICAÇÕES ---
+const notificationPrefs = ref({
+  notify_in_app: authStore.user?.notify_in_app ?? true,
+  notify_by_email: authStore.user?.notify_by_email ?? true,
+  notification_email: authStore.user?.notification_email || '',
+});
+
+let debounceTimer: number | undefined;
+watch(notificationPrefs, (newVal) => {
+  clearTimeout(debounceTimer);
+  debounceTimer = window.setTimeout(() => {
+    void authStore.updateMyPreferences(newVal);
+  }, 1000);
+}, { deep: true });
+
+// --- ORGANIZAÇÃO ---
+const orgForm = reactive({
+  name: authStore.user?.organization?.name || '',
+  cnpj: '',
+  address: '',
+  contact_phone: '',
+  website: ''
+});
+
+function handleUpdateOrg() {
+  $q.notify({ type: 'positive', message: 'Dados da empresa salvos (Simulação)' });
+}
+
+function showUpgradeDialog() {
+  $q.dialog({
+    title: 'Upgrade para Enterprise',
+    message: 'Entre em contato com vendas@trucar.com para remover os limites.',
+    ok: { label: 'OK', flat: true }
+  });
+}
+
+// --- INTEGRAÇÕES ---
 const integrationForm = ref({
   fuel_provider_name: '',
   fuel_provider_api_key: '',
@@ -272,26 +538,28 @@ const integrationForm = ref({
 watch(() => settingsStore.fuelIntegrationSettings, (newSettings) => {
   if (newSettings) {
     integrationForm.value.fuel_provider_name = newSettings.fuel_provider_name || '';
-    // Não preenchemos os campos de senha/chave para segurança, apenas mostramos o status
-    integrationForm.value.fuel_provider_api_key = '';
-    integrationForm.value.fuel_provider_api_secret = '';
   }
 }, { immediate: true });
 
 async function handleUpdateIntegration() {
-  // Apenas envia os campos que o usuário preencheu
-  const payload: { [key: string]: string } = {};
-  if (integrationForm.value.fuel_provider_name) {
-    payload.fuel_provider_name = integrationForm.value.fuel_provider_name;
-  }
-  if (integrationForm.value.fuel_provider_api_key) {
-    payload.fuel_provider_api_key = integrationForm.value.fuel_provider_api_key;
-  }
-  if (integrationForm.value.fuel_provider_api_secret) {
-    payload.fuel_provider_api_secret = integrationForm.value.fuel_provider_api_secret;
-  }
-  await settingsStore.updateFuelIntegrationSettings(payload);
+  await settingsStore.updateFuelIntegrationSettings(integrationForm.value);
 }
+
+// --- TABS ---
+const visibleTabs = computed(() => {
+  const tabs = [
+    { name: 'account', label: 'Minha Conta', caption: 'Perfil e Segurança', icon: 'person' },
+    { name: 'interface', label: 'Interface', caption: 'Tema e Vocabulário', icon: 'tune' },
+    { name: 'notifications', label: 'Notificações', caption: 'Alertas e E-mails', icon: 'notifications' },
+  ];
+  if (authStore.isManager) {
+    tabs.push(
+      { name: 'organization', label: 'Organização', caption: 'Dados e Plano', icon: 'business' },
+      { name: 'integrations', label: 'Integrações', caption: 'Combustível e GPS', icon: 'hub' }
+    );
+  }
+  return tabs;
+});
 
 onMounted(() => {
   if (authStore.isManager) {
@@ -299,3 +567,14 @@ onMounted(() => {
   }
 });
 </script>
+
+<style lang="scss" scoped>
+.border-blue-left {
+  border-left: 4px solid var(--q-primary);
+}
+.transition-generic {
+  transition: all 0.3s ease;
+}
+.opacity-8 { opacity: 0.8; }
+.opacity-5 { opacity: 0.5; }
+</style>

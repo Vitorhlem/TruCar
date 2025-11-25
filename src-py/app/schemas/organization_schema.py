@@ -15,6 +15,10 @@ class UserNestedInOrganization(BaseModel):
 class OrganizationBase(BaseModel):
     name: str
     sector: Sector
+    cnpj: Optional[str] = None
+    address: Optional[str] = None
+    contact_phone: Optional[str] = None
+    website: Optional[str] = None
 
 # --- ESTE É O SCHEMA QUE PRECISA SER CORRIGIDO ---
 class OrganizationNestedInUser(BaseModel):
@@ -45,6 +49,10 @@ class OrganizationUpdate(BaseModel):
     freight_order_limit: Optional[int] = None
     maintenance_limit: Optional[int] = None
     # --- FIM DA ADIÇÃO ---
+    cnpj: Optional[str] = None
+    address: Optional[str] = None
+    contact_phone: Optional[str] = None
+    website: Optional[str] = None
 
 
 class OrganizationFuelIntegrationUpdate(BaseModel):
