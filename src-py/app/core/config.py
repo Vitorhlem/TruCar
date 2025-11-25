@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     SMTP_USER: str
     SMTP_PASSWORD: str
     EMAILS_FROM_EMAIL: str
+    
+    # --- ALTERAÇÃO AQUI: Forçamos o IP 127.0.0.1 ---
+    # Isso evita que o Windows tente usar IPv6 (::1) e falhe com erro 10061
+    REDIS_URL: str = "redis://127.0.0.1:6379/0"
+    # -----------------------------------------------
+
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_SERVER: str
@@ -29,21 +35,14 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-
     REFRESH_TOKEN_SECRET_KEY: str
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
-
     ALGORITHM: str = "HS256"
-
-    # --- CHAVE DE CRIPTOGRAFIA ADICIONADA AQUI ---
-    # Esta linha faz com que a sua aplicação leia a variável FERNET_KEY do arquivo .env
     FERNET_KEY: str
-    # --- FIM DA ADIÇÃO ---
-
 
     DEMO_TOTAL_LIMITS: dict[str, int] = {
         "vehicles": 3,
-        "users": 2,  # Unificado para o valor mais restritivo
+        "users": 2,
         "parts": 15,
         "clients": 5,
         "implements": 2,
@@ -53,7 +52,7 @@ class Settings(BaseSettings):
         "reports": 5,
         "fines": 3,
         "documents": 10,
-        "freight_orders": 10, # Unificado
+        "freight_orders": 10,
         "maintenance_requests": 5,
         "fuel_logs": 20,
     }

@@ -1,124 +1,57 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Response, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 import uuid
 import shutil
 from app import crud, deps
 from app.core.config import settings 
-from app.core.email_utils import send_email
 from app.models.user_model import User, UserRole
 from app.schemas.maintenance_schema import (
     MaintenanceRequestPublic, MaintenanceRequestCreate, MaintenanceRequestUpdate,
     MaintenanceCommentPublic, MaintenanceCommentCreate,
     ReplaceComponentPayload, ReplaceComponentResponse, InstallComponentResponse,
-    InstallComponentPayload,
-    MaintenanceServiceItemCreate, MaintenanceServiceItemPublic
+    InstallComponentPayload, MaintenanceServiceItemCreate, MaintenanceServiceItemPublic
 )
-from app.crud.crud_demo_usage import demo_usage as demo_usage_crud
 from app.models.maintenance_model import MaintenanceServiceItem 
 from app.models.vehicle_cost_model import VehicleCost, CostType 
-from app.crud.crud_maintenance import MaintenancePartChange
 from app.models.notification_model import NotificationType
+# Import do Celery
+from app.tasks.email_tasks import send_email_async
 
 router = APIRouter()
-
-def send_new_request_email_background(manager_emails: List[str], request: MaintenanceRequestPublic):
-    if not manager_emails:
-        return
-
-    subject = f"Novo Chamado de Manutenção Aberto - TruCar #{request.id}"
-    
-    message_html = f"""
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            body {{ font-family: 'Inter', sans-serif; margin: 0; padding: 0; background-color: #f4f4f7; }}
-            .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }}
-            .header {{ background-color: #2D3748; color: #ffffff; padding: 20px; text-align: center; }}
-            .header h1 {{ margin: 0; font-size: 24px; }}
-            .content {{ padding: 30px; }}
-            .content p {{ font-size: 16px; line-height: 1.6; color: #4A5568; }}
-            .details-table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
-            .details-table th, .details-table td {{ padding: 12px; border: 1px solid #e2e8f0; text-align: left; }}
-            .details-table th {{ background-color: #edf2f7; width: 30%; }}
-            .cta-button {{ display: block; width: 200px; margin: 30px auto; padding: 15px; background-color: #3B82F6; color: #ffffff; text-align: center; text-decoration: none; border-radius: 5px; font-weight: bold; }}
-            .footer {{ background-color: #1A202C; color: #a0aec0; padding: 20px; text-align: center; font-size: 12px; }}
-            .footer a {{ color: #3B82F6; text-decoration: none; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>TruCar - Novo Chamado</h1>
-            </div>
-            <div class="content">
-                <p>Olá,</p>
-                <p>Um novo chamado de manutenção foi aberto e precisa da sua atenção.</p>
-                <table class="details-table">
-                    <tr><th>Chamado Nº</th><td>{request.id}</td></tr>
-                    <tr><th>Solicitante</th><td>{request.reporter.full_name}</td></tr>
-                    <tr><th>Veículo</th><td>{request.vehicle.brand} {request.vehicle.model} ({request.vehicle.license_plate})</td></tr>
-                    <tr><th>Categoria</th><td>{request.category.value}</td></tr>
-                </table>
-                <p><b>Problema Reportado:</b></p>
-                <p><i>{request.problem_description}</i></p>
-                <a href="http://localhost:9000/#/maintenance" class="cta-button">Ver Chamado no Sistema</a>
-            </div>
-            <div class="footer">
-                &copy; {datetime.now().year} Vitor H. Lemes - <a href="https://vytruve.org/">vytruve.org</a>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    send_email(to_emails=manager_emails, subject=subject, message_html=message_html)
 
 @router.post("/", response_model=MaintenanceRequestPublic, status_code=status.HTTP_201_CREATED)
 async def create_maintenance_request(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    background_tasks: BackgroundTasks,
     request_in: MaintenanceRequestCreate,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    # Extrai dados seguros antes de qualquer DB op
     current_user_id = current_user.id
     current_user_org_id = current_user.organization_id
     current_user_role = current_user.role
     current_user_name = current_user.full_name
 
+    # Verificação Demo (Simplificada)
     is_demo_org = False
     if current_user_role == UserRole.CLIENTE_DEMO:
         is_demo_org = True
     elif current_user_role == UserRole.DRIVER:
-        stmt = select(User).where(
-            User.organization_id == current_user_org_id,
-            User.role == UserRole.CLIENTE_DEMO
-        ).limit(1)
+        stmt = select(User).where(User.organization_id == current_user_org_id, User.role == UserRole.CLIENTE_DEMO).limit(1)
         result = await db.execute(stmt)
         if result.scalars().first():
             is_demo_org = True
 
     if is_demo_org:
         limit = settings.DEMO_MONTHLY_LIMITS.get("maintenance_requests", 5)
-        current_count = await crud.maintenance.count_requests_in_current_month(
-            db, organization_id=current_user_org_id
-        )
+        current_count = await crud.maintenance.count_requests_in_current_month(db, organization_id=current_user_org_id)
         if current_count >= limit:
-            detail_msg = f"Limite mensal de {limit} chamados atingido nesta conta Demo."
-            if current_user_role == UserRole.DRIVER:
-                detail_msg = f"A frota atingiu o limite mensal de {limit} chamados. Contate seu gestor."
-            
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=detail_msg
-            )
+            raise HTTPException(status_code=403, detail=f"Limite mensal de {limit} chamados atingido.")
 
     try:
+        # 1. Cria o chamado
         request = await crud.maintenance.create_request(
             db=db, request_in=request_in, reporter_id=current_user_id, organization_id=current_user_org_id
         )
@@ -126,17 +59,118 @@ async def create_maintenance_request(
         if is_demo_org:
             await crud.demo_usage.increment_usage(db, organization_id=current_user_org_id, resource_type="maintenances")
         
-        # Converte para Pydantic para garantir segurança na resposta
         response = MaintenanceRequestPublic.model_validate(request)
 
+        # 2. Notificação Interna
         message = f"Nova solicitação de manutenção para {request.vehicle.brand} {request.vehicle.model} aberta por {current_user_name}."
-        
         await crud.notification.create_notification(
             db=db, message=message, notification_type=NotificationType.MAINTENANCE_REQUEST_NEW,
             organization_id=current_user_org_id, send_to_managers=True,
             related_entity_type="maintenance_request", related_entity_id=request.id,
             related_vehicle_id=request.vehicle_id
         )
+
+        # 3. ENVIO DE E-MAIL BONITO (CELERY)
+        query = select(User.email).where(
+            User.organization_id == current_user_org_id,
+            User.role.in_([UserRole.ADMIN, UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]),
+            User.is_active == True,
+            User.email.isnot(None)
+        )
+        result = await db.execute(query)
+        manager_emails = list(result.scalars().all())
+
+        # Adiciona o próprio solicitante na lista de envio
+        if current_user.email and current_user.email not in manager_emails:
+            manager_emails.append(current_user.email)
+
+        if manager_emails:
+            # --- TEMPLATE HTML PROFISSIONAL ---
+            # Dica: Em produção, substitua a URL da logo por uma imagem hospedada no seu site/S3.
+            # Como estamos local, usei um ícone de CDN público.
+            logo_url = "https://cdn-icons-png.flaticon.com/512/3202/3202926.png"
+            system_link = "http://localhost:9000/#/maintenance"
+            
+            email_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {{ font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f7; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }}
+                    .container {{ max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }}
+                    .header {{ background-color: #1976D2; padding: 30px 40px; text-align: center; }}
+                    .header h1 {{ color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px; }}
+                    .header img {{ width: 40px; vertical-align: middle; margin-right: 10px; }}
+                    .content {{ padding: 40px; color: #333333; }}
+                    .status-badge {{ display: inline-block; padding: 6px 12px; background-color: #e3f2fd; color: #1976D2; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }}
+                    .info-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 25px; margin-bottom: 25px; }}
+                    .info-item {{ background-color: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }}
+                    .info-label {{ font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; display: block; }}
+                    .info-value {{ font-size: 14px; color: #1e293b; font-weight: 500; }}
+                    .problem-box {{ background-color: #fff1f2; border-left: 4px solid #e11d48; padding: 15px; margin: 20px 0; color: #be123c; }}
+                    .btn-container {{ text-align: center; margin-top: 35px; }}
+                    .btn {{ background-color: #1976D2; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block; transition: background 0.2s; }}
+                    .footer {{ background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>TruCar</h1>
+                    </div>
+                    <div class="content">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 style="margin: 0; font-size: 20px; color: #1e293b;">Novo Chamado Aberto</h2>
+                            <span class="status-badge">Aberto</span>
+                        </div>
+                        
+                        <p style="color: #64748b; margin-top: 10px;">Uma nova solicitação de manutenção foi registrada no sistema e aguarda análise.</p>
+
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Protocolo</span>
+                                <div class="info-value">#{request.id}</div>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Veículo</span>
+                                <div class="info-value">{request.vehicle.brand} {request.vehicle.model}</div>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Placa</span>
+                                <div class="info-value">{request.vehicle.license_plate}</div>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Solicitante</span>
+                                <div class="info-value">{current_user_name}</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span class="info-label">Descrição do Problema:</span>
+                            <div style="background-color: #f1f5f9; padding: 15px; border-radius: 6px; color: #334155; font-style: italic; margin-top: 5px;">
+                                "{request.problem_description}"
+                            </div>
+                        </div>
+
+                        <div class="btn-container">
+                            <a href="{system_link}" class="btn">Acessar Painel de Controle</a>
+                        </div>
+                    </div>
+                    <div class="footer">
+                        &copy; {datetime.now().year} TruCar - Sistema de Gestão de Frotas.<br>
+                        Este é um e-mail automático, por favor não responda.
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            send_email_async.delay(
+                to_emails=manager_emails,
+                subject=f"[TruCar] Novo Chamado #{request.id} - {request.vehicle.license_plate}",
+                message_html=email_html
+            )
         
         return response
     except ValueError as e:
@@ -184,7 +218,6 @@ async def add_service_item(
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao adicionar serviço: {e}")
 
-
 @router.delete("/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_maintenance_request(
     *,
@@ -226,12 +259,10 @@ async def read_maintenance_requests(
 async def update_request_status(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    background_tasks: BackgroundTasks,
     request_id: int,
     update_data: MaintenanceRequestUpdate,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    # 1. CAPTURA SEGURA: Extrair dados do usuário ANTES de qualquer DB op
     current_user_id = current_user.id
     current_user_org_id = current_user.organization_id
 
@@ -239,15 +270,12 @@ async def update_request_status(
     if not db_obj:
         raise HTTPException(status_code=404, detail="Solicitação não encontrada.")
     
-    # 2. Atualiza Status (Isso faz commit, invalidando 'current_user' e 'db_obj' antigos)
     updated_request = await crud.maintenance.update_request_status(
         db=db, db_obj=db_obj, update_data=update_data, manager_id=current_user_id
     )
     
-    # 3. Converter para Pydantic imediatamente para garantir resposta segura
     response = MaintenanceRequestPublic.model_validate(updated_request)
     
-    # 4. Notificação usando variáveis seguras (sem acessar objetos ORM)
     message = f"O status da sua solicitação de manutenção (#{updated_request.id}) foi atualizado para: {updated_request.status.value}."
     
     if updated_request.reported_by_id:
@@ -256,13 +284,12 @@ async def update_request_status(
             message=message,
             notification_type=NotificationType.MAINTENANCE_REQUEST_STATUS_UPDATE,
             user_id=updated_request.reported_by_id,
-            organization_id=current_user_org_id, # Usa a variável extraída, não current_user.organization_id
+            organization_id=current_user_org_id,
             related_entity_type="maintenance_request",
             related_entity_id=updated_request.id
         )
         
     return response
-
 
 @router.get("/{request_id}/comments", response_model=List[MaintenanceCommentPublic])
 async def read_comments_for_request(
@@ -275,17 +302,14 @@ async def read_comments_for_request(
     )
     return comments
 
-
 @router.post("/{request_id}/comments", response_model=MaintenanceCommentPublic, status_code=status.HTTP_201_CREATED)
 async def create_comment_for_request(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    background_tasks: BackgroundTasks,
     request_id: int,
     comment_in: MaintenanceCommentCreate,
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    # 1. Extração Segura
     current_user_id = current_user.id
     current_user_org_id = current_user.organization_id
     current_user_role = current_user.role
@@ -297,13 +321,9 @@ async def create_comment_for_request(
         )
         
         request_obj = await crud.maintenance.get_request(db, request_id=request_id, organization_id=current_user_org_id)
-        
-        reported_by_id = None
-        if request_obj:
-            reported_by_id = request_obj.reported_by_id
+        reported_by_id = request_obj.reported_by_id if request_obj else None
             
         await db.commit()
-
         await db.refresh(comment, ["user"])
         if comment.user:
             await db.refresh(comment.user, ["organization"])
@@ -315,24 +335,16 @@ async def create_comment_for_request(
             
             if current_user_role == UserRole.DRIVER:
                 await crud.notification.create_notification(
-                    db=db, 
-                    message=message,
-                    notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                    organization_id=current_user_org_id, # Usa variável segura
-                    send_to_managers=True,
-                    related_entity_type="maintenance_request", 
-                    related_entity_id=request_id
+                    db=db, message=message, notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                    organization_id=current_user_org_id, send_to_managers=True,
+                    related_entity_type="maintenance_request", related_entity_id=request_id
                 )
             else:
                 if reported_by_id:
                     await crud.notification.create_notification(
-                        db=db, 
-                        message=message,
-                        notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                        organization_id=current_user_org_id, # Usa variável segura
-                        user_id=reported_by_id,
-                        related_entity_type="maintenance_request", 
-                        related_entity_id=request_id
+                        db=db, message=message, notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
+                        organization_id=current_user_org_id, user_id=reported_by_id,
+                        related_entity_type="maintenance_request", related_entity_id=request_id
                     )
 
         return response
@@ -342,8 +354,6 @@ async def create_comment_for_request(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         await db.rollback()
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro ao enviar mensagem: {e}")
 
 @router.post("/upload-file", response_model=dict)
@@ -364,24 +374,18 @@ async def upload_attachment_file(
 async def replace_maintenance_component(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    background_tasks: BackgroundTasks,
     request_id: int,
     payload: ReplaceComponentPayload,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    # 1. Extração Segura
     current_user_org_id = current_user.organization_id
 
     try:
         log_entry, comment_entry, reported_by_id = await crud.maintenance.perform_component_replacement(
-            db=db,
-            request_id=request_id,
-            payload=payload,
-            user=current_user # Passar objeto user AQUI ainda é seguro pois não houve commit
+            db=db, request_id=request_id, payload=payload, user=current_user
         )
         
         comment_text_for_notification = comment_entry.comment_text
-        
         await db.commit()
 
         await db.refresh(comment_entry, ["user"])
@@ -401,63 +405,43 @@ async def replace_maintenance_component(
                  await db.refresh(log_entry.component_installed.part, ["items"])
 
         response = ReplaceComponentResponse(
-            success=True,
-            message="Substituição realizada com sucesso.",
-            part_change_log=log_entry,
-            new_comment=comment_entry
+            success=True, message="Substituição realizada com sucesso.",
+            part_change_log=log_entry, new_comment=comment_entry
         )
 
         if reported_by_id:
              await crud.notification.create_notification(
-                 db=db,
-                 message=comment_text_for_notification,
+                 db=db, message=comment_text_for_notification,
                  notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                 organization_id=current_user_org_id, # Usa variável segura
-                 user_id=reported_by_id, 
-                 related_entity_type="maintenance_request", 
-                 related_entity_id=request_id
+                 organization_id=current_user_org_id, user_id=reported_by_id, 
+                 related_entity_type="maintenance_request", related_entity_id=request_id
              )
 
         return response
 
     except ValueError as e:
         await db.rollback() 
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         await db.rollback() 
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno ao processar a substituição: {e}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Erro interno: {e}")
 
 @router.post("/{request_id}/install-component", response_model=InstallComponentResponse)
 async def install_maintenance_component(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    background_tasks: BackgroundTasks,
     request_id: int,
     payload: InstallComponentPayload,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    # 1. Extração Segura
     current_user_org_id = current_user.organization_id
 
     try:
         log_entry, comment_entry, reported_by_id = await crud.maintenance.perform_new_installation(
-            db=db,
-            request_id=request_id,
-            payload=payload,
-            user=current_user
+            db=db, request_id=request_id, payload=payload, user=current_user
         )
         
         comment_text_for_notification = comment_entry.comment_text
-        
         await db.commit()
 
         await db.refresh(comment_entry, ["user"])
@@ -471,50 +455,39 @@ async def install_maintenance_component(
                  await db.refresh(log_entry.component_installed.part, ["items"])
 
         response = InstallComponentResponse(
-            success=True,
-            message="Instalação realizada com sucesso.",
-            part_change_log=log_entry,
-            new_comment=comment_entry
+            success=True, message="Instalação realizada com sucesso.",
+            part_change_log=log_entry, new_comment=comment_entry
         )
 
         if reported_by_id:
              await crud.notification.create_notification(
-                 db=db,
-                 message=comment_text_for_notification,
+                 db=db, message=comment_text_for_notification,
                  notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                 organization_id=current_user_org_id, # Usa variável segura
-                 user_id=reported_by_id, 
-                 related_entity_type="maintenance_request", 
-                 related_entity_id=request_id
+                 organization_id=current_user_org_id, user_id=reported_by_id, 
+                 related_entity_type="maintenance_request", related_entity_id=request_id
              )
 
         return response
 
     except ValueError as e:
         await db.rollback() 
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         await db.rollback() 
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro interno: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {e}")
 
 @router.post("/part-changes/{change_id}/revert", response_model=MaintenanceCommentPublic)
 async def revert_part_change(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    background_tasks: BackgroundTasks,
     change_id: int,
     current_user: User = Depends(deps.get_current_active_manager)
 ):
-    # 1. Extração Segura
     current_user_org_id = current_user.organization_id
 
     try:
         log_entry, new_comment, reported_by_id = await crud.maintenance.revert_part_change(
-            db=db,
-            change_id=change_id,
-            user=current_user
+            db=db, change_id=change_id, user=current_user
         )
         
         comment_text_for_notification = new_comment.comment_text
@@ -530,28 +503,17 @@ async def revert_part_change(
 
         if reported_by_id:
              await crud.notification.create_notification(
-                 db=db, 
-                 message=comment_text_for_notification,
+                 db=db, message=comment_text_for_notification,
                  notification_type=NotificationType.MAINTENANCE_REQUEST_NEW_COMMENT,
-                 organization_id=current_user_org_id, # Usa variável segura
-                 user_id=reported_by_id, 
-                 related_entity_type="maintenance_request", 
-                 related_entity_id=maintenance_req_id
+                 organization_id=current_user_org_id, user_id=reported_by_id, 
+                 related_entity_type="maintenance_request", related_entity_id=maintenance_req_id
              )
              
         return response
 
     except ValueError as e:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         await db.rollback()
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno ao processar a reversão: {e}"
-        )   
+        raise HTTPException(status_code=500, detail=f"Erro interno: {e}")

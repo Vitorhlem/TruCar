@@ -11,3 +11,6 @@ class TokenData(BaseModel):
     access_token: str
     token_type: str
     user: UserPublic
+
+class Msg(BaseModel):
+    msg: str

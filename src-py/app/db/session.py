@@ -12,7 +12,13 @@ SessionLocal = sessionmaker(
     autocommit=False, 
     autoflush=False, 
     bind=engine, 
-    class_=AsyncSession
+    class_=AsyncSession,
+    # --- CORREÇÃO AQUI ---
+    # Impede que os objetos expirem após o commit. 
+    # Isso é CRUCIAL para evitar erros de 'MissingGreenlet' ao acessar 
+    # atributos de objetos (como current_user) depois de um commit na mesma rota.
+    expire_on_commit=False
+    # ---------------------
 )
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

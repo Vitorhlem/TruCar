@@ -9,7 +9,9 @@ asyncpg==0.29.0
 bcrypt==3.2.2
 certifi==2025.8.3
 cffi==1.17.1
-
+celery==5.4.0
+redis==5.0.4
+eventlet==0.36.1
 charset-normalizer==3.4.3
 click==8.2.1
 colorama==0.4.6

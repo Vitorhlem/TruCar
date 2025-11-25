@@ -98,6 +98,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     custom_errors = []
     for err in errors:
         new_err = err.copy()
+        
+        # CORREÇÃO: Remove ou converte campos 'input' que sejam bytes
+        # pois json.dumps não consegue serializar bytes.
+        if 'input' in new_err and isinstance(new_err['input'], bytes):
+            new_err['input'] = "Binary data (files or multipart form)"
+            
         if err['type'] == 'enum':
             allowed_values = err['ctx']['expected']
             new_err['msg'] = f"O valor deve ser um dos seguintes: {allowed_values}"

@@ -4,14 +4,14 @@ import structlog
 
 def setup_logging():
     """
-    Configura o logging estruturado para toda a aplicação.
+    Configura o logging estruturado para desenvolvimento (legível e colorido).
     """
-    # Processadores compartilhados para todos os loggers
+    # Processadores compartilhados
     shared_processors = [
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
@@ -27,20 +27,28 @@ def setup_logging():
         cache_logger_on_first_use=True,
     )
 
-    # Configuração do handler para formatar em JSON
-    json_handler = logging.StreamHandler(sys.stdout)
-    json_formatter = structlog.stdlib.ProcessorFormatter(
-        processor=structlog.processors.JSONRenderer(),
+    # --- MUDANÇA AQUI: Usamos ConsoleRenderer para logs bonitos no terminal ---
+    renderer = structlog.dev.ConsoleRenderer(colors=True)
+    
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processor=renderer,
+        foreign_pre_chain=shared_processors,
     )
-    json_handler.setFormatter(json_formatter)
 
-    # Configura o logger raiz para usar nosso handler JSON
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+
+    # Configura o logger raiz
     root_logger = logging.getLogger()
-    root_logger.addHandler(json_handler)
+    root_logger.handlers = [handler]
     root_logger.setLevel(logging.INFO)
 
-    # Silencia outros loggers para não duplicar mensagens
+    # Configura logs do Uvicorn para usar o mesmo formato
     for logger_name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
         logger = logging.getLogger(logger_name)
-        logger.handlers = [json_handler]
+        logger.handlers = [handler]
         logger.propagate = False
+        # Garante que logs de acesso apareçam
+        logger.setLevel(logging.INFO) 
+
+setup_logging()

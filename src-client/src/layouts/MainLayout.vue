@@ -92,7 +92,7 @@
           <q-btn v-if="authStore.isManager" flat round dense icon="notifications" class="text-grey-7 q-mr-sm">
             <q-badge v-if="notificationStore.unreadCount > 0" color="red" floating rounded>{{ notificationStore.unreadCount }}</q-badge>
             <q-menu @show="notificationStore.fetchNotifications()" fit anchor="bottom left" self="top right" :offset="[0, 10]" style="width: 350px; max-width: 90vw;">
-              <div class="row no-wrap items-center q-pa-md bg-grey-1 bb-1">
+              <div class="row no-wrap items-center q-pa-md  bb-1">
                 <div class="text-subtitle1 text-weight-bold">Notificações</div>
                 <q-space />
                 <q-spinner v-if="notificationStore.isLoading" color="primary" size="1.2em" />
@@ -484,7 +484,7 @@ onUnmounted(() => { clearInterval(pollTimer); });
         box-shadow: inset 4px 0 0 0 #60a5fa;
       }
       &:hover:not(.nav-link--active) {
-        background-color: rgba(255,255,255,0.05);
+        background-color: rgba(255, 255, 255, 0.473);
       }
     }
   }

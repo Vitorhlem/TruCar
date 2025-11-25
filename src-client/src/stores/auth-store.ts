@@ -140,7 +140,7 @@ export const useAuthStore = defineStore('auth', () => {
       Notify.create({
         type: 'positive',
         message: 'Senha redefinida com sucesso! Você já pode fazer o login.',
-        icon: 'o_lock_reset'
+        icon: 'lock_reset'
       });
       return true;
     } catch (error: unknown) { // <-- CORRIGIDO AQUI
