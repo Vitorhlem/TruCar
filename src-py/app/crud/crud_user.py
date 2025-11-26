@@ -133,6 +133,19 @@ async def create_new_organization_and_user(db: AsyncSession, *, user_in: "UserRe
     await db.refresh(db_user, ["organization"])
     return db_user
 
+async def get_managers_emails(db: AsyncSession, *, organization_id: int) -> List[str]:
+    """
+    Retorna uma lista de e-mails de todos os gestores (ADMIN, CLIENTE_ATIVO, CLIENTE_DEMO)
+    da organização especificada.
+    """
+    stmt = select(User.email).where(
+        User.organization_id == organization_id,
+        User.role.in_([UserRole.ADMIN, UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO]),
+        User.is_active == True,
+        User.email.is_not(None)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 async def update(db: AsyncSession, *, db_user: User, user_in: Union["UserUpdate", Dict[str, Any]]) -> User:
     # Se for um dicionário, usa direto. Se for modelo Pydantic, converte.
