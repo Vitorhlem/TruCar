@@ -33,8 +33,6 @@
             </q-item>
           </q-list>
         </q-card>
-
-        
       </div>
 
       <div class="col-12 col-md-9">
@@ -273,16 +271,16 @@
                   </div>
                 </div>
                 <div class="text-right">
-  <q-btn 
-    type="submit" 
-    label="Salvar Dados da Empresa" 
-    color="primary" 
-    unelevated 
-    :loading="isSavingOrg" 
-    :disable="isDemo" 
-  />
-  <q-tooltip v-if="isDemo">Disponível apenas no plano Ativo</q-tooltip>
-</div>
+                  <q-btn 
+                    type="submit" 
+                    label="Salvar Dados da Empresa" 
+                    color="primary" 
+                    unelevated 
+                    :loading="isSavingOrg" 
+                    :disable="isDemo" 
+                  />
+                  <q-tooltip v-if="isDemo">Disponível apenas no plano Ativo</q-tooltip>
+                </div>
               </q-form>
             </q-tab-panel>
 

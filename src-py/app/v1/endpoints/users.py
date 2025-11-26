@@ -34,7 +34,39 @@ async def create_user(
     user_in: UserCreate,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """Cria um novo utilizador (motorista) DENTRO da organização do gestor logado."""
+    """
+    Cria um novo utilizador DENTRO da organização do gestor logado.
+    - Gestor Demo: Apenas Motoristas (DRIVER).
+    - Gestor Ativo: Motoristas (DRIVER) ou Gestores (CLIENTE_ATIVO).
+    """
+    
+    # Debug: Verifique no console se o role está chegando
+    print(f"DEBUG CREATE USER: Role recebida no payload: {user_in.role}")
+
+    # 1. Define o papel (Default é DRIVER se não for enviado)
+    role_to_assign = user_in.role if user_in.role else UserRole.DRIVER
+
+    # 2. Validações de Permissão
+    if current_user.role == UserRole.CLIENTE_DEMO:
+        if role_to_assign != UserRole.DRIVER:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Utilizadores em modo de demonstração só podem criar contas de Motorista."
+            )
+            
+    elif current_user.role == UserRole.CLIENTE_ATIVO:
+        # Permite criar Motorista OU outro Gestor (Cliente Ativo)
+        if role_to_assign not in [UserRole.DRIVER, UserRole.CLIENTE_ATIVO]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você só tem permissão para criar Motoristas ou outros Gestores."
+            )
+    
+    # Bloqueia criação de ADMIN por vias normais
+    if role_to_assign == UserRole.ADMIN and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Não autorizado a criar administradores.")
+
+    # 3. Verifica duplicidade de e-mail
     user = await crud.user.get_user_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
@@ -42,10 +74,11 @@ async def create_user(
             detail="O e-mail fornecido já está registado no sistema.",
         )
     
+    # 4. Criação
     new_user = await crud.user.create(
         db=db, user_in=user_in, 
         organization_id=current_user.organization_id,
-        role=user_in.role or UserRole.DRIVER
+        role=role_to_assign
     )
 
     # --- LOG DE AUDITORIA ---
@@ -58,12 +91,13 @@ async def create_user(
             organization_id=current_user.organization_id,
             details={"email": new_user.email, "role": new_user.role}
         ))
-        await db.commit() # Confirma o log
+        await db.commit() 
     except Exception as e:
         print(f"Falha ao criar log de auditoria: {e}")
 
     return new_user
 
+    return new_user
 @router.put("/me", response_model=UserPublic)
 async def update_user_me(
     *,
@@ -173,18 +207,21 @@ async def update_user(
         db, id=user_id, organization_id=current_user.organization_id
     )
     if not user_to_update:
-        raise HTTPException(
-            status_code=404,
-            detail="O utilizador não foi encontrado nesta organização.",
-        )
+        raise HTTPException(status_code=404, detail="Utilizador não encontrado.")
 
+    # Lógica corrigida para alteração de papéis
     if user_in.role is not None and user_in.role != user_to_update.role:
-        if not current_user.is_superuser:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Apenas administradores do sistema podem alterar o papel de um utilizador."
-            )
-    
+        # Se for ADMIN, pode tudo
+        if current_user.role == UserRole.ADMIN:
+            pass
+        # Se for CLIENTE_ATIVO, pode alterar entre DRIVER e CLIENTE_ATIVO
+        elif current_user.role == UserRole.CLIENTE_ATIVO:
+            if user_in.role not in [UserRole.DRIVER, UserRole.CLIENTE_ATIVO]:
+                raise HTTPException(status_code=403, detail="Você não pode atribuir esse papel.")
+        # Outros (como DEMO) não podem alterar papel
+        else:
+            raise HTTPException(status_code=403, detail="Você não tem permissão para alterar o papel de um utilizador.")
+
     updated_user = await crud.user.update(db=db, db_user=user_to_update, user_in=user_in)
     return updated_user
 

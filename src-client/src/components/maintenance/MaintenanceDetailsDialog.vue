@@ -26,35 +26,19 @@
         <div class="row q-gutter-sm">
           <q-btn
             @click="() => handleUpdateStatus(MaintenanceStatus.APROVADA)"
-            color="primary"
-            label="Aprovar"
-            dense
-            unelevated
-            icon="thumb_up"
+            color="primary" label="Aprovar" dense unelevated icon="thumb_up"
           />
           <q-btn
             @click="() => handleUpdateStatus(MaintenanceStatus.EM_ANDAMENTO)"
-            color="info"
-            label="Em Andamento"
-            dense
-            unelevated
-            icon="engineering"
+            color="info" label="Em Andamento" dense unelevated icon="engineering"
           />
           <q-btn
             @click="() => handleUpdateStatus(MaintenanceStatus.CONCLUIDA)"
-            color="positive"
-            label="Concluir"
-            dense
-            unelevated
-            icon="check_circle"
+            color="positive" label="Concluir" dense unelevated icon="check_circle"
           />
           <q-btn
             @click="() => handleUpdateStatus(MaintenanceStatus.REJEITADA)"
-            color="negative"
-            label="Rejeitar"
-            dense
-            unelevated
-            icon="thumb_down"
+            color="negative" label="Rejeitar" dense unelevated icon="thumb_down"
           />
         </div>
       </q-card-section>
@@ -70,6 +54,7 @@
       >
         <q-tab name="details" label="Detalhes e Histórico" />
         <q-tab name="components" label="Componentes do Veículo" />
+        <q-tab name="services" label="Serviços e Mão de Obra" icon="handyman" />
       </q-tabs>
 
       <q-separator />
@@ -225,6 +210,80 @@
             </template>
           </q-table>
         </q-tab-panel>
+
+        <q-tab-panel name="services">
+            <div class="row q-col-gutter-md">
+                <div class="col-12 col-md-7">
+                    <div class="text-h6 q-mb-md">Serviços Realizados</div>
+                    <q-list bordered separator v-if="request.services && request.services.length > 0">
+                        <q-item v-for="service in request.services" :key="service.id">
+                            <q-item-section avatar>
+                                <q-icon name="handyman" color="grey-7" />
+                            </q-item-section>
+                            <q-item-section>
+                                <q-item-label>{{ service.description }}</q-item-label>
+                                <q-item-label caption>Fornecedor: {{ service.provider_name || 'Interno' }}</q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                                <div class="text-weight-bold text-primary">
+                                    R$ {{ service.cost.toFixed(2) }}
+                                </div>
+                            </q-item-section>
+                        </q-item>
+                        <q-separator />
+                        <q-item class="">
+                            <q-item-section><q-item-label class="text-weight-bold">Total Serviços</q-item-label></q-item-section>
+                            <q-item-section side>
+                                <div class="text-h6 text-weight-bold">
+                                     R$ {{ totalServicesCost.toFixed(2) }}
+                                </div>
+                            </q-item-section>
+                        </q-item>
+                    </q-list>
+                    <div v-else class="text-center text-grey q-pa-lg" style="border: 1px dashed #ccc; border-radius: 4px;">
+                        Nenhum serviço de mão de obra registrado.
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-5" v-if="!isClosed && authStore.isManager">
+                    <q-card flat bordered class="">
+                        <q-card-section>
+                            <div class="text-subtitle1 text-weight-bold q-mb-sm">Adicionar Mão de Obra / Externo</div>
+                            <q-form @submit="handleAddService">
+                                <q-input 
+                                    v-model="serviceForm.description" 
+                                    label="Descrição do Serviço *" 
+                                    filled dense class="q-mb-sm" 
+                                    :rules="[val => !!val || 'Obrigatório']"
+                                />
+                                <q-input 
+                                    v-model="serviceForm.provider_name" 
+                                    label="Fornecedor/Mecânico (Opcional)" 
+                                    filled dense class="q-mb-sm" 
+                                />
+                                <q-input 
+                                    v-model.number="serviceForm.cost" 
+                                    label="Custo (R$) *" 
+                                    type="number" 
+                                    prefix="R$" 
+                                    filled dense class="q-mb-md" 
+                                    step="0.01"
+                                    :rules="[val => val >= 0 || 'Valor inválido']"
+                                />
+                                <q-btn 
+                                    label="Lançar Custo" 
+                                    type="submit" 
+                                    color="primary" 
+                                    unelevated 
+                                    class="full-width" 
+                                    :loading="isSubmittingService"
+                                />
+                            </q-form>
+                        </q-card-section>
+                    </q-card>
+                </div>
+            </div>
+        </q-tab-panel>
       </q-tab-panels>
 
       <q-separator />
@@ -325,6 +384,36 @@ const isInstallDialogOpen = ref(false);
 const showFinishDialog = ref(false);
 
 const selectedComponent = ref<VehicleComponent | null>(null);
+
+// --- LÓGICA DE SERVIÇOS (ADICIONADA) ---
+const serviceForm = ref({
+    description: '',
+    provider_name: '',
+    cost: 0
+});
+const isSubmittingService = ref(false);
+
+const totalServicesCost = computed(() => {
+    if (!props.request?.services) return 0;
+    return props.request.services.reduce((sum, s) => sum + (s.cost || 0), 0);
+});
+
+async function handleAddService() {
+    if (!props.request) return;
+    isSubmittingService.value = true;
+    
+    const success = await maintenanceStore.addServiceItem(props.request.id, {
+        description: serviceForm.value.description,
+        provider_name: serviceForm.value.provider_name,
+        cost: serviceForm.value.cost
+    });
+
+    if (success) {
+        serviceForm.value = { description: '', provider_name: '', cost: 0 };
+    }
+    isSubmittingService.value = false;
+}
+// ---------------------------------------
 
 // Configuração da Tabela
 const componentColumns: QTableColumn<VehicleComponent>[] = [

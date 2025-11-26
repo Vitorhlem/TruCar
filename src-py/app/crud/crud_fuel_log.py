@@ -4,9 +4,10 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from geopy.distance import geodesic
 from app import crud
-from app.models.fuel_log_model import FuelLog, VerificationStatus
+from app.models.fuel_log_model import FuelLog, VerificationStatus, FuelLogSource
 from app.models.vehicle_model import Vehicle
 from app.models.user_model import User
+from app.models.vehicle_cost_model import VehicleCost, CostType # Import necessário
 from app.schemas.vehicle_cost_schema import VehicleCostCreate
 from app.schemas.fuel_log_schema import FuelLogCreate, FuelLogUpdate, FuelProviderTransaction
 
@@ -38,8 +39,7 @@ async def check_abnormal_consumption(db: AsyncSession, *, fuel_log: FuelLog, veh
         
     current_consumption = km_travelled / fuel_log.liters
 
-    # --- CORREÇÃO AQUI (Subquery para evitar erro de agregação) ---
-    # 1. Calcula a distância para cada registro usando window function em uma subquery
+    # --- LÓGICA DE CONSUMO HISTÓRICO ---
     subquery = (
         select(
             FuelLog.id,
@@ -50,16 +50,14 @@ async def check_abnormal_consumption(db: AsyncSession, *, fuel_log: FuelLog, veh
         .subquery()
     )
 
-    # 2. Calcula a média baseada na subquery, filtrando dados inválidos
     avg_consumption_stmt = (
         select(func.avg(subquery.c.distance / subquery.c.liters))
         .where(
-            subquery.c.id != fuel_log.id, # Exclui o registro atual da média histórica
-            subquery.c.distance > 0,      # Ignora registros sem distância anterior (primeiro registro)
+            subquery.c.id != fuel_log.id,
+            subquery.c.distance > 0,
             subquery.c.liters > 0
         )
     )
-    # -------------------------------------------------------------
     
     historical_avg = (await db.execute(avg_consumption_stmt)).scalar_one_or_none()
     
@@ -83,14 +81,14 @@ async def create_fuel_log(db: AsyncSession, *, log_in: FuelLogCreate, user_id: i
     )
 
     db.add(db_obj)
-    await db.flush()  # Garante que o db_obj tenha um ID antes de usá-lo
+    await db.flush()  # Garante que o db_obj tenha um ID
 
     # Cria um custo correspondente do tipo "Combustível"
     cost_obj_in = VehicleCostCreate(
         description=f"Abastecimento em {db_obj.timestamp.strftime('%d/%m/%Y')}",
         amount=db_obj.total_cost,
         date=db_obj.timestamp.date(),
-        cost_type="Combustível",
+        cost_type=CostType.COMBUSTIVEL,
     )
     
     await crud.vehicle_cost.create_cost(
@@ -132,25 +130,80 @@ async def get_multi_by_user(db: AsyncSession, *, user_id: int, organization_id: 
     result = await db.execute(stmt)
     return result.scalars().all()
 
+# --- CORREÇÃO CRÍTICA: Atualização Sincronizada ---
 async def update_fuel_log(db: AsyncSession, *, db_obj: FuelLog, obj_in: FuelLogUpdate) -> FuelLog:
+    """
+    Atualiza um registro de abastecimento e tenta sincronizar o custo financeiro associado.
+    """
+    # 1. Guarda os valores antigos ANTES da atualização para encontrar o custo correspondente
+    old_amount = db_obj.total_cost
+    old_date = db_obj.timestamp.date()
+    old_vehicle_id = db_obj.vehicle_id
+
     update_data = obj_in.model_dump(exclude_unset=True)
+    
+    # 2. Atualiza o objeto FuelLog
     for field, value in update_data.items():
         setattr(db_obj, field, value)
     
+    # 3. SINCRONIA COM CUSTOS
+    # Tenta encontrar o custo financeiro que foi gerado por este abastecimento.
+    # Usamos heurística: mesmo veículo, mesma data, mesmo valor e tipo Combustível.
+    cost_stmt = select(VehicleCost).where(
+        VehicleCost.vehicle_id == old_vehicle_id,
+        VehicleCost.date == old_date,
+        VehicleCost.amount == old_amount,
+        VehicleCost.cost_type == CostType.COMBUSTIVEL
+    )
+    result = await db.execute(cost_stmt)
+    linked_cost = result.scalars().first()
+
+    if linked_cost:
+        # Se encontrou o custo, atualiza ele com os novos dados do abastecimento
+        if 'total_cost' in update_data:
+            linked_cost.amount = update_data['total_cost']
+        
+        if 'timestamp' in update_data:
+            new_date = update_data['timestamp'].date()
+            linked_cost.date = new_date
+            linked_cost.description = f"Abastecimento em {new_date.strftime('%d/%m/%Y')}"
+            
+        if 'vehicle_id' in update_data:
+            linked_cost.vehicle_id = update_data['vehicle_id']
+            
+        db.add(linked_cost) # Marca o custo para atualização
+    # ----------------------------
+
     db.add(db_obj)
     await db.commit()
-    
     await db.refresh(db_obj, ["user", "vehicle"])
 
     return db_obj
+# --- FIM DA CORREÇÃO ---
+
 
 async def remove_fuel_log(db: AsyncSession, *, db_obj: FuelLog) -> FuelLog:
+    """Remove abastecimento e tenta remover o custo associado."""
+    
+    # Tenta encontrar o custo para deletar também
+    cost_stmt = select(VehicleCost).where(
+        VehicleCost.vehicle_id == db_obj.vehicle_id,
+        VehicleCost.date == db_obj.timestamp.date(),
+        VehicleCost.amount == db_obj.total_cost,
+        VehicleCost.cost_type == CostType.COMBUSTIVEL
+    )
+    result = await db.execute(cost_stmt)
+    linked_cost = result.scalars().first()
+    
+    if linked_cost:
+        await db.delete(linked_cost)
+
     await db.delete(db_obj)
     await db.commit()
     return db_obj
 
 
-# --- NOVAS FUNÇÕES PARA INTEGRAÇÃO COM CARTÃO DE COMBUSTÍVEL ---
+# --- INTEGRAÇÃO COM CARTÃO DE COMBUSTÍVEL ---
 
 async def _verify_transaction_location(
     vehicle_coords: Optional[tuple[float, float]],
@@ -204,7 +257,7 @@ async def process_provider_transactions(db: AsyncSession, *, transactions: List[
             gas_station_latitude=tx.gas_station_latitude,
             gas_station_longitude=tx.gas_station_longitude,
             verification_status=verification_status,
-            source= "INTEGRATION"
+            source=FuelLogSource.INTEGRATION
         )
         db.add(new_log)
         new_logs_count += 1

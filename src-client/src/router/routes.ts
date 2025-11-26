@@ -159,7 +159,7 @@ const routes: RouteRecordRaw[] = [
         name: 'settings', 
         component: () => import('pages/SettingsPage.vue'),
         // Corrigido para 'admin' minúsculo
-        meta: { roles: ['cliente_ativo', 'cliente_demo', 'admin'] } 
+        meta: { roles: ['cliente_ativo', 'cliente_demo', 'admin', 'driver'] } 
       },
       {
         path: 'admin',

@@ -205,6 +205,7 @@ const isSubmitting = ref(false);
 const editingUserId = ref<number | null>(null);
 
 const isEditing = computed(() => editingUserId.value !== null);
+// Usa a propriedade da store se existir, ou verifica manualmente
 const isDemo = computed(() => authStore.user?.role === 'cliente_demo');
 
 // --- LÓGICA DEMO E LIMITES ---
@@ -236,23 +237,50 @@ const usageColor = computed(() => {
   return 'primary';
 });
 
-const roleOptions = [
-  { label: 'Cliente Ativo (Gestor)', value: 'cliente_ativo' },
-  { label: 'Cliente Demo (Gestor Limitado)', value: 'cliente_demo' },
-  { label: 'Motorista', value: 'driver' }
-];
+// --- CORREÇÃO: ROLE OPTIONS DINÂMICO ---
+const roleOptions = computed(() => {
+  // Todo mundo (que pode acessar essa tela) pode criar motorista
+  const options = [
+    { label: 'Motorista', value: 'driver' }
+  ];
+
+  // Se for Cliente Ativo ou Admin, pode criar outro Gestor (Cliente Ativo)
+  if (authStore.user?.role === 'cliente_ativo' || authStore.isSuperuser) {
+    options.unshift({ label: 'Gestor (Cliente Ativo)', value: 'cliente_ativo' });
+  }
+
+  // Apenas Admin (Superuser) vê/cria Cliente Demo
+  if (authStore.isSuperuser) {
+    options.push({ label: 'Cliente Demo (Gestor Limitado)', value: 'cliente_demo' });
+    // Se quiser permitir criar Admin, adicione aqui:
+    // options.push({ label: 'Administrador', value: 'admin' }); 
+  }
+
+  return options;
+});
 
 const formData = ref<Partial<UserCreate & UserUpdate>>({});
 
+// --- CORREÇÃO: LIBERAR SELECT ---
 const isRoleSelectorDisabled = computed(() => {
-  return !authStore.isSuperuser;
+  // Apenas usuários DEMO ficam travados (forçados a criar apenas 'driver')
+  // Admin e Cliente Ativo podem alterar o campo.
+  return isDemo.value;
 });
 
 const columns: QTableColumn[] = [
   { name: 'employee_id', label: 'ID Funcionário', field: 'employee_id', align: 'left', sortable: true },
   { name: 'full_name', label: 'Nome Completo', field: 'full_name', align: 'left', sortable: true },
   { name: 'email', label: 'E-mail', field: 'email', align: 'left', sortable: true },
-  { name: 'role', label: 'Função', field: 'role', align: 'center', sortable: true, format: (val) => roleOptions.find(r => r.value === val)?.label || val },
+  { 
+    name: 'role', 
+    label: 'Função', 
+    field: 'role', 
+    align: 'center', 
+    sortable: true, 
+    // CORREÇÃO: Usar .value para acessar o array computado
+    format: (val) => roleOptions.value.find(r => r.value === val)?.label || val 
+  },
   { name: 'is_active', label: 'Status', field: 'is_active', align: 'center', format: (val) => val ? 'Ativo' : 'Inativo' },
   { name: 'actions', label: 'Ações', field: 'actions', align: 'right' },
 ];
@@ -268,7 +296,7 @@ function resetForm() {
 
 function openCreateDialog() {
   if (isDriverLimitReached.value && formData.value.role === 'driver') {
-    showComparisonDialog.value = true; // Abre o modal bonito ao invés do alerta simples
+    showComparisonDialog.value = true;
     return;
   }
   resetForm();
@@ -281,7 +309,6 @@ function openEditDialog(user: User) {
   formData.value = { 
     ...user, 
     avatar_url: user.avatar_url || '',
-    // CORREÇÃO AQUI: Tratamento de valores nulos
     phone: user.phone || '', 
     password: '' 
   };
@@ -312,7 +339,7 @@ async function onFormSubmit() {
     } else {
       await userStore.addNewUser(payload as UserCreate);
       if (authStore.isDemo) {
-        void demoStore.fetchDemoStats(true); // Atualização forçada dos stats
+        void demoStore.fetchDemoStats(true);
       }
     }
     isFormDialogOpen.value = false;
@@ -335,7 +362,6 @@ function promptToDelete(user: User) {
     ok: { label: 'Excluir', color: 'negative', unelevated: true },
     persistent: false,
   }).onOk(() => {
-    // CORREÇÃO: Usar userStore e user.id
     void (async () => {
         await userStore.deleteUser(user.id);
         if (authStore.isDemo) { 

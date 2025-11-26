@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi.encoders import jsonable_encoder  # <--- IMPORTANTE: Adicionado
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -94,15 +95,25 @@ async def create_fine(
         )
         result = await db.execute(stmt)
         fine_loaded = result.scalars().first()
+        
+        # --- LOG DE AUDITORIA ---
         try:
+            # Conversão segura para JSON
+            log_details = jsonable_encoder({
+                "vehicle_id": fine.vehicle_id, 
+                "value": fine.value, 
+                "driver_id": fine.driver_id
+            })
+            
             await crud_audit_log.create(db=db, log_in=AuditLogCreate(
                 action="CREATE", resource_type="Multas", resource_id=str(fine.id),
                 user_id=current_user.id, organization_id=current_user.organization_id,
-                details={"vehicle_id": fine.vehicle_id, "value": fine.value, "driver_id": fine.driver_id}
+                details=log_details
             ))
             await db.commit()
         except Exception as e:
-            print(f"Erro auditoria: {e}")
+            logger.error(f"Erro ao criar log de auditoria: {e}")
+            # Não fazemos raise aqui para não cancelar a criação da multa que já foi commitada
         
         return fine_loaded
         
@@ -110,11 +121,7 @@ async def create_fine(
         logger.error(f"Erro ao criar multa: {e}", exc_info=True)
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro interno ao salvar a multa.")
-        
-    except Exception as e:
-        logger.error(f"Erro ao criar multa: {e}", exc_info=True)
-        await db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro interno ao salvar a multa.")
+
 
 @router.get("/", response_model=List[FinePublic])
 async def read_fines(
@@ -127,7 +134,6 @@ async def read_fines(
     Lista as multas.
     """
     try:
-        # CORREÇÃO 4: Adicionado ADMIN na lista de quem pode ver tudo
         if current_user.role in [UserRole.CLIENTE_ATIVO, UserRole.CLIENTE_DEMO, UserRole.ADMIN]:
             fines = await crud.fine.get_multi_by_org(
                 db, organization_id=current_user.organization_id, skip=skip, limit=limit
@@ -169,7 +175,7 @@ async def update_fine(
         
         await db.commit()
         
-        # Mesma lógica de recarregamento seguro usada no create
+        # Recarregamento seguro
         stmt = (
             select(Fine)
             .where(Fine.id == fine_id)
@@ -181,23 +187,32 @@ async def update_fine(
         )
         result = await db.execute(stmt)
         fine_loaded = result.scalars().first()
+
+        # --- LOG DE AUDITORIA ---
         try:
+            # CORREÇÃO PRINCIPAL AQUI: jsonable_encoder converte date -> str
+            log_details = jsonable_encoder({"updates": payload_dict})
+
             await crud_audit_log.create(db=db, log_in=AuditLogCreate(
                 action="UPDATE", resource_type="Multas", resource_id=str(fine_id),
                 user_id=current_user.id, organization_id=current_user.organization_id,
-                details={"updates": payload_dict}
+                details=log_details
             ))
             await db.commit()
         except Exception as e:
-            print(f"Erro auditoria: {e}")
+            logger.error(f"Erro auditoria: {e}")
+            # Omitir o raise aqui evita que um erro de log quebre a resposta da API, 
+            # já que a multa foi atualizada com sucesso no commit anterior.
         
         return fine_loaded
+        
     except HTTPException as he:
         raise he
     except Exception as e:
         logger.error(f"Erro ao ATUALIZAR multa ID {fine_id}: {e}", exc_info=True)
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro interno ao atualizar a multa.")
+
 
 @router.delete("/{fine_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_fine(
@@ -224,7 +239,7 @@ async def delete_fine(
             ))
             await db.commit()
         except Exception as e:
-            print(f"Erro auditoria: {e}")
+            logger.error(f"Erro auditoria: {e}")
         
         return
     except HTTPException as he:
