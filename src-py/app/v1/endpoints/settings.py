@@ -2,25 +2,60 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud, deps
-from app.models.user_model import User
+from app.models.user_model import User, UserRole
 from app.schemas.organization_schema import (
     OrganizationFuelIntegrationUpdate,
     OrganizationFuelIntegrationPublic,
-    OrganizationPublic, OrganizationUpdate
+    OrganizationUpdate,
+    OrganizationPublic
 )
 
 router = APIRouter()
 
+# --- ENDPOINTS DE ORGANIZAÇÃO ---
+
+@router.get("/organization", response_model=OrganizationPublic)
+async def read_organization_settings(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_manager), # Aceita Admin, Ativo e Demo
+):
+    """
+    Retorna os dados da organização do usuário atual.
+    """
+    organization = await crud.organization.get(db, id=current_user.organization_id)
+    if not organization:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organização não encontrada.")
+    return organization
+
+@router.put("/organization", response_model=OrganizationPublic)
+async def update_organization_settings(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    org_in: OrganizationUpdate,
+    current_user: User = Depends(deps.get_current_active_manager), # Aceita Admin, Ativo e Demo
+):
+    """
+    Atualiza as configurações da organização (Nome, CNPJ, Setor, etc).
+    Totalmente liberado para CLIENTE_DEMO para facilitar testes.
+    """
+    organization = await crud.organization.get(db, id=current_user.organization_id)
+    if not organization:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organização não encontrada.")
+
+    # Atualiza no banco
+    updated_org = await crud.organization.update(
+        db=db, db_obj=organization, obj_in=org_in
+    )
+
+    return updated_org
+
+# --- ENDPOINTS DE INTEGRAÇÃO DE COMBUSTÍVEL ---
 
 @router.get("/fuel-integration", response_model=OrganizationFuelIntegrationPublic)
 async def read_fuel_integration_settings(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """
-    Obtém as configurações de integração de combustível da organização do usuário logado.
-    Não retorna as chaves de API por segurança.
-    """
     organization = await crud.organization.get(db, id=current_user.organization_id)
     if not organization:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organização não encontrada.")
@@ -39,10 +74,6 @@ async def update_fuel_integration_settings(
     settings_in: OrganizationFuelIntegrationUpdate,
     current_user: User = Depends(deps.get_current_active_manager),
 ):
-    """
-    Atualiza as configurações de integração de combustível da organização.
-    As chaves são criptografadas antes de serem salvas.
-    """
     organization = await crud.organization.get(db, id=current_user.organization_id)
     if not organization:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organização não encontrada.")
@@ -56,35 +87,3 @@ async def update_fuel_integration_settings(
         is_api_key_set=bool(updated_org.encrypted_fuel_provider_api_key),
         is_api_secret_set=bool(updated_org.encrypted_fuel_provider_api_secret),
     )
-
-@router.get("/organization", response_model=OrganizationPublic)
-async def read_organization_settings(
-    db: AsyncSession = Depends(deps.get_db),
-    current_user: User = Depends(deps.get_current_active_manager),
-):
-    """
-    Retorna os detalhes da organização do usuário logado.
-    """
-    organization = await crud.organization.get(db, id=current_user.organization_id)
-    if not organization:
-        raise HTTPException(status_code=404, detail="Organização não encontrada.")
-    
-    return organization
-
-# --- NOVO ENDPOINT: ATUALIZAR DADOS DA ORGANIZAÇÃO ---
-@router.put("/organization", response_model=OrganizationPublic)
-async def update_organization_settings(
-    *,
-    db: AsyncSession = Depends(deps.get_db),
-    org_in: OrganizationUpdate,
-    current_user: User = Depends(deps.get_current_active_manager),
-):
-    """
-    Atualiza dados cadastrais da organização (CNPJ, Endereço, etc).
-    """
-    organization = await crud.organization.get(db, id=current_user.organization_id)
-    if not organization:
-        raise HTTPException(status_code=404, detail="Organização não encontrada.")
-
-    updated_org = await crud.organization.update(db=db, db_obj=organization, obj_in=org_in)
-    return updated_org

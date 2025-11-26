@@ -136,28 +136,7 @@
               <p class="text-grey-6 q-mb-lg">Personalize a aparência e o vocabulário do sistema.</p>
 
               <div class="row q-col-gutter-md">
-                <div class="col-12">
-                  <q-card flat class="q-pa-md border-blue-left">
-                    <div class="row items-center">
-                      <div class="col-12 col-md-8">
-                        <div class="text-subtitle1 text-weight-bold text-primary">Modo de Operação</div>
-                        <div class="text-caption text-grey-8">
-                          Adapta os termos do sistema. Ex: "Safra" para Agro.
-                        </div>
-                      </div>
-                      <div class="col-12 col-md-4 text-right">
-                        <q-select
-                          outlined bg-color="" dense
-                          v-model="selectedSector"
-                          :options="sectorOptions"
-                          emit-value map-options
-                          label="Selecionar Setor"
-                          @update:model-value="handleSectorChange"
-                        />
-                      </div>
-                    </div>
-                  </q-card>
-                </div>
+
 
                 <div class="col-12 q-mt-md">
                   <q-list bordered class="rounded-borders">
@@ -347,16 +326,14 @@ import { ref, computed, watch, onMounted, reactive } from 'vue';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'stores/auth-store';
 import { useSettingsStore } from 'stores/settings-store';
-import { useTerminologyStore } from 'stores/terminology-store';
 import { useUserStore } from 'stores/user-store';
 import { api } from 'boot/axios';
-import type { UserSector } from 'src/models/auth-models';
 import defaultAvatar from 'assets/default-avatar.png';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
 const settingsStore = useSettingsStore();
-const terminologyStore = useTerminologyStore();
+
 const userStore = useUserStore();
 
 const currentTab = ref('account');
@@ -479,19 +456,6 @@ async function handleChangePassword() {
 }
 
 // --- INTERFACE ---
-const selectedSector = ref(terminologyStore.currentSector);
-const sectorOptions = [
-  { label: 'Padrão (Frota Geral)', value: 'FREIGHT' },
-  { label: 'Agronegócio (Safra)', value: 'AGRO' },
-  { label: 'Construção (Obras)', value: 'CONSTRUCTION' },
-  { label: 'Serviços', value: 'SERVICES' },
-];
-
-function handleSectorChange(val: string) {
-  // Conversão de tipo segura
-  terminologyStore.setSector(val as UserSector);
-  $q.notify({ type: 'info', message: 'Vocabulário alterado.' });
-}
 
 function updateDarkMode(val: boolean | 'auto') {
   settingsStore.setDarkMode(val);
