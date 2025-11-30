@@ -50,6 +50,31 @@ O projeto TruCar possui uma arquitetura flexível, consistindo em um frontend mo
 - **Backend (Python/FastAPI):** Uma API robusta construída com FastAPI, ideal para desenvolvimento rápido, flexibilidade e um ecossistema Python maduro. É responsável por toda a lógica de negócios e processamento de dados.
 - **Backend (Go/Gin):** Uma alternativa de alta performance ao backend Python, construída com Gin. Esta versão oferece maior velocidade e eficiência, sendo ideal para implantações em larga escala e cenários de alta concorrência.
 
+## 🚀 Futuras Melhorias & Roadmap (Pós-Canathon)
+
+Após a validação do MVP durante o Canathon, traçamos um roadmap estratégico para transformar o TruCar em um produto de mercado robusto, focado em **Hardware**, **Inteligência Artificial** e **Integração**.
+
+### 1. Evolução do Hardware (TruCar Box)
+O protótipo atual (ESP32 + Sensores) provou a viabilidade da telemetria de baixo custo. Os próximos passos são:
+- **Conectividade GSM/LTE:** Adicionar módulos SIM800L ou similar para permitir o envio de alertas críticos em tempo real, mesmo sem Wi-Fi.
+- **Design Industrial (PCB):** Substituir a prototipagem em fios por uma Placa de Circuito Impresso (PCB) dedicada e blindada contra vibração e poeira.
+- **Bateria de Backup:** Implementar bateria interna para garantir o rastreamento mesmo se a bateria do veículo for desconectada.
+
+### 2. Inteligência Artificial Avançada (Data-Driven)
+Utilizar o histórico de dados coletados para treinar modelos preditivos:
+- **Manutenção Preditiva Real:** Usar padrões de vibração (acelerômetro) para prever falhas na suspensão antes que elas ocorram, não apenas detectar buracos.
+- **Análise de Estilo de Condução:** Algoritmos para classificar motoristas não apenas por infrações, mas por suavidade na direção e economia de combustível.
+- **Previsão de Rotas Climáticas:** Integração real com APIs meteorológicas para bloquear rotas automaticamente em caso de tempestades severas (como demonstrado no conceito do Pitch).
+
+### 3. Expansão do Ecossistema
+- **Integração com Balanças:** Conectar o sistema às balanças das usinas para cruzar automaticamente o peso da carga transportada com o consumo de combustível da viagem.
+- **Geofencing (Cerca Eletrônica):** Alertas imediatos caso o veículo saia do trajeto pré-determinado ou entre em zonas não autorizadas.
+- **App de Manutenção para Mecânicos:** Um módulo específico para a oficina, onde o mecânico recebe o alerta do TruCar Box e dá baixa na ordem de serviço via tablet.
+
+### 4. Segurança & Infraestrutura
+- **Autenticação de Hardware:** Implementação de tokens criptografados (JWT/HMAC) para autenticar as requisições da TruCar Box, garantindo que apenas dispositivos autorizados enviem dados.
+- **HTTPS End-to-End:** Garantir criptografia SSL em todas as pontas (Hardware -> Nuvem -> App) para conformidade total com segurança de dados corporativos.
+
 ## Como Começar
 
 Esta seção fornece instruções sobre como configurar e executar o projeto TruCar em sua máquina local.
