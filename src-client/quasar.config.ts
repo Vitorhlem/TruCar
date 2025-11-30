@@ -1,9 +1,7 @@
 import { defineConfig } from '#q-app/wrappers';
 
-export default defineConfig((/* ctx */) => {
+export default defineConfig(() => {
   return {
-    // REMOVI O BLOCO sourceFiles DAQUI
-
     boot: ['axios', 'apexcharts'],
 
     css: ['app.scss'],
@@ -11,15 +9,20 @@ export default defineConfig((/* ctx */) => {
     extras: ['roboto-font', 'material-icons'],
 
     build: {
+      publicPath: '/trucar/',
+
       target: {
         browser: ['es2022', 'firefox115', 'chrome115', 'safari14'],
         node: 'node20',
       },
+
       typescript: {
         strict: true,
         vueShim: true,
       },
+
       vueRouterMode: 'hash',
+
       vitePlugins: [
         [
           'vite-plugin-checker',
