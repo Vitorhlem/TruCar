@@ -20,4 +20,4 @@ from . import crud_report as report
 from . import crud_tire as tire #
 from . import crud_fine as fine # <-- ADICIONE ESTA LINHA
 from .crud_demo_usage import demo_usage
-from . import crud_alert as alert # Adicione esta linha
+from .crud_alert import alert # <--- Importar o objeto instanciado, não o módulo
