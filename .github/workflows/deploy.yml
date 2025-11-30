@@ -41,7 +41,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           source: "src-client/dist/spa/*"
           target: "/home2/vyst/public_html/trucar"
-          strip_components: 0
+          strip_components: 3
 
       #############################################################
       # BACKEND (Python)
