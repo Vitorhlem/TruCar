@@ -26,17 +26,11 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: src-client
-        run: npm install
+        run: npm ci
 
-      - name: Build frontend
+      - name: Build frontend (Quasar)
         working-directory: src-client
-        run: npm run build
-
-      - name: Update Quasar asset paths
-        working-directory: src-client/dist/spa
-        run: |
-          sed -i 's/src="\//src="/' index.html
-          sed -i 's/href="\//href="/' index.html
+        run: npx quasar build
 
       - name: Deploy FRONTEND to server (/public_html/trucar)
         uses: appleboy/scp-action@master
@@ -47,7 +41,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           source: "src-client/dist/spa/*"
           target: "/home2/vyst/public_html/trucar"
-          strip_components: 1
+          strip_components: 0
 
       #############################################################
       # BACKEND (Python)
@@ -62,4 +56,4 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           source: "src-py/**/*"
           target: "/home2/vyst/trucar-software"
-          strip_components: 1
+          strip_components: 0
