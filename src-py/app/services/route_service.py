@@ -9,8 +9,6 @@ class RouteService:
     @staticmethod
     async def get_optimized_route(start_lat, start_lon, dest_lat, dest_lon, db_session):
         # --- LÓGICA DE FALLBACK (Visualização) ---
-        # Se o veículo não tiver GPS (0 ou None), usamos SP para você poder testar a rota.
-        # Isso não altera o banco de dados, é apenas para o cálculo matemático deste momento.
         if not start_lat or not start_lon or (start_lat == 0 and start_lon == 0):
             start_lat, start_lon = -23.5505, -46.6333
         # -----------------------------------------
@@ -24,47 +22,56 @@ class RouteService:
         decoded_points = polyline.decode(geometry_code)
         route_line = LineString(decoded_points)
         
-        # 2. Scanner de Rota (Weather Intelligence Real)
-        # Analisa o clima em 5 pontos da rota para garantir que detecta chuvas no caminho
-        risks = []
-        total_points = len(decoded_points)
+        # 2. SCANNER DE ALTA PRECISÃO
+        # Em vez de 5 pontos fixos, vamos escanear proporcionalmente ao tamanho da rota.
+        # Limitamos a 20 amostras para não bloquear sua API Key (limite de requests),
+        # mas isso cobre muito bem a maioria das viagens.
         
-        # Define pontos de checagem (Início, 25%, 50%, 75%, Fim)
-        indices_to_check = [0, total_points - 1]
-        if total_points > 5:
-            indices_to_check = [
-                0, 
-                total_points // 4, 
-                total_points // 2, 
-                (total_points * 3) // 4, 
-                total_points - 1
-            ]
+        total_points = len(decoded_points)
+        risks = []
+        
+        # Define a quantidade de checagens (Mínimo 10, Máximo 25)
+        num_samples = min(max(10, total_points // 50), 25) 
+        step = max(1, total_points // num_samples)
+        
+        indices_to_check = list(range(0, total_points, step))
+        
+        # Garante que o destino final seja verificado
+        if indices_to_check[-1] != total_points - 1:
+            indices_to_check.append(total_points - 1)
 
-        for idx in indices_to_check:
-            pt = decoded_points[idx]
-            # Chama a inteligência APENAS com dados reais da API
-            risk = await WeatherIntelligenceService.analyze_location(pt[0], pt[1], f"Rota Pt {idx}")
-            if risk:
-                risks.append(risk)
-                if risk['severity'] == 'Severe': # Se achar perigo grave, para de buscar
-                    break
+        print(f"📡 SCANNER DE ROTA: Analisando {len(indices_to_check)} pontos estratégicos...")
 
         collision_event = None
-        
-        # 3. Verifica Colisão Geométrica
-        for risk in risks:
-            storm_point = Point(risk['affected_lat'], risk['affected_lon'])
-            storm_radius_deg = (risk['affected_radius_km'] * 1000) / 111000.0 
-            storm_circle = storm_point.buffer(storm_radius_deg)
+
+        for i, idx in enumerate(indices_to_check):
+            pt = decoded_points[idx]
+            # Log para você ver no terminal onde ele está olhando
+            print(f"   [{i+1}/{len(indices_to_check)}] Checando Lat: {pt[0]:.4f}, Lon: {pt[1]:.4f} ...")
             
-            if route_line.intersects(storm_circle):
-                collision_event = risk
-                break 
+            # Chama a inteligência
+            risk = await WeatherIntelligenceService.analyze_location(pt[0], pt[1], f"Rota Pt {idx}")
+            
+            if risk:
+                print(f"   ⚠️ ALERTA ENCONTRADO: {risk['event_type']} - {risk['description']}")
+                risks.append(risk)
+                
+                # VERIFICAÇÃO GEOMÉTRICA IMEDIATA
+                # Se achou clima ruim, verifica se realmente bloqueia a estrada
+                storm_point = Point(risk['affected_lat'], risk['affected_lon'])
+                # Raio de impacto (20km convertidos para graus aprox.)
+                storm_radius_deg = (risk['affected_radius_km'] * 1000) / 111000.0 
+                storm_circle = storm_point.buffer(storm_radius_deg)
+                
+                if route_line.intersects(storm_circle):
+                    collision_event = risk
+                    print("   ⛔ BLOQUEIO CONFIRMADO! Iniciando desvio...")
+                    break # Para de procurar, já temos um motivo para desviar
         
         # 4. Cálculo de Desvio (Se necessário)
         if collision_event:
             # Cria um ponto de passagem (waypoint) fora da área de risco
-            offset = (collision_event['affected_radius_km'] * 1000 / 111000.0) + 0.05
+            offset = (collision_event['affected_radius_km'] * 1000 / 111000.0) + 0.08 # +800m de margem
             avoid_lat = collision_event['affected_lat'] + offset
             avoid_lon = collision_event['affected_lon'] + offset
             
@@ -81,6 +88,7 @@ class RouteService:
                 }
 
         # 5. Retorno Normal
+        print("✅ Rota limpa. Nenhuma ameaça crítica detectada.")
         return {
             "geometry_points": decoded_points,
             "weather_alert": None

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 from pydantic import BaseModel
-
+from app.services.geofence_service import GeofenceService # <--- NOVO
 from app import deps
 from app.models.vehicle_model import Vehicle
 from app.models.location_history_model import LocationHistory
@@ -71,8 +71,13 @@ async def sync_telemetry(
                 is_active=True,
                 created_at=datetime.utcnow()
             )
+            
             db.add(pothole_alert)
             print(f"🕳️ BURACO REGISTRADO: {point.latitude}, {point.longitude}")
+
+            await GeofenceService.check_geofences(
+            db, vehicle.id, point.latitude, point.longitude
+        )
 
         last_point = point
 

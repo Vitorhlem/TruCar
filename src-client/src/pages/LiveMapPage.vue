@@ -23,14 +23,15 @@
         ></l-tile-layer>
 
         <l-polyline
-          v-if="routeCoordinates.length > 0"
-          :lat-lngs="routeCoordinates"
-          :color="routeAlert ? '#d50000' : '#0055FF'" :weight="7" :opacity="1.0"
-          
+          v-if="mapStore.routeCoordinates.length > 0"
+          :lat-lngs="mapStore.routeCoordinates"
+          :color="mapStore.routeAlert ? '#d50000' : '#0055FF'" 
+          :weight="7" 
+          :opacity="1.0"
         >
-           <l-popup v-if="routeAlert">
+           <l-popup v-if="mapStore.routeAlert">
              <div class="text-weight-bold text-orange">⚠️ Rota Desviada!</div>
-             <div>Evitando: {{ routeAlert.event_type }}</div>
+             <div>Evitando: {{ mapStore.routeAlert.event_type }}</div>
            </l-popup>
         </l-polyline>
 
@@ -50,8 +51,8 @@
           </l-popup>
         </l-marker>
 
-        <l-marker v-if="destination" :lat-lng="destination">
-           <l-icon :icon-size="[32, 32]" :icon-anchor="[4, 32]" class-name="no-bg">
+        <l-marker v-if="mapStore.destination" :lat-lng="mapStore.destination">
+           <l-icon :icon-size="[32, 32]" :icon-anchor="[16, 32]" class-name="no-bg">
              <div style="font-size: 36px; line-height: 1; text-align: center;">📍</div>
            </l-icon>
         </l-marker>
@@ -79,7 +80,7 @@
 
         <l-circle
           v-for="event in weatherEvents"
-          :key="event.id"
+          :key="'event-' + event.id"
           :lat-lng="[event.affected_lat, event.affected_lon]"
           :radius="event.affected_radius_km * 1000"
           color="red"
@@ -92,7 +93,48 @@
           </l-popup>
         </l-circle>
 
+        <l-polygon
+          v-for="zone in mapStore.geofences"
+          :key="'zone-' + zone.id"
+          :lat-lngs="zone.polygon_points"
+          :color="zone.type === 'RISK_ZONE' ? 'red' : 'green'"
+          :fill-opacity="0.2"
+          @click="onMapClick" 
+        >
+          <l-popup v-if="!selectedVehicleId && !mapStore.isDrawingMode">
+            <div class="column q-gutter-y-xs">
+              <div class="text-subtitle2 text-weight-bold">{{ zone.name }}</div>
+              <div class="text-caption">
+                {{ zone.type === 'RISK_ZONE' ? 'Zona de Risco' : 'Zona Segura' }}
+              </div>
+              <q-separator />
+              <q-btn dense size="sm" color="negative" icon="delete" label="Excluir Área" class="full-width" @click.stop="deleteGeofence(zone.id)" />
+            </div>
+          </l-popup>
+        </l-polygon>
+
+        <l-polygon
+          v-if="mapStore.drawingPoints.length > 0"
+          :lat-lngs="mapStore.drawingPoints"
+          color="orange"
+          :weight="2"
+          dash-array="5, 5"
+        ></l-polygon>
+        
+        <l-marker v-for="(pt, index) in mapStore.drawingPoints" :key="'pt-'+index" :lat-lng="pt">
+           <l-icon :icon-size="[10, 10]" :icon-anchor="[5, 5]" class-name="no-bg">
+             <div style="width: 10px; height: 10px; background: orange; border-radius: 50%;"></div>
+           </l-icon>
+        </l-marker>
+
       </l-map>
+
+      <div v-if="mapStore.isDrawingMode" class="absolute-top-center q-mt-md z-top bg-white q-pa-sm rounded-borders shadow-2 row items-center q-gutter-x-sm">
+        <div class="text-weight-bold text-orange">Modo Criação:</div>
+        <div class="text-caption">Clique no mapa para desenhar.</div>
+        <q-btn size="sm" color="negative" flat icon="close" label="Cancelar" @click="cancelDrawing" />
+        <q-btn size="sm" color="positive" icon="save" label="Salvar" :disable="mapStore.drawingPoints.length < 3" @click="saveGeofence" />
+      </div>
 
       <div class="absolute-top-right q-ma-md column q-gutter-y-sm z-top">
         <q-btn round dense color="white" text-color="black" icon="add" @click="zoomIn" />
@@ -102,6 +144,9 @@
         </q-btn>
         <q-btn round dense :color="showWeatherLayer ? 'blue' : 'grey'" text-color="white" icon="thunderstorm" @click="showWeatherLayer = !showWeatherLayer">
           <q-tooltip>Ativar Camada de Clima</q-tooltip>
+        </q-btn>
+        <q-btn round dense :color="mapStore.isDrawingMode ? 'orange' : 'white'" text-color="black" icon="hexagon" @click="toggleDrawingMode">
+          <q-tooltip>Criar Cerca Eletrônica</q-tooltip>
         </q-btn>
       </div>
     </div>
@@ -121,12 +166,12 @@
             </div>
           </div>
           
-          <div v-if="routeCoordinates.length > 0" class="bg-blue-1 text-blue-9 q-pa-sm rounded-borders q-mb-sm border-blue">
+          <div v-if="mapStore.routeCoordinates.length > 0" class="bg-blue-1 text-blue-9 q-pa-sm rounded-borders q-mb-sm border-blue">
             <div class="text-weight-bold flex items-center">
                <q-icon name="alt_route" class="q-mr-xs"/> Rota Calculada
             </div>
-            <div v-if="routeAlert" class="text-caption text-orange text-weight-bold">
-               ⚠️ Desvio ativado por {{ routeAlert.event_type }}
+            <div v-if="mapStore.routeAlert" class="text-caption text-orange text-weight-bold">
+               ⚠️ Desvio ativado por {{ mapStore.routeAlert.event_type }}
             </div>
             <div v-else class="text-caption text-green">
                ✅ Caminho livre e seguro.
@@ -181,13 +226,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { LMap, LTileLayer, LMarker, LPopup, LIcon, LCircle, LPolyline } from "@vue-leaflet/vue-leaflet";
+import { LMap, LTileLayer, LMarker, LPopup, LIcon, LCircle, LPolyline, LPolygon } from "@vue-leaflet/vue-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useVehicleStore } from 'stores/vehicle-store';
+import { useMapStore } from 'stores/map-store';
 import type { Vehicle } from 'src/models/vehicle-models';
 import { api } from 'src/boot/axios';
 
-// Interfaces
 interface Pothole {
   id: number;
   latitude: number;
@@ -202,14 +247,14 @@ interface WeatherEvent {
   affected_lon: number;
   affected_radius_km: number;
 }
-const potholes = ref<Pothole[]>([]);
+
 const $q = useQuasar();
 const vehicleStore = useVehicleStore();
+const mapStore = useMapStore();
 const mapRef = ref(null);
 const zoom = ref(5);
 const center = ref<[number, number]>([-14.2350, -51.9253]);
 
-// Estados
 const isLoading = ref(true);
 const isAutoRefresh = ref(true);
 const showSidebar = ref(true);
@@ -217,14 +262,9 @@ const showWeatherLayer = ref(false);
 const searchQuery = ref('');
 const selectedVehicleId = ref<number | null>(null);
 
-// Dados
+const potholes = ref<Pothole[]>([]);
 const weatherEvents = ref<WeatherEvent[]>([]);
-const routeCoordinates = ref<[number, number][]>([]);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const routeAlert = ref<any>(null);
-const destination = ref<[number, number] | null>(null);
 
-// Tema
 const savedMapTheme = localStorage.getItem('trucar_map_theme');
 const isMapDark = ref(savedMapTheme ? savedMapTheme === 'dark' : $q.dark.isActive);
 watch(isMapDark, (val) => {
@@ -247,7 +287,6 @@ const filteredVehicles = computed(() => {
 });
 const vehiclesWithPosition = computed(() => allTrackedVehicles.value.filter(v => v.last_latitude));
 
-// Helpers
 const hasSignal = (v: Vehicle) => !!(v.last_latitude && v.last_longitude);
 const isMoving = (v: Vehicle) => hasSignal(v);
 const getSignalStatus = (v: Vehicle) => hasSignal(v) ? { label: 'Online', color: 'blue-6' } : { label: 'Offline', color: 'grey-5' };
@@ -263,18 +302,91 @@ function isVehicleInRisk(vehicle: Vehicle) {
 const zoomIn = () => zoom.value++;
 const zoomOut = () => zoom.value--;
 
-// --- CORREÇÃO PRINCIPAL: SELEÇÃO PARA MODO DEV ---
+// --- GEOFENCING LOGIC ---
+
+const toggleDrawingMode = () => {
+  mapStore.isDrawingMode = !mapStore.isDrawingMode;
+  mapStore.drawingPoints = [];
+  if (mapStore.isDrawingMode) {
+    $q.notify({message: 'Clique no mapa para desenhar a área.', color: 'info', icon: 'edit_location', position: 'top'});
+  }
+};
+
+const cancelDrawing = () => {
+  mapStore.isDrawingMode = false;
+  mapStore.drawingPoints = [];
+};
+
+const saveGeofence = () => {
+  if (mapStore.drawingPoints.length < 3) return;
+
+  $q.dialog({
+    title: 'Salvar Cerca',
+    message: 'Nome da Zona:',
+    prompt: { model: '', type: 'text' },
+    options: {
+      type: 'radio',
+      model: 'SAFE_ZONE',
+      items: [
+        { label: 'Zona Segura (Alerta se SAIR)', value: 'SAFE_ZONE' },
+        { label: 'Zona de Risco (Alerta se ENTRAR)', value: 'RISK_ZONE' }
+      ]
+    },
+    cancel: true,
+    persistent: true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }).onOk((data: any) => {
+    const name = typeof data === 'string' ? data : data.data; 
+    
+    // CORREÇÃO AQUI: Remoção do async/await desnecessário
+    try {
+      mapStore.addGeofence({
+        id: Date.now(),
+        name: name,
+        type: "SAFE_ZONE", 
+        polygon_points: [...mapStore.drawingPoints]
+      });
+
+      $q.notify({message: 'Cerca criada com sucesso!', color: 'positive'});
+      cancelDrawing();
+    } catch (error) {
+      console.error(error);
+    }
+  });
+};
+
+const deleteGeofence = (id: number) => {
+  $q.dialog({
+    title: 'Excluir Cerca',
+    message: 'Tem certeza que deseja remover esta área monitorada?',
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Sim, Excluir', color: 'negative' }
+  }).onOk(() => {
+    // CORREÇÃO AQUI: Remoção do async/await desnecessário
+    try {
+      mapStore.removeGeofence(id);
+      $q.notify({message: 'Cerca removida.', color: 'positive', icon: 'delete', position: 'top'});
+    } catch (error) {
+      console.error(error);
+      $q.notify({message: 'Erro ao excluir cerca.', color: 'negative'});
+    }
+  });
+};
+
+const loadGeofences = async () => {
+  // Lógica de carregar do backend futuramente
+};
+
+// --- AÇÕES DO MAPA ---
+
 function selectVehicle(vehicle: Vehicle) {
-  // 1. Força a seleção, mesmo sem GPS
   selectedVehicleId.value = vehicle.id;
-  
-  // 2. Comportamento Inteligente
   if (hasSignal(vehicle)) {
     center.value = [vehicle.last_latitude!, vehicle.last_longitude!];
     zoom.value = 14;
   } else {
-    // Fallback: Se não tem GPS, centraliza em SP e avisa
-    center.value = [-23.5505, -46.6333];
+    center.value = [-23.5505, -46.6333]; 
     zoom.value = 13;
     $q.notify({
         message: 'Modo Dev: Veículo sem GPS. Simulando posição em SP.',
@@ -284,13 +396,16 @@ function selectVehicle(vehicle: Vehicle) {
         position: 'top'
     });
   }
-
   if ($q.screen.lt.md) showSidebar.value = false;
 }
 
-// --- CÁLCULO DE ROTA COM FALLBACK ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const onMapClick = async (e: any) => {
+  if (mapStore.isDrawingMode) {
+    mapStore.drawingPoints.push([e.latlng.lat, e.latlng.lng]);
+    return;
+  }
+
   if (!selectedVehicleId.value) {
     $q.notify({message: 'Selecione um veículo na lista para traçar a rota.', color: 'warning', icon: 'near_me'});
     return;
@@ -304,9 +419,9 @@ const onMapClick = async (e: any) => {
   try {
     const destLat = e.latlng.lat;
     const destLon = e.latlng.lng;
-    destination.value = [destLat, destLon];
+    
+    mapStore.destination = [destLat, destLon];
 
-    // Se o veículo não tiver GPS, enviamos 0. O Backend vai assumir SP.
     const payload = {
       start_lat: vehicle.last_latitude || 0,
       start_lon: vehicle.last_longitude || 0,
@@ -316,12 +431,15 @@ const onMapClick = async (e: any) => {
 
     const res = await api.post('/routes/calculate', payload);
     
-    routeCoordinates.value = res.data.geometry_points;
-    routeAlert.value = res.data.weather_alert;
+    mapStore.setRoute(
+      res.data.geometry_points,
+      res.data.weather_alert,
+      [destLat, destLon]
+    );
 
-    if (routeAlert.value) {
+    if (mapStore.routeAlert) {
       $q.notify({
-        message: `Rota alterada! Evitando ${routeAlert.value.event_type}`,
+        message: `Rota alterada! Evitando ${mapStore.routeAlert.event_type}`,
         color: 'deep-orange',
         icon: 'warning',
         timeout: 5000,
@@ -343,17 +461,8 @@ const fetchData = async () => {
   if (!isAutoRefresh.value) return;
   try {
     await vehicleStore.fetchAllVehicles();
-    
-    // Busca Alertas de Clima
     const weatherRes = await api.get('/weather/alerts');
     weatherEvents.value = weatherRes.data;
-
-    // NOVO: Busca Alertas de Buracos (Endpoint precisa existir no backend,
-    // ou usamos o endpoint de /alerts genérico filtrando por type='POTHOLE')
-    // Exemplo simplificado:
-    const alertsRes = await api.get('/alerts?type=POTHOLE'); 
-    potholes.value = alertsRes.data; 
-
   } catch (e) { 
     console.error(e); 
   } finally { 
@@ -369,6 +478,7 @@ const toggleAutoRefresh = () => {
 
 onMounted(() => {
   void fetchData();
+  void loadGeofences();
   pollingInterval = setInterval(() => { void fetchData(); }, 10000);
 });
 
@@ -404,4 +514,7 @@ onUnmounted(() => clearInterval(pollingInterval));
 .border-red { border: 1px solid #ef5350; }
 .border-blue { border: 1px solid #00b8d4; }
 .no-bg { background: transparent !important; border: none !important; }
+.absolute-top-center {
+  position: absolute; left: 50%; top: 20px; transform: translateX(-50%);
+}
 </style>
