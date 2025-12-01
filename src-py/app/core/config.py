@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     SMTP_USER: str
     SMTP_PASSWORD: str
     EMAILS_FROM_EMAIL: str
-    
+    OPENWEATHER_API_KEY: str = "chave_temporaria_se_nao_houver_env"
     REDIS_URL: str = "redis://127.0.0.1:6379/0"
 
     # --- CORREÇÃO: Campos individuais opcionais ---

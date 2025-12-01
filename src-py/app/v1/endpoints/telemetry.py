@@ -1,132 +1,87 @@
-from fastapi import APIRouter, Depends, Response, status, Body
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from app import crud, deps
-from app.schemas.telemetry_schema import TelemetryPayload, TelemetryPacket
-from app.models.alert_model import AlertLevel, AlertType
-from app.schemas.alert_schema import AlertCreate
+from sqlalchemy import select
+from datetime import datetime
+from pydantic import BaseModel
+
+from app import deps
+from app.models.vehicle_model import Vehicle
 from app.models.location_history_model import LocationHistory
+# Precisamos de um modelo para Buracos (pode ser o AlertModel ou um novo PotholeModel)
+# Por enquanto, vou usar o Alert para simplificar
+from app.models.alert_model import Alert 
 
 router = APIRouter()
 
-# --- ENDPOINT 1: TELEMETRIA EM LOTE (TruCar Box / App Offline) ---
-@router.post("/sync", status_code=status.HTTP_200_OK)
-async def sync_telemetry_data(
-    packet: TelemetryPacket,
+# --- SCHEMA QUE O ESP32 VAI ENVIAR ---
+class TelemetryPoint(BaseModel):
+    latitude: float
+    longitude: float
+    speed: Optional[float] = 0.0
+    timestamp: int # Unix Timestamp do GPS
+    pothole_detected: bool = False # MPU detectou impacto no eixo Z?
+    acc_z: Optional[float] = 0.0   # Valor do acelerômetro (opcional)
+
+class TelemetryBatch(BaseModel):
+    vehicle_token: str # Token único do hardware (ou ID)
+    points: List[TelemetryPoint]
+
+@router.post("/sync")
+async def sync_telemetry(
+    batch: TelemetryBatch,
     db: AsyncSession = Depends(deps.get_db)
 ):
     """
-    Recebe um pacote com histórico de Rota + Eventos (Buracos/Velocidade).
-    Usado pelo ESP32 e pelo Modo Offline do Celular.
+    Recebe dados do Hardware (Real-time ou Offline Sync).
+    Processa buracos e atualiza posição atual.
     """
-    print(f"📡 [SYNC] Recebendo {len(packet.points)} pontos do Veículo {packet.vehicle_id}")
+    # 1. Identifica o Veículo pelo Token (Supondo que license_plate ou um campo token seja usado)
+    # Aqui vou usar license_plate como exemplo simples, mas ideal é um token de API
+    result = await db.execute(select(Vehicle).where(Vehicle.license_plate == batch.vehicle_token))
+    vehicle = result.scalars().first()
+    
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Veículo não encontrado")
 
-    # 1. Salvar Histórico de Localização (Rastro Azul)
-    if packet.points:
-        last_pt = packet.points[-1]
+    last_point = None
+    
+    # 2. Processa a lista de pontos (Histórico)
+    for point in batch.points:
+        # Salva no histórico de rota
+        history = LocationHistory(
+            vehicle_id=vehicle.id,
+            latitude=point.latitude,
+            longitude=point.longitude,
+            speed=point.speed,
+            timestamp=datetime.fromtimestamp(point.timestamp)
+        )
+        db.add(history)
         
-        for pt in packet.points:
-            if pt.lat != 0 and pt.lng != 0:
-                loc = LocationHistory(
-                    vehicle_id=packet.vehicle_id,
-                    latitude=pt.lat,
-                    longitude=pt.lng,
-                    speed=pt.spd
-                    # timestamp=datetime.fromtimestamp(pt.ts/1000)
-                )
-                db.add(loc)
-        
-        # Atualiza a posição atual do veículo
-        vehicle = await crud.vehicle.get(db, vehicle_id=packet.vehicle_id, organization_id=1) # ID Org 1 (Demo)
-        if vehicle:
-            vehicle.last_latitude = last_pt.lat
-            vehicle.last_longitude = last_pt.lng
-            
-            # Atualiza odômetro aproximado (simplificado)
-            # Em produção, calcularíamos a distância entre os pontos
-            db.add(vehicle)
+        # 3. DETECÇÃO DE BURACO (MPU)
+        if point.pothole_detected:
+            # Cria um alerta de via danificada
+            pothole_alert = Alert(
+                vehicle_id=vehicle.id,
+                type="POTHOLE", # Novo tipo
+                severity="Medium",
+                description=f"Buraco detectado (Impacto Z: {point.acc_z})",
+                latitude=point.latitude,
+                longitude=point.longitude,
+                is_active=True,
+                created_at=datetime.utcnow()
+            )
+            db.add(pothole_alert)
+            print(f"🕳️ BURACO REGISTRADO: {point.latitude}, {point.longitude}")
 
-    # 2. Processar Eventos e Gerar Alertas
-    for evt in packet.events:
-        if evt.lat == 0: continue
+        last_point = point
 
-        alert_data = {
-            "latitude": evt.lat,
-            "longitude": evt.lng,
-            "vehicle_id": packet.vehicle_id,
-            "organization_id": 1, # ID Org 1 (Demo)
-            "driver_id": None # Se tiver driver na journey, adicionar aqui
-        }
-
-        if evt.type == 'POTHOLE':
-            alert_data.update({
-                "message": f"Buraco Detectado (Impacto {evt.val:.1f})",
-                "level": AlertLevel.WARNING if evt.val < 20 else AlertLevel.CRITICAL,
-                "type": AlertType.ROAD_HAZARD
-            })
-        elif evt.type == 'SPEEDING':
-            alert_data.update({
-                "message": f"Excesso de Velocidade ({evt.val:.0f} km/h)",
-                "level": AlertLevel.CRITICAL,
-                "type": AlertType.SPEEDING
-            })
-        
-        # Usa o Schema AlertCreate para validar
-        await crud.alert.create(db, obj_in=AlertCreate(**alert_data))
+    # 4. Atualiza a posição ATUAL do veículo com o último ponto recebido
+    if last_point:
+        vehicle.last_latitude = last_point.latitude
+        vehicle.last_longitude = last_point.longitude
+        vehicle.last_updated = datetime.utcnow()
+        db.add(vehicle)
 
     await db.commit()
-    return {"status": "synced", "points": len(packet.points), "events": len(packet.events)}
-
-
-# --- ENDPOINT 2: TELEMETRIA SIMPLES (Legado / Tempo Real Unitário) ---
-@router.post("/report", status_code=status.HTTP_204_NO_CONTENT)
-async def report_telemetry(
-    *,
-    db: AsyncSession = Depends(deps.get_db),
-    payload: TelemetryPayload
-):
-    """Recebe, processa telemetria unitária e GERA ALERTAS."""
-    
-    # 1. Atualiza o veículo
-    vehicle = await crud.vehicle.update_vehicle_from_telemetry(db=db, payload=payload)
-    if not vehicle:
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
-    
-    # 2. Lógica de Manutenção
-    if vehicle.next_maintenance_km and vehicle.current_km:
-        if vehicle.current_km >= vehicle.next_maintenance_km:
-            alert_msg = f"Manutenção Vencida: Veículo atingiu {vehicle.current_km:.0f}km (Prazo: {vehicle.next_maintenance_km:.0f}km)"
-            await crud.alert.create(db=db, obj_in=AlertCreate(
-                message=alert_msg,
-                level=AlertLevel.WARNING,
-                type=AlertType.MAINTENANCE,
-                organization_id=vehicle.organization_id,
-                vehicle_id=vehicle.id,
-                driver_id=vehicle.current_driver_id
-            ))
-    
-    # 3. Lógica de Velocidade
-    MAX_SPEED_LIMIT = 110.0
-    if payload.speed and payload.speed > MAX_SPEED_LIMIT:
-        await crud.alert.create(db=db, obj_in=AlertCreate(
-            message=f"Excesso de velocidade: {payload.speed} km/h",
-            level=AlertLevel.CRITICAL,
-            type=AlertType.SPEEDING,
-            organization_id=vehicle.organization_id,
-            vehicle_id=vehicle.id,
-            driver_id=vehicle.current_driver_id,
-            latitude=payload.latitude,
-            longitude=payload.longitude
-        ))
-
-    # 4. Lógica de Temperatura
-    if payload.engine_temp and payload.engine_temp > 105:
-        await crud.alert.create(db=db, obj_in=AlertCreate(
-            message=f"Superaquecimento do motor: {payload.engine_temp}°C",
-            level=AlertLevel.WARNING,
-            type=AlertType.GENERIC,
-            organization_id=vehicle.organization_id,
-            vehicle_id=vehicle.id,
-            driver_id=vehicle.current_driver_id
-        ))
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return {"status": "synced", "points_processed": len(batch.points)}

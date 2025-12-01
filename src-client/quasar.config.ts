@@ -42,7 +42,8 @@ export default defineConfig((/* ctx */) => {
 
     framework: {
       config: {},
-      plugins: ['Notify', 'Dialog'],
+      // CORREÇÃO AQUI: Adicionado 'Loading' na lista
+      plugins: ['Notify', 'Dialog', 'Loading'], 
     },
 
     animations: [],

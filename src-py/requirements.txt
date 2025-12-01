@@ -16,6 +16,7 @@ charset-normalizer==3.4.3
 click==8.2.1
 colorama==0.4.6
 cryptography==45.0.6
+shapely>=2.0.1
 cssselect2==0.8.0
 dnspython==2.7.0
 ecdsa==0.19.1
