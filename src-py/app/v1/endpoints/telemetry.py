@@ -1,31 +1,18 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from datetime import datetime
-from pydantic import BaseModel
-from app.services.geofence_service import GeofenceService # <--- NOVO
+
+# Importações baseadas na estrutura do seu projeto
 from app import deps
 from app.models.vehicle_model import Vehicle
 from app.models.location_history_model import LocationHistory
-# Precisamos de um modelo para Buracos (pode ser o AlertModel ou um novo PotholeModel)
-# Por enquanto, vou usar o Alert para simplificar
 from app.models.alert_model import Alert 
+from app.services.geofence_service import GeofenceService
+from app.schemas.telemetry_schema import TelemetryBatch
 
 router = APIRouter()
-
-# --- SCHEMA QUE O ESP32 VAI ENVIAR ---
-class TelemetryPoint(BaseModel):
-    latitude: float
-    longitude: float
-    speed: Optional[float] = 0.0
-    timestamp: int # Unix Timestamp do GPS
-    pothole_detected: bool = False # MPU detectou impacto no eixo Z?
-    acc_z: Optional[float] = 0.0   # Valor do acelerômetro (opcional)
-
-class TelemetryBatch(BaseModel):
-    vehicle_token: str # Token único do hardware (ou ID)
-    points: List[TelemetryPoint]
 
 @router.post("/sync")
 async def sync_telemetry(
@@ -33,60 +20,93 @@ async def sync_telemetry(
     db: AsyncSession = Depends(deps.get_db)
 ):
     """
-    Recebe dados do Hardware (Real-time ou Offline Sync).
-    Processa buracos e atualiza posição atual.
+    Sincroniza dados de telemetria.
+    Aceita PLACA ou ID do veículo no campo vehicle_token.
     """
-    # 1. Identifica o Veículo pelo Token (Supondo que license_plate ou um campo token seja usado)
-    # Aqui vou usar license_plate como exemplo simples, mas ideal é um token de API
-    result = await db.execute(select(Vehicle).where(Vehicle.license_plate == batch.vehicle_token))
+    
+    # --- LÓGICA HÍBRIDA DE BUSCA (AQUI ESTÁ A SOLUÇÃO) ---
+    # Se o token for numérico (ex: "1"), buscamos pelo ID.
+    # Se for texto (ex: "AGRO-01" ou "ABC-1234"), buscamos pela placa.
+    
+    query = select(Vehicle)
+    
+    if batch.vehicle_token.isdigit():
+        # Busca por ID (converte string "1" para int 1)
+        query = query.where(Vehicle.id == int(batch.vehicle_token))
+    else:
+        # Busca por Placa
+        query = query.where(Vehicle.license_plate == batch.vehicle_token)
+        
+    result = await db.execute(query)
     vehicle = result.scalars().first()
     
     if not vehicle:
-        raise HTTPException(status_code=404, detail="Veículo não encontrado")
+        # Debug: Mostra no log do servidor o que falhou
+        print(f"❌ Erro Sync: Veículo não encontrado. Token recebido: {batch.vehicle_token}")
+        raise HTTPException(status_code=404, detail=f"Veículo com token '{batch.vehicle_token}' não encontrado")
 
     last_point = None
+    points_saved = 0
     
-    # 2. Processa a lista de pontos (Histórico)
+    # Processa os pontos
     for point in batch.points:
-        # Salva no histórico de rota
+        # Validação básica de data (ignora datas muito antigas/erradas do GPS)
+        point_time = datetime.fromtimestamp(point.timestamp)
+        if point_time.year < 2024: 
+            continue # Pula dados com data inválida (erro comum de GPS frio)
+
+        # Salva histórico
         history = LocationHistory(
             vehicle_id=vehicle.id,
             latitude=point.latitude,
             longitude=point.longitude,
             speed=point.speed,
-            timestamp=datetime.fromtimestamp(point.timestamp)
+            timestamp=point_time
         )
         db.add(history)
         
-        # 3. DETECÇÃO DE BURACO (MPU)
+        # Detecção de Buraco (MPU)
         if point.pothole_detected:
-            # Cria um alerta de via danificada
             pothole_alert = Alert(
                 vehicle_id=vehicle.id,
-                type="POTHOLE", # Novo tipo
+                type="POTHOLE",
                 severity="Medium",
-                description=f"Buraco detectado (Impacto Z: {point.acc_z})",
+                description=f"Impacto via detectado (Z: {point.acc_z:.2f})",
                 latitude=point.latitude,
                 longitude=point.longitude,
                 is_active=True,
                 created_at=datetime.utcnow()
             )
-            
             db.add(pothole_alert)
-            print(f"🕳️ BURACO REGISTRADO: {point.latitude}, {point.longitude}")
+            print(f"🕳️ Buraco detectado Veículo {vehicle.id}: {point.latitude}, {point.longitude}")
 
-            await GeofenceService.check_geofences(
+        # Checagem de Geofence (Cerca Virtual)
+        # Executa em background ou await direto dependendo da performance desejada
+        await GeofenceService.check_geofences(
             db, vehicle.id, point.latitude, point.longitude
         )
 
         last_point = point
+        points_saved += 1
 
-    # 4. Atualiza a posição ATUAL do veículo com o último ponto recebido
+    # Atualiza posição atual do veículo (cache)
     if last_point:
         vehicle.last_latitude = last_point.latitude
         vehicle.last_longitude = last_point.longitude
         vehicle.last_updated = datetime.utcnow()
+        # Se speed vier do GPS, atualizamos status
+        if last_point.speed and last_point.speed > 0:
+            vehicle.status = "active"
+        else:
+            vehicle.status = "stopped"
+            
         db.add(vehicle)
 
     await db.commit()
-    return {"status": "synced", "points_processed": len(batch.points)}
+    
+    return {
+        "status": "synced", 
+        "vehicle_id": vehicle.id, 
+        "points_received": len(batch.points),
+        "points_saved": points_saved
+    }
