@@ -47,6 +47,7 @@ class AlertSummary(BaseModel):
     title: str
     subtitle: str
     time: str # Formatado como string para simplicidade (ex: "2 min atrás")
+    level: str  # <--- ADICIONE ISTO
 
 class GoalStatus(BaseModel):
     """Representa o estado atual de uma meta definida."""

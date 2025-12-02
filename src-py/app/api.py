@@ -33,7 +33,8 @@ from app.v1.endpoints import (
     feedback,
     audit_logs,
     weather,
-    routes
+    routes,
+    alerts
 )
 
 api_router = APIRouter()
@@ -70,4 +71,5 @@ api_router.include_router(integrations.router, prefix="/integrations", tags=["In
 api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["Audit Logs"]) # <--- ADICIONE
 api_router.include_router(weather.router, prefix="/weather", tags=["weather"]) # <--- ADICIONE ISTO
-api_router.include_router(routes.router, prefix="/routes", tags=["routes"]) # <--- Adicionar
+api_router.include_router(routes.router, prefix="/routes", tags=["routes"]) # <--- Adicionar       
+api_router.include_router(alerts.router, prefix="/alerts", tags=["alerts"])

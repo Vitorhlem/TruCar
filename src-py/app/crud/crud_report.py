@@ -403,7 +403,8 @@ async def get_recent_alerts(
                 color=color,
                 title=alert.message,
                 subtitle=subtitle,
-                time=time_str
+                time=time_str,
+                level=lvl
             )
         )
 

@@ -115,3 +115,12 @@ async def remove(db: AsyncSession, *, db_vehicle: Vehicle) -> Vehicle:
     await db.delete(db_vehicle)
     await db.commit()
     return db_vehicle
+
+async def get_by_id(db: AsyncSession, *, id: int) -> Vehicle | None:
+    """
+    Busca um veículo apenas pelo ID. 
+    Uso exclusivo para processos internos/sistemas (ex: Câmera IA) onde não temos o contexto da organização.
+    """
+    stmt = select(Vehicle).where(Vehicle.id == id)
+    result = await db.execute(stmt)
+    return result.scalars().first()

@@ -16,20 +16,15 @@
               v-model="selectedPeriod" 
               :options="periodOptions" 
               label="Período de Análise" 
-              dense 
-              outlined 
+              dense outlined 
               :bg-color="$q.dark.isActive ? 'grey-10' : 'white'"
               style="min-width: 200px;" 
-              class=""
             >
               <template v-slot:prepend><q-icon name="calendar_today" /></template>
             </q-select>
 
             <q-btn 
-              outline 
-              color="primary" 
-              icon="tune" 
-              label="Personalizar" 
+              outline color="primary" icon="tune" label="Personalizar" 
               :class="['gt-xs', $q.dark.isActive ? 'bg-grey-10' : 'bg-white']"
               @click="showCustomizationDialog = true"
             >
@@ -59,16 +54,7 @@
                     <div class="text-caption text-grey-4">Monitoramento de consumo de recursos gratuitos</div>
                   </div>
                 </div>
-                <q-btn 
-                  color="yellow-9" 
-                  text-color="grey-10" 
-                  label="Seja PRO" 
-                  icon="upgrade" 
-                  unelevated 
-                  size="sm"
-                  class="text-weight-bold"
-                  @click="showUpgradeDialog = true"
-                />
+                <q-btn color="yellow-9" text-color="grey-10" label="Seja PRO" icon="upgrade" unelevated size="sm" class="text-weight-bold" @click="showUpgradeDialog = true" />
               </div>
 
               <div class="row q-col-gutter-md">
@@ -132,6 +118,7 @@
         </div>
 
         <div v-else class="fade-in">
+          
           <div v-if="visibleWidgets.kpis" class="row q-col-gutter-md q-mb-lg">
             <div class="col-12 col-sm-6 col-md-4 col-lg-3">
               <StatCard label="Total da Frota" :value="kpis?.total_vehicles ?? 0" :limit="authStore.isDemo ? (authStore.user?.organization?.vehicle_limit ?? -1) : -1" icon="local_shipping" color="primary" :loading="dashboardStore.isLoading" to="/vehicles" class="full-height" />
@@ -149,61 +136,30 @@
 
           <div v-if="visibleWidgets.financialKpis" class="row q-col-gutter-md q-mb-lg">
              <div class="col-12 col-sm-6 col-lg-3">
-                <MetricCard 
-                  :title="`Custo/${terminologyStore.distanceUnit}`" 
-                  :value="efficiencyKpis?.cost_per_km ?? 0" 
-                  :unit="`R$/${terminologyStore.distanceUnit}`" 
-                  icon="paid" 
-                  color="deep-purple" 
-                  trend="+2.5%" 
-                  trend-color="negative" 
-                  tooltip="Custo financeiro médio por unidade rodada" 
-                />
+               <MetricCard :title="`Custo/${terminologyStore.distanceUnit}`" :value="efficiencyKpis?.cost_per_km ?? 0" :unit="`R$/${terminologyStore.distanceUnit}`" icon="paid" color="deep-purple" trend="+2.5%" trend-color="negative" tooltip="Custo financeiro médio por unidade rodada" />
              </div>
-
              <div class="col-12 col-sm-6 col-lg-3">
-                <MetricCard 
-                  title="Eficiência Média" 
-                  :value="efficiencyKpis?.fleet_avg_efficiency ?? 0" 
-                  :unit="terminologyStore.fuelUnit" 
-                  icon="speed" 
-                  color="blue-8" 
-                  :formatter="(v) => v.toFixed(1)"
-                  :tooltip="`Rendimento médio da frota (${terminologyStore.fuelUnit})`" 
-                />
+               <MetricCard title="Eficiência Média" :value="efficiencyKpis?.fleet_avg_efficiency ?? 0" :unit="terminologyStore.fuelUnit" icon="speed" color="blue-8" :formatter="(v) => v.toFixed(1)" :tooltip="`Rendimento médio da frota (${terminologyStore.fuelUnit})`" />
              </div>
-             
              <div class="col-12 col-sm-6 col-lg-3">
-                <MetricCard title="Gasto Combustível" :value="fuelCostTotal" unit="R$" icon="local_gas_station" color="orange-9" :formatter="(v) => `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`" />
+               <MetricCard title="Gasto Combustível" :value="fuelCostTotal" unit="R$" icon="local_gas_station" color="orange-9" :formatter="(v) => `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`" />
              </div>
-
              <div class="col-12 col-sm-6 col-lg-3">
-                <MetricCard title="Taxa de Utilização" :value="efficiencyKpis?.utilization_rate ?? 0" unit="%" icon="pie_chart" color="teal" :formatter="(v) => `${v.toFixed(1)}%`" tooltip="% de veículos em uso vs total" />
+               <MetricCard title="Taxa de Utilização" :value="efficiencyKpis?.utilization_rate ?? 0" unit="%" icon="pie_chart" color="teal" :formatter="(v) => `${v.toFixed(1)}%`" tooltip="% de veículos em uso vs total" />
              </div>
           </div>
 
           <div class="row q-col-gutter-lg">
+            
             <div class="col-12 col-lg-8 column q-gutter-y-lg">
               <div v-if="visibleWidgets.costChart">
                 <PremiumWidget title="Análise Detalhada de Custos" icon="insights" :description="`Distribuição de gastos no período (${selectedPeriod.label}).`">
-                  <ApexChart 
-                    v-if="(costAnalysisChart.series[0]?.data.length || 0) > 0"
-                    type="bar" 
-                    height="350" 
-                    :options="costAnalysisChart.options" 
-                    :series="costAnalysisChart.series" 
-                  />
+                  <ApexChart v-if="(costAnalysisChart.series[0]?.data.length || 0) > 0" type="bar" height="350" :options="costAnalysisChart.options" :series="costAnalysisChart.series" />
                 </PremiumWidget>
               </div>
               <div v-if="visibleWidgets.activityChart">
                 <PremiumWidget title="Volume de Atividade" icon="show_chart" :description="`Histórico de ${terminologyStore.distanceUnit} rodados por dia.`">
-                    <ApexChart 
-                    v-if="(lineChart.series[0]?.data.length || 0) > 0"
-                    type="area" 
-                    height="300" 
-                    :options="lineChart.options" 
-                    :series="lineChart.series" 
-                  />
+                    <ApexChart v-if="(lineChart.series[0]?.data.length || 0) > 0" type="area" height="300" :options="lineChart.options" :series="lineChart.series" />
                 </PremiumWidget>
               </div>
               <div v-if="visibleWidgets.maintenance">
@@ -225,6 +181,7 @@
             </div>
 
             <div class="col-12 col-lg-4 column q-gutter-y-lg">
+              
               <div v-if="visibleWidgets.goal && activeGoal">
                 <q-card class="dashboard-card bg-gradient-primary text-white">
                     <q-card-section><div class="text-overline text-blue-1">OBJETIVO DA ORGANIZAÇÃO</div><div class="text-h5 text-weight-bold">{{ activeGoal.title }}</div></q-card-section>
@@ -239,35 +196,74 @@
                     </q-card-section>
                 </q-card>
               </div>
+
               <div v-if="visibleWidgets.fleetStatusChart">
                 <PremiumWidget title="Status da Frota" icon="donut_large" description="Distribuição atual.">
                   <div class="flex flex-center" style="min-height: 300px">
-                    <ApexChart 
-                        v-if="fleetStatusChart.series.length > 0" 
-                        type="donut" 
-                        height="280" 
-                        :options="fleetStatusChart.options" 
-                        :series="fleetStatusChart.series" 
-                    />
+                    <ApexChart v-if="fleetStatusChart.series.length > 0" type="donut" height="280" :options="fleetStatusChart.options" :series="fleetStatusChart.series" />
                   </div>
                 </PremiumWidget>
               </div>
+
               <div v-if="visibleWidgets.alerts">
-                 <q-card class="dashboard-card">
-                  <q-card-section class="row items-center justify-between"><div class="text-h6 flex items-center"><q-icon name="notifications_active" color="warning" class="q-mr-sm"/> Alertas</div><q-btn flat round icon="refresh" color="grey-7" size="sm" @click="refreshData" /></q-card-section>
+                  <q-card class="dashboard-card">
+                  <q-card-section class="row items-center justify-between">
+                    <div class="text-h6 flex items-center">
+                      <q-icon name="warning_amber" color="negative" class="q-mr-sm animate-pulse"/> 
+                      Alertas de Risco
+                    </div>
+                    <q-btn flat round icon="refresh" color="grey-7" size="sm" @click="refreshData" />
+                  </q-card-section>
                   <q-separator />
-                  <q-scroll-area style="height: 300px;">
+                  <q-scroll-area style="height: 350px;">
                     <q-list separator>
-                      <q-item v-for="alert in recentAlerts" :key="alert.id" class="q-py-md hover-bg">
-                        <q-item-section avatar><q-avatar :icon="alert.icon" :color="alert.color + '-1'" :text-color="alert.color" size="md"/></q-item-section>
-                        <q-item-section><q-item-label class="text-weight-medium">{{ alert.title }}</q-item-label><q-item-label caption lines="2">{{ alert.subtitle }}</q-item-label></q-item-section>
-                        <q-item-section side top><q-item-label caption>{{ alert.time }}</q-item-label></q-item-section>
+                      <q-item 
+                        v-for="alert in processedAlerts" 
+                        :key="alert.id" 
+                        class="q-py-md hover-bg transition-generic"
+                        :class="{'bg-red-1': alert.severity === 'HIGH'}"
+                      >
+                        <q-item-section avatar>
+                          <q-avatar 
+                            :icon="alert.displayConfig.icon" 
+                            :color="alert.displayConfig.color + '-1'" 
+                            :text-color="alert.displayConfig.color" 
+                            size="md"
+                          />
+                        </q-item-section>
+                        
+                        <q-item-section>
+  <q-item-label class="text-weight-bold flex items-center">
+    {{ alert.displayConfig.label }}
+    <q-badge v-if="alert.displayConfig.color === 'negative'" color="red" class="q-ml-sm" label="CRÍTICO" />
+  </q-item-label>
+  
+  <q-item-label caption lines="2" class="text-grey-8">
+    {{ alert.title }}
+  </q-item-label>
+  
+  <q-item-label caption class="text-grey-6 q-mt-xs">
+    <q-icon name="local_shipping" size="xs"/> {{ alert.subtitle }}
+  </q-item-label>
+</q-item-section>
+
+                        <q-item-section side top>
+                          <q-item-label caption>{{ formatTime(alert.date) }}</q-item-label>
+                          <q-btn flat round dense icon="visibility" size="sm" color="primary" />
+                        </q-item-section>
                       </q-item>
-                        <q-item v-if="!recentAlerts?.length" class="q-pa-lg"><q-item-section class="text-center text-grey-6"><q-icon name="check_circle" size="3em" color="positive" class="q-mb-sm self-center"/> Nenhum alerta.</q-item-section></q-item>
+
+                      <q-item v-if="!processedAlerts?.length" class="q-pa-lg">
+                        <q-item-section class="text-center text-grey-6">
+                          <q-icon name="security" size="3em" color="positive" class="q-mb-sm self-center"/> 
+                          Operação Segura. Nenhum alerta.
+                        </q-item-section>
+                      </q-item>
                     </q-list>
                   </q-scroll-area>
                 </q-card>
               </div>
+
               <div v-if="visibleWidgets.podium">
                 <PremiumWidget title="Top Motoristas" icon="emoji_events" description="Melhor performance.">
                   <div class="column q-pa-md q-gutter-y-sm">
@@ -281,85 +277,43 @@
       </template>
 
       <template v-else-if="isDriver && !dashboardStore.isLoading">
-        
         <div class="q-mb-lg">
-          <h1 class="text-h5 text-weight-bold q-my-none">
-            Olá, {{ authStore.user?.full_name?.split(' ')[0] }}
-          </h1>
-          <div class="text-subtitle2 text-grey-7">
-            {{ authStore.user?.organization?.name }} • {{ authStore.user?.organization?.sector || 'Operação' }}
-          </div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Olá, {{ authStore.user?.full_name?.split(' ')[0] }}</h1>
+          <div class="text-subtitle2 text-grey-7">{{ authStore.user?.organization?.name }} • {{ authStore.user?.organization?.sector || 'Operação' }}</div>
         </div>
 
         <div class="q-mb-lg">
            <q-banner v-if="activeJourney" class="bg-green-1 text-positive rounded-borders q-pa-md border-positive shadow-1 body--dark-bg-adjust">
-             <template v-slot:avatar>
-               <q-spinner-radio color="positive" size="2em" />
-             </template>
-             <div class="text-h6 text-weight-bold q-mb-xs">
-                 Em Operação: {{ activeJourney.vehicle_identifier }}
-             </div>
-             <div class="text-body2">
-                 Iniciado às {{ new Date(activeJourney.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}
-             </div>
-             <template v-slot:action>
-                 <q-btn unelevated color="positive" label="Acessar Painel" to="/journeys" />
-             </template>
+             <template v-slot:avatar><q-spinner-radio color="positive" size="2em" /></template>
+             <div class="text-h6 text-weight-bold q-mb-xs">Em Operação: {{ activeJourney.vehicle_identifier }}</div>
+             <div class="text-body2">Iniciado às {{ new Date(activeJourney.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</div>
+             <template v-slot:action><q-btn unelevated color="positive" label="Acessar Painel" to="/journeys" /></template>
            </q-banner>
-
            <q-banner v-else class="bg-blue-1 text-primary rounded-borders q-pa-md border-primary shadow-1 body--dark-bg-adjust">
-             <template v-slot:avatar>
-               <q-icon name="info" color="primary" />
-             </template>
-             <div class="text-body1 text-weight-medium">
-               Você não possui nenhuma {{ terminologyStore.journeyNoun }} ativa no momento.
-             </div>
-             <template v-slot:action>
-               <q-btn flat label="Ver Histórico" :to="`/users/${authStore.user?.id}/stats`" />
-             </template>
+             <template v-slot:avatar><q-icon name="info" color="primary" /></template>
+             <div class="text-body1 text-weight-medium">Você não possui nenhuma {{ terminologyStore.journeyNoun }} ativa no momento.</div>
+             <template v-slot:action><q-btn flat label="Ver Histórico" :to="`/users/${authStore.user?.id}/stats`" /></template>
            </q-banner>
         </div>
 
         <div class="text-h6 q-mb-sm">Ações Rápidas</div>
-        
         <div class="row q-col-gutter-md">
-          
           <div class="col-12 col-sm-6">
-            <q-btn 
-              v-if="activeJourney"
-              color="positive" 
-              class="full-width full-height q-pa-lg dashboard-card action-btn-large" 
-              style="min-height: 120px"
-              to="/driver-cockpit" 
-              unelevated
-            >
+            <q-btn v-if="activeJourney" color="positive" class="full-width full-height q-pa-lg dashboard-card action-btn-large" style="min-height: 120px" to="/driver-cockpit" unelevated>
                <div class="column items-center">
                 <q-icon name="stop_circle" size="3.5em" class="q-mb-sm" />
                 <div class="text-h6">Gerenciar {{ terminologyStore.journeyNoun }}</div>
-                <div class="text-caption text-green-2 text-center">
-                   Toque para encerrar ou ver detalhes
-                </div>
+                <div class="text-caption text-green-2 text-center">Toque para encerrar ou ver detalhes</div>
               </div>
             </q-btn>
-
-            <q-btn 
-              v-else
-              color="primary" 
-              class="full-width full-height q-pa-lg dashboard-card action-btn-large" 
-              style="min-height: 120px"
-              to="/driver-cockpit" 
-              unelevated
-            >
+            <q-btn v-else color="primary" class="full-width full-height q-pa-lg dashboard-card action-btn-large" style="min-height: 120px" to="/driver-cockpit" unelevated>
               <div class="column items-center">
                 <q-icon name="play_circle_filled" size="3.5em" class="q-mb-sm" />
                 <div class="text-h6">Iniciar {{ terminologyStore.journeyNoun }}</div>
-                <div class="text-caption text-blue-2 text-center">
-                   Selecione {{ terminologyStore.vehicleNoun }} disponível ou em uso
-                </div>
+                <div class="text-caption text-blue-2 text-center">Selecione {{ terminologyStore.vehicleNoun }} disponível ou em uso</div>
               </div>
             </q-btn>
           </div>
-
           <div class="col-6 col-sm-3">
             <q-btn color="orange-9" class="full-width full-height q-pa-md dashboard-card" style="min-height: 120px" to="/fuel-logs" unelevated>
               <div class="column items-center"><q-icon name="local_gas_station" size="2.5em" class="q-mb-sm" /><div class="text-subtitle1">Abastecer</div></div>
@@ -416,7 +370,6 @@
               </div>
             </q-scroll-area>
         </div>
-
       </template>
 
       <template v-else>
@@ -480,7 +433,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed, ref, watch, reactive } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQuasar, colors } from 'quasar';
+import { useQuasar, colors, date as dateUtils } from 'quasar';
 import { useDashboardStore } from 'stores/dashboard-store';
 import { useAuthStore } from 'stores/auth-store';
 import { useTerminologyStore } from 'stores/terminology-store';
@@ -564,6 +517,61 @@ const driverMetrics = computed(() => driverData.value?.metrics);
 const driverAchievements = computed(() => driverData.value?.achievements);
 const activeJourney = computed(() => driverData.value?.active_journey);
 const journeyNounInProgress = computed(() => `Em ${terminologyStore.journeyNoun}`);
+
+// --- TRATAMENTO INTELIGENTE DE ALERTAS (DMS & OUTROS) ---
+const processedAlerts = computed(() => {
+  if (!recentAlerts.value) return [];
+  
+  // Audio de Alerta (Opcional)
+  // const audio = new Audio('/assets/alert.mp3');
+
+  return recentAlerts.value.map(alert => {
+    // Tocar som se for novo e critico (lógica simples)
+    // if (alert.severity === 'HIGH' && !alert.read) audio.play().catch(() => {});
+
+    return {
+      ...alert,
+      displayConfig: getAlertConfig(alert.type, alert.severity)
+    };
+  });
+});
+
+function getAlertConfig(type: string, severity: string) {
+  // Padronização de tipos de alerta vindos do Backend/Python
+  // CORREÇÃO: Garante que 'type' seja uma string antes de chamar toUpperCase()
+  const t = (type || '').toUpperCase();
+  
+  if (t.includes('CELLPHONE') || t.includes('DISTRACTION')) {
+    return { icon: 'phonelink_erase', color: 'negative', label: 'Uso de Celular' };
+  }
+  if (t.includes('FATIGUE') || t.includes('DROWSY') || t.includes('SLEEP')) {
+    return { icon: 'bedtime', color: 'warning', label: 'Fadiga Detectada' };
+  }
+  if (t.includes('SEATBELT')) {
+    return { icon: 'airline_seat_recline_extra', color: 'deep-orange', label: 'Sem Cinto' };
+  }
+  if (t.includes('SPEED') || t.includes('VELOCITY')) {
+    return { icon: 'speed', color: 'red', label: 'Excesso Velocidade' };
+  }
+  if (t.includes('ZONE') || t.includes('UNAUTHORIZED')) {
+    return { icon: 'lock', color: 'grey-8', label: 'Área Não Autorizada' };
+  }
+  if (t.includes('MAINTENANCE') || t.includes('ENGINE')) {
+    return { icon: 'build_circle', color: 'orange', label: 'Falha Mecânica' };
+  }
+  
+  // Padrão genérico
+  return { 
+    icon: 'notifications', 
+    color: severity === 'HIGH' ? 'negative' : 'primary', 
+    label: 'Notificação' 
+  };
+}
+
+function formatTime(timestamp: string) {
+  return dateUtils.formatDate(timestamp, 'HH:mm');
+}
+// -----------------------------------------------------
 
 // === GRÁFICOS ===
 const costAnalysisChart = computed(() => {
@@ -679,9 +687,15 @@ watch(selectedPeriod, (newPeriod) => {
   }
 });
 
+let pollingInterval: NodeJS.Timeout | null = null;
+
 onMounted(async () => {
   if (isManager.value) {
     await dashboardStore.fetchManagerDashboard(selectedPeriod.value.value);
+    // Polling para alertas em tempo real (a cada 15s)
+    pollingInterval = setInterval(() => {
+        void dashboardStore.fetchManagerDashboard(selectedPeriod.value.value, true); // true = silent refresh
+    }, 15000);
   } else if (isDriver.value) {
     await dashboardStore.fetchDriverDashboard();
   }
@@ -692,6 +706,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  if (pollingInterval) clearInterval(pollingInterval);
   dashboardStore.clearDashboardData();
 });
 
@@ -732,7 +747,7 @@ function scheduleMaintenanceGeneral() {
 .dashboard-card {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  border: 1px solid #000000;
+  border: 1px solid #e0e0e0;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   background: white;
   
@@ -784,7 +799,7 @@ function scheduleMaintenanceGeneral() {
 }
 .hover-bg:hover {
   background-color: rgba(0,0,0,0.03);
-  cursor: default;
+  cursor: pointer;
   .body--dark & {
       background-color: rgba(255,255,255,0.05);
   }
@@ -795,9 +810,18 @@ function scheduleMaintenanceGeneral() {
 .border-positive {
    border: 1px solid var(--q-positive);
 }
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
 }
 </style>
