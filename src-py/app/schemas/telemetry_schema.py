@@ -1,25 +1,31 @@
-from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
 
-# --- SCHEMA DOS PONTOS ---
-class PointSchema(BaseModel):
+class TelemetryPayload(BaseModel):
+    device_id: str
+    timestamp: datetime
+    latitude: float
+    longitude: float
+    engine_hours: float
+    fuel_level: Optional[float] = None
+    error_codes: Optional[List[str]] = None
+
+class TelemetryEvent(BaseModel):
+    type: str 
     lat: float
     lng: float
-    spd: Optional[float] = 0.0
+    val: float 
     ts: int
-    # Campos opcionais para eventos
-    acc_z: Optional[float] = 0.0
-    pothole_detected: Optional[bool] = False
 
-# --- SCHEMA DO PACOTE (BATCH) ---
-class TelemetryBatch(BaseModel):
-    # Aceita tanto ID numérico (novo código) quanto token string (legado)
-    vehicle_id: Optional[int] = None
-    vehicle_token: Optional[str] = None
-    
-    events: List[Dict[str, Any]] = [] # Aceita lista vazia de eventos
-    points: List[PointSchema]
+class TelemetryPoint(BaseModel):
+    lat: float
+    lng: float
+    spd: float
+    ts: int
 
-# --- COMPATIBILIDADE (FIX DO ERRO) ---
-# Isso garante que arquivos antigos (como crud_vehicle.py) encontrem o que procuram
-TelemetryPayload = TelemetryBatch
+class TelemetryPacket(BaseModel):
+    vehicle_id: int
+    journey_id: Optional[int] = None
+    points: List[TelemetryPoint]
+    events: List[TelemetryEvent]
