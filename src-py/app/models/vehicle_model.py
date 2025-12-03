@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .inventory_transaction_model import InventoryTransaction
     from .tire_model import VehicleTire
     from .fine_model import Fine
+    from .location_history_model import LocationHistory
 
 class VehicleStatus(str, enum.Enum):
     AVAILABLE = "Disponível"
@@ -57,6 +58,7 @@ class Vehicle(Base):
     maintenance_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), nullable=False)
+    location_history: Mapped[List["LocationHistory"]] = relationship("LocationHistory", back_populates="vehicle", cascade="all, delete-orphan")
     
     # Relações (Mantidas)
     organization: Mapped["Organization"] = relationship("Organization", back_populates="vehicles")

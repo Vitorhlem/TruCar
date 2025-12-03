@@ -1,6 +1,23 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
+
+class PointSchema(BaseModel):
+    lat: float
+    lng: float
+    spd: Optional[float] = 0.0
+    ts: int
+    # Campos opcionais para eventos futuros
+    acc_z: Optional[float] = 0.0
+    pothole_detected: Optional[bool] = False
+
+class TelemetryBatch(BaseModel):
+    # Aceita tanto ID numérico (novo padrão ESP32) quanto token string (legado)
+    vehicle_id: Optional[int] = None
+    vehicle_token: Optional[str] = None
+    
+    events: List[Dict[str, Any]] = [] # Aceita lista vazia, necessário para o ESP32
+    points: List[PointSchema]
 
 class TelemetryPayload(BaseModel):
     device_id: str
@@ -29,3 +46,5 @@ class TelemetryPacket(BaseModel):
     journey_id: Optional[int] = None
     points: List[TelemetryPoint]
     events: List[TelemetryEvent]
+
+TelemetryPayload = TelemetryBatch
