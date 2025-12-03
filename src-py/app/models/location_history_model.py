@@ -17,5 +17,5 @@ class LocationHistory(Base):
 
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
     vehicle = relationship("Vehicle", back_populates="location_history")
-    organization_id = Column(Integer, ForeignKey("organizations.id",), nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization")

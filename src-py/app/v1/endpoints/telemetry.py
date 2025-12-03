@@ -6,7 +6,6 @@ from datetime import datetime
 import logging
 
 from app import deps
-# --- CORREÇÃO 1: Importar VehicleStatus ---
 from app.models.vehicle_model import Vehicle, VehicleStatus
 from app.models.location_history_model import LocationHistory
 from app.models.alert_model import Alert 
@@ -54,8 +53,11 @@ async def sync_telemetry(
             except:
                 continue
 
+            # --- CORREÇÃO AQUI ---
+            # Passamos o organization_id do veículo para o histórico
             history = LocationHistory(
                 vehicle_id=vehicle.id,
+                organization_id=vehicle.organization_id, # <--- LINHA ADICIONADA
                 latitude=p.lat,
                 longitude=p.lng,
                 speed=p.spd, 
@@ -63,9 +65,11 @@ async def sync_telemetry(
             )
             db.add(history)
 
+            # Alertas
             if p.pothole_detected:
                 alert = Alert(
                     vehicle_id=vehicle.id,
+                    organization_id=vehicle.organization_id, # Importante: Alertas também costumam exigir org_id
                     type="POTHOLE",
                     severity="Medium",
                     description=f"Buraco detectado (Z: {p.acc_z})",
@@ -84,15 +88,12 @@ async def sync_telemetry(
             last_point = p
             points_saved += 1
 
-        # 3. Atualiza Posição e Status do Veículo
+        # 3. Atualiza Veículo
         if last_point:
             vehicle.last_latitude = last_point.lat
             vehicle.last_longitude = last_point.lng
             vehicle.last_updated = datetime.utcnow()
             
-            # --- CORREÇÃO 2: Usar o Enum VehicleStatus ---
-            # Se a velocidade for maior que 0, está "Em uso". 
-            # Se for 0, está "Disponível" (ou parado).
             if last_point.spd and last_point.spd > 0:
                 vehicle.status = VehicleStatus.IN_USE
             else:
