@@ -459,28 +459,32 @@ const onMapClick = async (e: any) => {
 
 const fetchData = async () => {
   if (!isAutoRefresh.value) return;
+  
   try {
-    // 1. Busca Veículos (Já existia)
+    // 1. Atualiza Posição dos Veículos (Isso já funcionava)
     await vehicleStore.fetchAllVehicles();
     
-    // 2. Busca Clima (Já existia)
+    // 2. Busca Eventos Climáticos (Isso já funcionava)
     const weatherRes = await api.get('/weather/alerts');
     weatherEvents.value = weatherRes.data;
 
-    // 3. --- NOVO: BUSCAR BURACOS (Alertas) ---
-    // Precisamos de um endpoint que retorne os alertas ativos do tipo POTHOLE
-    const alertsRes = await api.get('/alerts?type=POTHOLE&active=true');
-    // Mapeia para o formato que seu mapa espera
+    // 3. --- NOVO: BUSCA OS BURACOS (ALERTAS) ---
+    // Sem isso, o mapa não mostra os buracos que o ESP32 detectou
+    const alertsRes = await api.get('/alerts', { 
+        params: { type: 'POTHOLE', is_active: true } 
+    });
+    
+    // Converte o resultado da API para o formato que o mapa entende
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     potholes.value = alertsRes.data.map((alert: any) => ({
        id: alert.id,
        latitude: alert.latitude,
        longitude: alert.longitude,
-       description: alert.description
+       description: alert.description || 'Via danificada detectada pelo sensor'
     }));
 
   } catch (e) { 
-    console.error(e); 
+    console.error('Erro ao atualizar mapa:', e); 
   } finally { 
     isLoading.value = false; 
   }
