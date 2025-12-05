@@ -1,23 +1,45 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional, Set
-from pydantic import model_validator, Field
+from typing import Optional, Set, List, Dict, Any
+from pydantic import model_validator, Field, AnyHttpUrl, field_validator
+import json
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8', extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8', extra="ignore", case_sensitive=True)
 
     PROJECT_NAME: str = "TruCar"
     API_V1_STR: str = "/api/v1"
+    FRONTEND_URL: str = "http://localhost:9000"
 
-    SUPERUSER_EMAILS: Set[str] = {"admin@admin.com", "vitorhugolemes6@gmail.com"}
+    # CORS
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
+
+    SUPERUSER_EMAILS: Set[str] = set()
+
+    @field_validator("SUPERUSER_EMAILS", mode="before")
+    @classmethod
+    def assemble_superuser_emails(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return {i.strip() for i in v.split(",")}
+        return v
     
     # Configurações SMTP
-    SMTP_SERVER: str
-    SMTP_PORT: int
-    SMTP_USER: str
-    SMTP_PASSWORD: str
-    EMAILS_FROM_EMAIL: str
-    OPENWEATHER_API_KEY: str = "chave_temporaria_se_nao_houver_env"
-    REDIS_URL: str = "redis://127.0.0.1:6379/0"
+    SMTP_SERVER: Optional[str] = None
+    SMTP_PORT: Optional[int] = None
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAILS_FROM_EMAIL: Optional[str] = None
+    
+    OPENWEATHER_API_KEY: str
+    REDIS_URL: str
 
     # --- CORREÇÃO: Campos individuais opcionais ---
     POSTGRES_USER: Optional[str] = None
@@ -67,7 +89,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     FERNET_KEY: str
 
-    DEMO_TOTAL_LIMITS: dict[str, int] = {
+    DEMO_TOTAL_LIMITS: Dict[str, int] = {
         "vehicles": 3,
         "users": 2,
         "parts": 15,
@@ -75,7 +97,15 @@ class Settings(BaseSettings):
         "implements": 2,
         "vehicle_components": 10,
     }
-    DEMO_MONTHLY_LIMITS: dict[str, int] = {
+    
+    @field_validator("DEMO_TOTAL_LIMITS", mode="before")
+    @classmethod
+    def parse_demo_total_limits(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+    DEMO_MONTHLY_LIMITS: Dict[str, int] = {
         "reports": 5,
         "fines": 3,
         "documents": 10,
@@ -83,5 +113,12 @@ class Settings(BaseSettings):
         "maintenance_requests": 5,
         "fuel_logs": 20,
     }
+
+    @field_validator("DEMO_MONTHLY_LIMITS", mode="before")
+    @classmethod
+    def parse_demo_monthly_limits(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
 settings = Settings()

@@ -60,7 +60,7 @@ def get_password_reset_template(user_name: str, token: str) -> str:
     Isso permite passar o HTML texto para o Celery.
     """
     project_name = settings.PROJECT_NAME
-    reset_url = f"http://localhost:9000/#/auth/reset-password?token={token}"
+    reset_url = f"{settings.FRONTEND_URL}/#/auth/reset-password?token={token}"
 
     return f"""
     <!DOCTYPE html>

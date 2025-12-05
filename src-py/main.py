@@ -3,6 +3,32 @@ import io
 from PIL import Image
 import os
 import shutil
+import sys
+
+# ======================= AUTO-ENV CREATION =======================
+# Verifica se o arquivo .env existe. Se não, cria uma cópia baseada
+# nos argumentos ou no padrão.
+env_path = os.path.join(os.path.dirname(__file__), ".env")
+if not os.path.exists(env_path):
+    print("⚠️  Arquivo .env não encontrado. Iniciando criação automática...")
+    
+    # Verifica se o argumento 'development' foi passado
+    if "development" in sys.argv:
+        source_file = ".env.development"
+        print("🚀  Modo DEVELOPMENT detectado.")
+    else:
+        source_file = ".env.example"
+        print("ℹ️  Nenhum modo específico detectado. Usando padrão (.env.example).")
+    
+    source_path = os.path.join(os.path.dirname(__file__), source_file)
+    
+    if os.path.exists(source_path):
+        shutil.copy(source_path, env_path)
+        print(f"✅  Arquivo .env criado com sucesso a partir de {source_file}!")
+    else:
+        print(f"❌  Erro: Arquivo fonte {source_file} não encontrado. Não foi possível criar o .env.")
+# =================================================================
+
 from fastapi import FastAPI, Request, status, UploadFile, File, HTTPException
 from fastapi.exceptions import RequestValidationError, HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
@@ -65,20 +91,14 @@ app = FastAPI(
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # 5. Configurar o CORS
-origins = [
-    "https://trucar.netlify.app",    # Frontend em Produção (Netlify)
-    "http://localhost",               # Localhost padrão
-    "http://localhost:8080",          # Quasar/Vue padrão (se estiver usando)
-    "http://localhost:9000",          # Quasar/Vue Dev padrão
-]   
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,            # Agora especifica a origem exata
-    allow_credentials=True,           # Permite credenciais (necessário para Bearer tokens)
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if settings.BACKEND_CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # 6. Adicionar o evento de startup para criar as tabelas
 @app.on_event("startup")

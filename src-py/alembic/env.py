@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..'
 
 # Importe a Base declarativa de onde ela está no seu projeto
 from app.db.base_class import Base
+from app.core.config import settings
 
 # Importe TODOS os seus modelos aqui.
 # Isso é crucial para que o Alembic "veja" as tabelas.
@@ -55,6 +56,12 @@ target_metadata = Base.metadata
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# Overwrite sqlalchemy.url with the one from settings
+if settings.DATABASE_URI:
+    # Convert async URI to sync URI for Alembic
+    sync_uri = settings.DATABASE_URI.replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", sync_uri)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
