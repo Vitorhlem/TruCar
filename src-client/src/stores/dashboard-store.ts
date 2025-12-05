@@ -27,9 +27,10 @@ export const useDashboardStore = defineStore('dashboard', {
     /**
      * Busca os dados para o dashboard do GESTOR.
      * @param period A string do período para o filtro (ex: 'last_30_days')
+     * @param silent Se true, não altera o estado isLoading (para refresh silencioso)
      */
-    async fetchManagerDashboard(period = 'last_30_days') {
-      this.isLoading = true;
+    async fetchManagerDashboard(period = 'last_30_days', silent = false) {
+      if (!silent) this.isLoading = true;
       try {
         const response = await api.get<ManagerDashboardResponse>('/dashboard/manager', {
           params: { period },
@@ -39,7 +40,7 @@ export const useDashboardStore = defineStore('dashboard', {
         console.error('Falha ao buscar dados do dashboard do gestor:', error);
         // Opcional: adicionar notificação de erro para o usuário
       } finally {
-        this.isLoading = false;
+        if (!silent) this.isLoading = false;
       }
     },
 

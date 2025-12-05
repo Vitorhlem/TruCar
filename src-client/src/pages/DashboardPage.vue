@@ -248,7 +248,7 @@
 </q-item-section>
 
                         <q-item-section side top>
-                          <q-item-label caption>{{ formatTime(alert.date) }}</q-item-label>
+                          <q-item-label caption>{{ formatTime(alert.date || alert.time) }}</q-item-label>
                           <q-btn flat round dense icon="visibility" size="sm" color="primary" />
                         </q-item-section>
                       </q-item>
@@ -531,7 +531,7 @@ const processedAlerts = computed(() => {
 
     return {
       ...alert,
-      displayConfig: getAlertConfig(alert.type, alert.severity)
+      displayConfig: getAlertConfig(alert.type || '', alert.severity || '')
     };
   });
 });

@@ -119,6 +119,9 @@ export interface AlertSummary {
   title: string;
   subtitle: string;
   time: string;
+  type?: string;
+  severity?: string;
+  date?: string;
 }
 
 export interface GoalStatus {
