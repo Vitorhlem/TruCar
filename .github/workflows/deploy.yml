@@ -22,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install frontend dependencies
         working-directory: src-client
@@ -32,6 +32,23 @@ jobs:
         working-directory: src-client
         run: npx quasar build
 
+      - name: Create .htaccess for frontend
+        run: |
+          cat > src-client/dist/spa/.htaccess << 'EOF'
+          AddType text/javascript .js .mjs
+          AddType text/css .css
+          AddType application/json .json
+
+          <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteBase /trucar/
+            RewriteRule ^index\.html$ - [L]
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteCond %{REQUEST_FILENAME} !-d
+            RewriteRule . /trucar/index.html [L]
+          </IfModule>
+          EOF
+
       - name: Deploy FRONTEND to server (/public_html/trucar)
         uses: appleboy/scp-action@master
         with:
@@ -39,7 +56,7 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: "src-client/dist/spa/*"
+          source: "src-client/dist/spa/"
           target: "/home2/vyst/public_html/trucar"
           strip_components: 3
 
@@ -54,6 +71,6 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: "src-py/**/*"
+          source: "src-py/"
           target: "/home2/vyst/trucar-software"
-          strip_components: 0
+          strip_components: 1
