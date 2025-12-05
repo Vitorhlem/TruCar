@@ -49,7 +49,7 @@ jobs:
           </IfModule>
           EOF
 
-      - name: Deploy FRONTEND to server (/public_html/trucar)
+      - name: Deploy FRONTEND to server (/trucar.vyst.com.br)
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -57,7 +57,7 @@ jobs:
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           source: "src-client/dist/spa/"
-          target: "/home2/vyst/public_html/trucar"
+          target: "/home2/vyst/trucar.vyst.com.br"
           strip_components: 3
 
       #############################################################
