@@ -1,0 +1,51 @@
+<div class="space-y-6">
+    <div class="text-center">
+        <h2 class="text-2xl font-bold text-slate-800">Create Account</h2>
+        <p class="text-slate-500 mt-2">Join TruCar today</p>
+    </div>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="space-y-4">
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+            <input formControlName="name" type="text"
+                class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                placeholder="John Doe">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+            <input formControlName="email" type="email"
+                class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                placeholder="you@example.com">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <input formControlName="password" type="password"
+                class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                placeholder="••••••••">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
+            <input formControlName="confirmPassword" type="password"
+                class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                placeholder="••••••••">
+        </div>
+
+        <button type="submit" [disabled]="registerForm.invalid || isLoading()"
+            class="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center">
+            @if (isLoading()) {
+            <span class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></span>
+            Creating account...
+            } @else {
+            Sign Up
+            }
+        </button>
+    </form>
+
+    <div class="text-center text-sm text-slate-500">
+        Already have an account?
+        <a routerLink="/auth/login" class="text-blue-600 font-bold hover:underline">Sign in</a>
+    </div>
+</div>

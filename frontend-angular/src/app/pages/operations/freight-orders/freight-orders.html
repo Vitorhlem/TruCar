@@ -1,0 +1,53 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Freight Orders</h2>
+        <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-600/20 flex items-center gap-2">
+            <span class="material-icons text-sm">add</span>
+            New Order
+        </button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Client</th>
+                    <th class="px-6 py-4">Route</th>
+                    <th class="px-6 py-4">Date</th>
+                    <th class="px-6 py-4 text-right">Value</th>
+                    <th class="px-6 py-4 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @for (order of orders(); track order.id) {
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4">
+                        <span [ngClass]="{
+                'bg-blue-100 text-blue-700': order.status === 'in-transit',
+                'bg-yellow-100 text-yellow-700': order.status === 'pending',
+                'bg-green-100 text-green-700': order.status === 'delivered'
+              }" class="px-2 py-1 rounded-lg text-xs font-bold uppercase">
+                            {{ order.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 font-medium text-slate-800">{{ order.client }}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <span>{{ order.origin }}</span>
+                            <span class="material-icons text-xs text-slate-400">arrow_forward</span>
+                            <span>{{ order.destination }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">{{ order.date | date:'mediumDate' }}</td>
+                    <td class="px-6 py-4 text-right font-mono">R$ {{ order.value | number:'1.2-2' }}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="text-blue-600 hover:text-blue-800 font-medium text-xs">Details</button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

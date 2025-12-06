@@ -1,0 +1,23 @@
+<header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10 relative">
+    <div class="flex items-center gap-4">
+        <button class="p-2 rounded-lg hover:bg-slate-100 text-slate-500 lg:hidden">
+            <span class="material-icons">menu</span>
+        </button>
+        <h2 class="text-lg font-semibold text-slate-800">Dashboard</h2>
+    </div>
+
+    <div class="flex items-center gap-4">
+        <button class="p-2 rounded-full hover:bg-slate-100 text-slate-500 relative">
+            <span class="material-icons">notifications</span>
+            <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+        </button>
+
+        <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
+            <div class="text-right hidden sm:block">
+                <p class="text-sm font-medium text-slate-700">{{ user.name }}</p>
+                <p class="text-xs text-slate-500">Admin</p>
+            </div>
+            <img [src]="user.avatar" alt="User" class="w-9 h-9 rounded-full border border-slate-200">
+        </div>
+    </div>
+</header>

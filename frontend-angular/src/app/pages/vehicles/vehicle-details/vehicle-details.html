@@ -1,0 +1,96 @@
+@if (vehicle(); as v) {
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800">{{ v.brand }} {{ v.model }}</h2>
+            <p class="text-slate-500 font-mono">{{ v.plate }} • {{ v.year }}</p>
+        </div>
+        <div class="flex gap-3">
+            <button
+                class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium shadow-sm flex items-center gap-2">
+                <span class="material-icons text-sm">edit</span>
+                Edit
+            </button>
+            <button
+                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium shadow-sm shadow-red-600/20 flex items-center gap-2">
+                <span class="material-icons text-sm">delete</span>
+                Delete
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Info Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: Image & Status -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <img [src]="v.image" [alt]="v.model" class="w-full h-64 object-cover">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-medium text-slate-500">Status</span>
+                        <span [ngClass]="{
+                'bg-green-100 text-green-700': v.status === 'active',
+                'bg-orange-100 text-orange-700': v.status === 'maintenance',
+                'bg-red-100 text-red-700': v.status === 'inactive'
+              }" class="px-3 py-1 rounded-full text-xs font-bold uppercase">
+                            {{ v.status }}
+                        </span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-sm text-slate-500">Mileage</span>
+                            <span class="font-bold text-slate-800">{{ v.mileage | number }} km</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-slate-500">Fuel Level</span>
+                            <span class="font-bold text-slate-800">{{ v.fuel_level }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Tabs & Details -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 min-h-[400px]">
+                <div class="border-b border-slate-100">
+                    <nav class="flex gap-6 px-6">
+                        <button
+                            class="py-4 text-blue-600 border-b-2 border-blue-600 font-medium text-sm">Overview</button>
+                        <button
+                            class="py-4 text-slate-500 hover:text-slate-700 font-medium text-sm">Maintenance</button>
+                        <button class="py-4 text-slate-500 hover:text-slate-700 font-medium text-sm">Fuel Logs</button>
+                        <button class="py-4 text-slate-500 hover:text-slate-700 font-medium text-sm">Documents</button>
+                    </nav>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Vehicle Specifications</h3>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase mb-1">Chassis Number</p>
+                            <p class="font-mono text-slate-800">9B2-A12345-B-123456</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase mb-1">Engine Number</p>
+                            <p class="font-mono text-slate-800">D13C540</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase mb-1">Color</p>
+                            <p class="text-slate-800">White</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase mb-1">Transmission</p>
+                            <p class="text-slate-800">Automatic I-Shift</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+} @else {
+<div class="flex items-center justify-center h-64">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+</div>
+}

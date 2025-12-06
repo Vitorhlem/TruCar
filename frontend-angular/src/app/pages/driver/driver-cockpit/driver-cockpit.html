@@ -1,0 +1,94 @@
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Driver Cockpit</h2>
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+            <span class="text-sm font-medium text-slate-600">GPS Active</span>
+        </div>
+    </div>
+
+    <!-- Active Journey Card -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden relative">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+        <div class="p-8 text-center">
+            @if (activeJourney()) {
+            <div class="animate-fade-in">
+                <div
+                    class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce-slow">
+                    <span class="material-icons text-4xl">directions_car</span>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Journey in Progress</h3>
+                <p class="text-slate-500 mb-6">Vehicle: {{ activeJourney()?.vehicle }}</p>
+
+                <div class="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-8">
+                    <div class="bg-slate-50 p-4 rounded-xl">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider">Duration</p>
+                        <p class="text-lg font-mono font-bold text-slate-800">00:12:45</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider">Distance</p>
+                        <p class="text-lg font-mono font-bold text-slate-800">4.2 km</p>
+                    </div>
+                </div>
+
+                <button (click)="stopJourney()"
+                    class="w-full max-w-xs bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-500/30 transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3">
+                    <span class="material-icons">stop</span>
+                    Stop Journey
+                </button>
+            </div>
+            } @else {
+            <div>
+                <div
+                    class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span class="material-icons text-4xl">local_parking</span>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Ready to Drive?</h3>
+                <p class="text-slate-500 mb-8">Select a vehicle and start your journey.</p>
+
+                <button (click)="startJourney()"
+                    class="w-full max-w-xs bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3">
+                    <span class="material-icons">play_arrow</span>
+                    Start Journey
+                </button>
+            </div>
+            }
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <button
+            class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all flex flex-col items-center gap-2 group">
+            <div
+                class="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span class="material-icons">local_gas_station</span>
+            </div>
+            <span class="font-medium text-slate-700">Log Fuel</span>
+        </button>
+        <button
+            class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all flex flex-col items-center gap-2 group">
+            <div
+                class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span class="material-icons">build</span>
+            </div>
+            <span class="font-medium text-slate-700">Maintenance</span>
+        </button>
+        <button
+            class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all flex flex-col items-center gap-2 group">
+            <div
+                class="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span class="material-icons">gavel</span>
+            </div>
+            <span class="font-medium text-slate-700">Report Fine</span>
+        </button>
+        <button
+            class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all flex flex-col items-center gap-2 group">
+            <div
+                class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span class="material-icons">map</span>
+            </div>
+            <span class="font-medium text-slate-700">View Map</span>
+        </button>
+    </div>
+</div>

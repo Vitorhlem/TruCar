@@ -1,0 +1,41 @@
+<div class="space-y-6">
+    <h2 class="text-2xl font-bold text-slate-800">Cost Analysis</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <p class="text-sm text-slate-500 uppercase mb-1">Total Expenses (Month)</p>
+            <p class="text-3xl font-bold text-red-600">R$ 45,200.00</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <p class="text-sm text-slate-500 uppercase mb-1">Fuel Costs</p>
+            <p class="text-3xl font-bold text-slate-800">R$ 28,500.00</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <p class="text-sm text-slate-500 uppercase mb-1">Maintenance</p>
+            <p class="text-3xl font-bold text-slate-800">R$ 12,300.00</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">Category</th>
+                    <th class="px-6 py-4">Description</th>
+                    <th class="px-6 py-4">Date</th>
+                    <th class="px-6 py-4 text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @for (cost of costs(); track cost.id) {
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 font-bold text-slate-800">{{ cost.category }}</td>
+                    <td class="px-6 py-4">{{ cost.description }}</td>
+                    <td class="px-6 py-4">{{ cost.date | date:'mediumDate' }}</td>
+                    <td class="px-6 py-4 text-right font-mono text-red-600">- R$ {{ cost.amount | number:'1.2-2' }}</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

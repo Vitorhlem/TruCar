@@ -1,0 +1,44 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Traffic Fines</h2>
+        <button
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium shadow-sm shadow-red-600/20 flex items-center gap-2">
+            <span class="material-icons text-sm">warning</span>
+            Report Fine
+        </button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Date</th>
+                    <th class="px-6 py-4">Vehicle</th>
+                    <th class="px-6 py-4">Infraction</th>
+                    <th class="px-6 py-4 text-center">Points</th>
+                    <th class="px-6 py-4 text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @for (fine of fines(); track fine.id) {
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4">
+                        <span [ngClass]="{
+                'bg-yellow-100 text-yellow-700': fine.status === 'pending',
+                'bg-green-100 text-green-700': fine.status === 'paid'
+              }" class="px-2 py-1 rounded-full text-xs font-bold uppercase">
+                            {{ fine.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">{{ fine.date | date:'mediumDate' }}</td>
+                    <td class="px-6 py-4 font-medium text-slate-800">{{ fine.vehicle }}</td>
+                    <td class="px-6 py-4">{{ fine.reason }}</td>
+                    <td class="px-6 py-4 text-center font-bold text-red-500">-</td>
+                    <td class="px-6 py-4 text-right font-mono font-medium">R$ {{ fine.amount | number:'1.2-2' }}</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

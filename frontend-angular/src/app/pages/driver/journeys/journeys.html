@@ -1,0 +1,72 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">My Journeys</h2>
+        <div class="flex gap-3">
+            <div class="relative">
+                <input type="text" placeholder="Search journeys..."
+                    class="pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none w-64">
+                <span class="material-icons absolute left-3 top-2.5 text-slate-400 text-sm">search</span>
+            </div>
+            <button
+                class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium shadow-sm flex items-center gap-2">
+                <span class="material-icons text-sm">filter_list</span>
+                Filter
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+                <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                    <tr>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Vehicle</th>
+                        <th class="px-6 py-4">Start Time</th>
+                        <th class="px-6 py-4">End Time</th>
+                        <th class="px-6 py-4">Route</th>
+                        <th class="px-6 py-4 text-right">Distance</th>
+                        <th class="px-6 py-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @for (journey of journeys(); track journey.id) {
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <span
+                                [class]="journey.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'"
+                                class="px-2 py-1 rounded-full text-xs font-bold uppercase">
+                                {{ journey.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-slate-800">{{ journey.vehicle }}</td>
+                        <td class="px-6 py-4">{{ journey.startTime | date:'medium' }}</td>
+                        <td class="px-6 py-4">{{ journey.endTime | date:'medium' }}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <span>{{ journey.origin }}</span>
+                                <span class="material-icons text-xs text-slate-400">arrow_forward</span>
+                                <span>{{ journey.destination }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right font-mono">{{ journey.distance }} km</td>
+                        <td class="px-6 py-4 text-center">
+                            <button class="text-blue-600 hover:text-blue-800 font-medium text-xs">View Details</button>
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (journeys().length === 0) {
+        <div class="p-12 text-center">
+            <div
+                class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="material-icons text-3xl">route</span>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">No journeys found</h3>
+            <p class="text-slate-500">You haven't completed any journeys yet.</p>
+        </div>
+        }
+    </div>
+</div>

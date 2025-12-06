@@ -1,0 +1,49 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Maintenance</h2>
+        <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-600/20 flex items-center gap-2">
+            <span class="material-icons text-sm">build</span>
+            Schedule Maintenance
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        @for (item of maintenances(); track item.id) {
+        <div
+            class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow flex gap-4">
+            <div [ngClass]="{
+          'bg-blue-100 text-blue-600': item.type === 'Preventive',
+          'bg-orange-100 text-orange-600': item.type === 'Corrective'
+        }" class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span class="material-icons">
+                    {{ item.type === 'Preventive' ? 'calendar_today' : 'warning' }}
+                </span>
+            </div>
+
+            <div class="flex-1">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">{{ item.description }}</h3>
+                        <p class="text-sm text-slate-500">{{ item.vehicle }} • {{ item.type }}</p>
+                    </div>
+                    <span [ngClass]="{
+              'bg-green-100 text-green-700': item.status === 'completed',
+              'bg-blue-100 text-blue-700': item.status === 'scheduled'
+            }" class="px-2 py-1 rounded-lg text-xs font-bold uppercase">
+                        {{ item.status }}
+                    </span>
+                </div>
+
+                <div class="mt-4 flex items-center justify-between pt-4 border-t border-slate-50">
+                    <div class="flex items-center gap-2 text-slate-500 text-sm">
+                        <span class="material-icons text-sm">event</span>
+                        {{ item.date | date:'mediumDate' }}
+                    </div>
+                    <p class="font-bold text-slate-800">R$ {{ item.cost | number:'1.2-2' }}</p>
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+</div>

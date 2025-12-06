@@ -1,0 +1,42 @@
+<div class="space-y-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 flex items-center gap-6">
+        <div
+            class="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center text-slate-400 text-4xl font-bold">
+            U
+        </div>
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800">User Profile</h2>
+            <p class="text-slate-500">ID: {{ userId() }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Personal Information</h3>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm text-slate-500 uppercase">Email</p>
+                    <p class="font-medium text-slate-800">user@example.com</p>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 uppercase">Phone</p>
+                    <p class="font-medium text-slate-800">+55 11 99999-9999</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Activity Stats</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-blue-50 p-4 rounded-xl">
+                    <p class="text-2xl font-bold text-blue-600">12</p>
+                    <p class="text-sm text-blue-800">Active Journeys</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-xl">
+                    <p class="text-2xl font-bold text-green-600">98%</p>
+                    <p class="text-sm text-green-800">Safety Score</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

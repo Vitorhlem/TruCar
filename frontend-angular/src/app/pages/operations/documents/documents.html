@@ -1,0 +1,55 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Documents</h2>
+        <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-600/20 flex items-center gap-2">
+            <span class="material-icons text-sm">upload_file</span>
+            Upload Document
+        </button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">Type</th>
+                    <th class="px-6 py-4">Name</th>
+                    <th class="px-6 py-4">Date</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @for (doc of documents(); track doc.id) {
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4">
+                        <div
+                            class="w-8 h-8 bg-red-50 text-red-600 rounded flex items-center justify-center font-bold text-xs">
+                            {{ doc.type }}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 font-medium text-slate-800">{{ doc.name }}</td>
+                    <td class="px-6 py-4">{{ doc.date | date:'mediumDate' }}</td>
+                    <td class="px-6 py-4">
+                        <span [ngClass]="{
+                'bg-green-100 text-green-700': doc.status === 'valid',
+                'bg-red-100 text-red-700': doc.status === 'expired',
+                'bg-yellow-100 text-yellow-700': doc.status === 'pending'
+              }" class="px-2 py-1 rounded-lg text-xs font-bold uppercase">
+                            {{ doc.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="text-slate-400 hover:text-blue-600 transition-colors mx-1">
+                            <span class="material-icons text-lg">visibility</span>
+                        </button>
+                        <button class="text-slate-400 hover:text-blue-600 transition-colors mx-1">
+                            <span class="material-icons text-lg">download</span>
+                        </button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

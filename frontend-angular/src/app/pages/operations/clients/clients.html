@@ -1,0 +1,42 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Clients</h2>
+        <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-600/20 flex items-center gap-2">
+            <span class="material-icons text-sm">person_add</span>
+            Add Client
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @for (client of clients(); track client.id) {
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all">
+            <div class="flex items-start justify-between mb-4">
+                <div
+                    class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
+                    {{ client.name.charAt(0) }}
+                </div>
+                <span
+                    [class]="client.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'"
+                    class="px-2 py-1 rounded-lg text-xs font-bold uppercase">
+                    {{ client.status }}
+                </span>
+            </div>
+
+            <h3 class="text-lg font-bold text-slate-800 mb-1">{{ client.name }}</h3>
+            <p class="text-sm text-slate-500 mb-4">{{ client.address }}</p>
+
+            <div class="space-y-2 pt-4 border-t border-slate-50">
+                <div class="flex items-center gap-2 text-sm text-slate-600">
+                    <span class="material-icons text-slate-400 text-sm">email</span>
+                    {{ client.email }}
+                </div>
+                <div class="flex items-center gap-2 text-sm text-slate-600">
+                    <span class="material-icons text-slate-400 text-sm">phone</span>
+                    {{ client.phone }}
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+</div>

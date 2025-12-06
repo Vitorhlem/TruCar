@@ -1,0 +1,41 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Generated Reports</h2>
+        <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-600/20 flex items-center gap-2">
+            <span class="material-icons text-sm">assessment</span>
+            Generate New Report
+        </button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">Report Name</th>
+                    <th class="px-6 py-4">Format</th>
+                    <th class="px-6 py-4">Date Generated</th>
+                    <th class="px-6 py-4 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @for (report of reports; track report.name) {
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 font-medium text-slate-800">{{ report.name }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase">{{
+                            report.type }}</span>
+                    </td>
+                    <td class="px-6 py-4">{{ report.date | date:'medium' }}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button
+                            class="text-blue-600 hover:text-blue-800 font-medium text-xs flex items-center justify-center gap-1 mx-auto">
+                            <span class="material-icons text-sm">download</span> Download
+                        </button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,23 @@
+<div class="h-[calc(100vh-140px)] rounded-2xl overflow-hidden shadow-sm border border-slate-100 relative">
+    <div #map class="w-full h-full z-0"></div>
+
+    <!-- Overlay Controls -->
+    <div class="absolute top-4 right-4 z-[400] bg-white p-2 rounded-lg shadow-lg flex flex-col gap-2">
+        <button
+            class="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-600 transition-colors"
+            title="Zoom In">
+            <span class="material-icons">add</span>
+        </button>
+        <button
+            class="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-600 transition-colors"
+            title="Zoom Out">
+            <span class="material-icons">remove</span>
+        </button>
+        <div class="h-px bg-slate-200 my-1"></div>
+        <button
+            class="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-600 transition-colors"
+            title="Layers">
+            <span class="material-icons">layers</span>
+        </button>
+    </div>
+</div>

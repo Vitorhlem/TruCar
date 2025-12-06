@@ -7,7 +7,7 @@ O TruCar é uma plataforma completa de gerenciamento de frotas, projetada para f
 
 ## Funcionalidades
 
-A plataforma TruCar oferece uma ampla gama de funcionalidades para auxiliar no gerenciamento eficaz da sua frota:
+A plataforma TruCar oferece uma ampla gama de funcionalidadesP para auxiliar no gerenciamento eficaz da sua frota:
 
 - **Dashboard Inteligente:** Um painel centralizado para visualizar os principais indicadores de desempenho da sua frota.
 - **Controle de Viagens:** Monitore e gerencie todas as viagens da sua frota em tempo real.

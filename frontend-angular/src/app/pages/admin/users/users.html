@@ -1,0 +1,75 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">User Management</h2>
+        <div class="flex gap-3">
+            <div class="relative">
+                <input type="text" placeholder="Search users..."
+                    class="pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none w-64">
+                <span class="material-icons absolute left-3 top-2.5 text-slate-400 text-sm">search</span>
+            </div>
+            <button
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-600/20 flex items-center gap-2">
+                <span class="material-icons text-sm">person_add</span>
+                Add User
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">User</th>
+                    <th class="px-6 py-4">Role</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Last Login</th>
+                    <th class="px-6 py-4 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @for (user of users(); track user.id) {
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold">
+                                {{ user.full_name.charAt(0) }}
+                            </div>
+                            <div>
+                                <p class="font-bold text-slate-800">{{ user.full_name }}</p>
+                                <p class="text-xs text-slate-500">{{ user.email }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span [ngClass]="{
+                'bg-purple-100 text-purple-700': user.is_superuser,
+                'bg-slate-100 text-slate-700': !user.is_superuser
+              }" class="px-2 py-1 rounded-lg text-xs font-bold uppercase">
+                            {{ user.is_superuser ? 'Admin' : 'User' }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <span [class]="user.is_active ? 'bg-green-500' : 'bg-red-500'"
+                                class="w-2 h-2 rounded-full"></span>
+                            <span class="capitalize">{{ user.is_active ? 'Active' : 'Inactive' }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-slate-500">
+                        -
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="text-slate-400 hover:text-blue-600 transition-colors mx-1">
+                            <span class="material-icons text-lg">edit</span>
+                        </button>
+                        <button class="text-slate-400 hover:text-red-600 transition-colors mx-1">
+                            <span class="material-icons text-lg">delete</span>
+                        </button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,42 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Fuel Logs</h2>
+        <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-600/20 flex items-center gap-2">
+            <span class="material-icons text-sm">add</span>
+            Add Log
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @for (log of logs(); track log.id) {
+        <div
+            class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-bl-full -mr-12 -mt-12 z-0"></div>
+            <div class="relative z-10">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
+                        <span class="material-icons">local_gas_station</span>
+                    </div>
+                    <span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">{{ log.date |
+                        date:'shortDate' }}</span>
+                </div>
+
+                <h3 class="text-lg font-bold text-slate-800 mb-1">{{ log.station }}</h3>
+                <p class="text-sm text-slate-500 mb-4">{{ log.vehicle }}</p>
+
+                <div class="flex items-center justify-between pt-4 border-t border-slate-50">
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase">Volume</p>
+                        <p class="font-bold text-slate-800">{{ log.liters }} L</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-slate-400 uppercase">Cost</p>
+                        <p class="font-bold text-slate-800">R$ {{ log.cost | number:'1.2-2' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+</div>

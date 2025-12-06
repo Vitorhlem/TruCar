@@ -1,0 +1,48 @@
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-800">Parts Inventory</h2>
+        <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-600/20 flex items-center gap-2">
+            <span class="material-icons text-sm">add</span>
+            Add Part
+        </button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">Code</th>
+                    <th class="px-6 py-4">Name</th>
+                    <th class="px-6 py-4">Category</th>
+                    <th class="px-6 py-4 text-right">Quantity</th>
+                    <th class="px-6 py-4 text-right">Price</th>
+                    <th class="px-6 py-4 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @for (part of parts(); track part.id) {
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 font-mono text-slate-500">{{ part.code }}</td>
+                    <td class="px-6 py-4 font-medium text-slate-800">{{ part.name }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase">{{
+                            part.category }}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <span
+                            [class]="part.quantity <= part.minQuantity ? 'text-red-600 font-bold' : 'text-slate-800'">{{
+                            part.quantity }}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right font-mono">R$ {{ part.price | number:'1.2-2' }}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="text-slate-400 hover:text-blue-600 transition-colors">
+                            <span class="material-icons text-lg">edit</span>
+                        </button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
